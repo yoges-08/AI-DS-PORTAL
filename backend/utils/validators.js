@@ -71,6 +71,75 @@ const dobToPasswordString = (dob) => {
   return String(dob).replace(/\D/g, '');
 };
 
+/**
+ * Normalize and validate Date of Birth
+ * Returns 'YYYY-MM-DD' on success, or null on invalid date
+ */
+const normalizeDob = (rawDob) => {
+  if (!rawDob && rawDob !== 0) return null;
+
+  let y, m, d;
+
+  if (rawDob instanceof Date) {
+    if (isNaN(rawDob.getTime())) return null;
+    y = rawDob.getUTCFullYear();
+    m = rawDob.getUTCMonth() + 1;
+    d = rawDob.getUTCDate();
+  } else if (typeof rawDob === 'number') {
+    // Excel serial number (approx 1950 to 2050 is 18264 to 54789)
+    if (!Number.isFinite(rawDob) || rawDob < 1000 || rawDob > 60000) return null;
+    const excelDate = new Date(Math.round((rawDob - 25569) * 86400 * 1000));
+    if (isNaN(excelDate.getTime())) return null;
+    y = excelDate.getUTCFullYear();
+    m = excelDate.getUTCMonth() + 1;
+    d = excelDate.getUTCDate();
+  } else if (typeof rawDob === 'string') {
+    const trimmed = rawDob.trim();
+    if (!trimmed) return null;
+
+    // 1) YYYY-MM-DD or YYYY/MM/DD
+    const matchYMD = trimmed.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+    if (matchYMD) {
+      y = parseInt(matchYMD[1], 10);
+      m = parseInt(matchYMD[2], 10);
+      d = parseInt(matchYMD[3], 10);
+    } else {
+      // 2) DD-MM-YYYY or DD/MM/YYYY
+      const matchDMY = trimmed.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+      if (matchDMY) {
+        d = parseInt(matchDMY[1], 10);
+        m = parseInt(matchDMY[2], 10);
+        y = parseInt(matchDMY[3], 10);
+      } else {
+        // 3) DDMMYYYY (8 digits)
+        const matchDigits = trimmed.match(/^(\d{2})(\d{2})(\d{4})$/);
+        if (matchDigits) {
+          d = parseInt(matchDigits[1], 10);
+          m = parseInt(matchDigits[2], 10);
+          y = parseInt(matchDigits[3], 10);
+        } else {
+          return null;
+        }
+      }
+    }
+  } else {
+    return null;
+  }
+
+  if (y < 1950 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) {
+    return null;
+  }
+
+  // Strict calendar verification (rejects e.g. Feb 31)
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) {
+    return null;
+  }
+
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${y}-${pad(m)}-${pad(d)}`;
+};
+
 module.exports = {
   validateMobile,
   validateAadhaar,
@@ -80,5 +149,7 @@ module.exports = {
   validateRegisterNo,
   maskAadhaar,
   maskBankAcc,
-  dobToPasswordString
+  dobToPasswordString,
+  normalizeDob
 };
+

@@ -14,11 +14,29 @@ const { authenticateToken, requireAdmin } = require('../middleware/authMiddlewar
 const multer = require('multer');
 const path = require('path');
 
+const fs = require('fs');
+
+const tempUploadDir = path.join(__dirname, '..', 'uploads', 'temp');
+if (!fs.existsSync(tempUploadDir)) {
+  fs.mkdirSync(tempUploadDir, { recursive: true });
+}
+
 // Multer storage for Excel/CSV bulk import
 const upload = multer({
-  dest: path.join(__dirname, '..', 'uploads', 'temp'),
-  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB
+  dest: tempUploadDir,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (['.xlsx', '.xls', '.csv'].includes(ext)) {
+      cb(null, true);
+    } else {
+      const err = new Error('Invalid file type. Only .xlsx, .xls or .csv files are allowed.');
+      err.status = 400;
+      cb(err);
+    }
+  }
 });
+
 
 // All admin routes require admin privileges
 router.use(authenticateToken, requireAdmin);

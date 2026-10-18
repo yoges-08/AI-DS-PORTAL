@@ -14,7 +14,9 @@ const apiFetch = async (url, options = {}) => {
   try {
     return await fetch(url, options);
   } catch (err) {
-    if (err.name === 'TypeError' || err.message?.includes('fetch')) {
+    const method = (options.method || 'GET').toUpperCase();
+    // Only safely retry idempotent GET requests to prevent duplicate uploads or inserts
+    if (method === 'GET' && (err.name === 'TypeError' || err.message?.includes('fetch'))) {
       const cleanPath = url.startsWith('/') ? url : '/' + url;
       const directTarget = `http://127.0.0.1:5000${cleanPath}`;
       console.warn(`[API Proxy Failover] Request to ${url} failed (${err.message}). Retrying directly at ${directTarget}...`);
@@ -28,6 +30,7 @@ const apiFetch = async (url, options = {}) => {
     throw err;
   }
 };
+
 
 const handleResponse = async (response) => {
   const data = await response.json().catch(() => ({}));

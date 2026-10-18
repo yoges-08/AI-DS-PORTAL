@@ -194,6 +194,20 @@ const initSqliteFallback = async () => {
 };
 
 /**
+ * Helper to serialize JavaScript types into SQLite-compatible primitives
+ */
+const toSqliteParam = (v) => {
+  if (v === undefined) return null;
+  if (v instanceof Date) {
+    const p = (n) => String(n).padStart(2, '0');
+    return `${v.getFullYear()}-${p(v.getMonth() + 1)}-${p(v.getDate())} ${p(v.getHours())}:${p(v.getMinutes())}:${p(v.getSeconds())}`;
+  }
+  if (typeof v === 'boolean') return v ? 1 : 0;
+  if (typeof v === 'number' && !Number.isFinite(v)) return null;
+  return v;
+};
+
+/**
  * Universal pool wrapper
  */
 const pool = {
@@ -202,8 +216,12 @@ const pool = {
       try {
         return await mysqlPool.query(sql, params);
       } catch (err) {
-        // If MySQL server is down or refused connection, switch to SQLite fallback seamlessly!
+        // If MySQL server is down or refused connection
         if (err.code === 'ECONNREFUSED' || err.code === 'PROTOCOL_CONNECTION_LOST') {
+          if (process.env.NODE_ENV === 'production') {
+            console.error('[DB Fatal] MySQL database unreachable in production mode. Aborting to prevent data loss.');
+            process.exit(1);
+          }
           console.warn('[DB] MySQL connection lost or unreachable. Activating local SQLite database...');
           await initSqliteFallback();
           return this.query(sql, params);
@@ -218,14 +236,15 @@ const pool = {
       .replace(/DATE_FORMAT\(([^,]+),\s*'[^']+'\)/gi, "strftime('%d-%m-%Y %H:%M', $1)");
 
     const isSelect = /^\s*SELECT/i.test(cleanSql);
+    const safeParams = params.map(toSqliteParam);
 
     try {
       const stmt = sqliteDb.prepare(cleanSql);
       if (isSelect) {
-        const rows = stmt.all(...params);
+        const rows = stmt.all(...safeParams);
         return [rows, []];
       } else {
-        const info = stmt.run(...params);
+        const info = stmt.run(...safeParams);
         return [{ insertId: Number(info.lastInsertRowid), affectedRows: info.changes }, []];
       }
     } catch (sqliteErr) {
@@ -256,6 +275,10 @@ const testConnection = async () => {
     dbMode = 'mysql';
     return true;
   } catch (error) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error(`[DB Fatal] MySQL is not responding on port ${process.env.DB_PORT || '3306'} in production mode. Refusing silent fallback.`);
+      process.exit(1);
+    }
     console.warn(`[DB] MySQL is not responding on port ${process.env.DB_PORT || '3306'} (${error.code || error.message}).`);
     console.log('[DB] Activating built-in zero-config local database (aids_portal.sqlite)...');
     return await initSqliteFallback();

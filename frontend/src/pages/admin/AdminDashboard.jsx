@@ -37,10 +37,13 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
 
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Filters & Search
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [year, setYear] = useState('');
   const [section, setSection] = useState('');
   const [firstGraduate, setFirstGraduate] = useState('');
@@ -67,41 +70,60 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
     }
   };
 
-  // Load students table
-  const fetchStudents = async (page = 1) => {
-    try {
-      setLoading(true);
-      const params = {
-        page,
-        limit: 10,
-        search,
-        year,
-        section,
-        firstGraduate,
-        pms,
-        status,
-        sortBy,
-        sortOrder
-      };
-      const res = await api.getStudents(params);
-      if (res.success) {
-        setStudents(res.students);
-        setPagination(res.pagination);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [refreshTrigger]);
 
+  // Debounce search by 300ms
   useEffect(() => {
-    fetchStudents(pagination.page);
-  }, [search, year, section, firstGraduate, pms, status, sortBy, sortOrder]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset page to 1 when any filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, year, section, firstGraduate, pms, status]);
+
+  // Load students table with cancellation to ignore stale out-of-order responses
+  useEffect(() => {
+    let isCurrent = true;
+
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const params = {
+          page: currentPage,
+          limit: 10,
+          search: debouncedSearch,
+          year,
+          section,
+          firstGraduate,
+          pms,
+          status,
+          sortBy,
+          sortOrder
+        };
+        const res = await api.getStudents(params);
+        if (isCurrent && res.success) {
+          setStudents(res.students);
+          setPagination(res.pagination);
+        }
+      } catch (e) {
+        if (isCurrent) console.error(e);
+      } finally {
+        if (isCurrent) setLoading(false);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [currentPage, debouncedSearch, year, section, firstGraduate, pms, status, sortBy, sortOrder, refreshTrigger]);
 
   const handleSort = (column) => {
     if (sortBy === column) {
@@ -111,6 +133,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
       setSortOrder('ASC');
     }
   };
+
 
   const handleRowClick = (id) => {
     setSelectedStudentId(id);
@@ -481,18 +504,18 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
 
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => fetchStudents(pagination.page - 1)}
-              disabled={pagination.page <= 1 || loading}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage <= 1 || loading}
               className="inline-flex items-center px-2 py-1 border border-gray-300 rounded bg-white text-gray-700 disabled:opacity-40 hover:bg-gray-50"
             >
               <ChevronLeft className="w-3.5 h-3.5 mr-0.5" /> Prev
             </button>
             <span className="text-xs">
-              Page <strong>{pagination.page}</strong> of <strong>{pagination.totalPages || 1}</strong>
+              Page <strong>{pagination.page || currentPage}</strong> of <strong>{pagination.totalPages || 1}</strong>
             </span>
             <button
-              onClick={() => fetchStudents(pagination.page + 1)}
-              disabled={pagination.page >= pagination.totalPages || loading}
+              onClick={() => setCurrentPage((prev) => Math.min(pagination.totalPages || 1, prev + 1))}
+              disabled={currentPage >= (pagination.totalPages || 1) || loading}
               className="inline-flex items-center px-2 py-1 border border-gray-300 rounded bg-white text-gray-700 disabled:opacity-40 hover:bg-gray-50"
             >
               Next <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
@@ -507,8 +530,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         onRefresh={() => {
-          fetchStats();
-          fetchStudents(pagination.page);
+          setRefreshTrigger((prev) => prev + 1);
         }}
         onEditStudent={(id) => {
           setIsDetailOpen(false);
@@ -520,8 +542,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
         onSuccess={() => {
-          fetchStats();
-          fetchStudents(pagination.page);
+          setRefreshTrigger((prev) => prev + 1);
         }}
       />
 
@@ -529,10 +550,10 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
         isOpen={isBulkOpen}
         onClose={() => setIsBulkOpen(false)}
         onSuccess={() => {
-          fetchStats();
-          fetchStudents(pagination.page);
+          setRefreshTrigger((prev) => prev + 1);
         }}
       />
+
 
     </div>
   );

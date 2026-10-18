@@ -6,14 +6,11 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "seed": "node seed.js",
-    "prisma:generate": "npx prisma generate",
-    "prisma:push": "npx prisma db push"
+    "seed": "node seed.js"
   },
   "keywords": [],
   "type": "commonjs",
   "dependencies": {
-    "@prisma/client": "^7.10.1",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -25,6 +22,6 @@
     "multer": "^2.4.0",
     "mysql2": "^3.24.6",
     "pdfkit": "^0.20.2",
-    "xlsx": "^0.18.5"
+    "xlsx": "file:./xlsx-0.20.3.tgz"
   }
 }

@@ -9,6 +9,47 @@ const {
   validateEmail
 } = require('../utils/validators');
 
+const ALLOWED_DOC_TYPES = [
+  'photo',
+  'aadhaar',
+  'bank_passbook',
+  'community_cert',
+  'income_cert',
+  'first_graduate_cert',
+  'sslc_marksheet',
+  'hsc_marksheet',
+  'other'
+];
+
+// Helper to safely discard uploaded file on error
+const discardUpload = (file) => {
+  if (file && file.path && fs.existsSync(file.path)) {
+    try {
+      fs.unlinkSync(file.path);
+    } catch (e) {
+      console.error('[discardUpload error]:', e);
+    }
+  }
+};
+
+// Safe parsing helpers
+const parseSafeFloat = (v) => {
+  if (v === undefined || v === null || v === '') return null;
+  const num = parseFloat(v);
+  return Number.isFinite(num) ? num : null;
+};
+
+const parseSafeInt = (v) => {
+  if (v === undefined || v === null || v === '') return null;
+  const num = parseInt(v, 10);
+  return Number.isFinite(num) ? num : null;
+};
+
+const parseSafeString = (v) => {
+  if (v === undefined || v === null) return null;
+  return typeof v === 'string' ? v.trim() : String(v).trim();
+};
+
 /**
  * Get profile and documents of the student
  */
@@ -116,8 +157,30 @@ const updateStudentDetails = async (req, res) => {
     if (d.pincode && !validatePincode(d.pincode)) {
       errors.pincode = 'Pincode must be exactly 6 digits.';
     }
+
+    // Safe IFSC validation
+    const safeIfsc = typeof d.bankIfsc === 'string' ? d.bankIfsc.trim().toUpperCase() : null;
     if (d.bankIfsc && !validateIfsc(d.bankIfsc)) {
       errors.bankIfsc = 'Invalid IFSC code format (e.g., SBIN0001234).';
+    }
+
+    // Safe number validations
+    if (d.annualIncome !== undefined && d.annualIncome !== '' && d.annualIncome !== null) {
+      if (parseSafeFloat(d.annualIncome) === null) {
+        errors.annualIncome = 'Annual income must be a valid number.';
+      }
+    }
+    if (d.sslcPercentage !== undefined && d.sslcPercentage !== '' && d.sslcPercentage !== null) {
+      const p = parseSafeFloat(d.sslcPercentage);
+      if (p === null || p < 0 || p > 100) {
+        errors.sslcPercentage = 'SSLC percentage must be a number between 0 and 100.';
+      }
+    }
+    if (d.hscPercentage !== undefined && d.hscPercentage !== '' && d.hscPercentage !== null) {
+      const p = parseSafeFloat(d.hscPercentage);
+      if (p === null || p < 0 || p > 100) {
+        errors.hscPercentage = 'HSC percentage must be a number between 0 and 100.';
+      }
     }
 
     if (Object.keys(errors).length > 0) {
@@ -126,6 +189,14 @@ const updateStudentDetails = async (req, res) => {
         message: 'Validation failed for some fields.',
         errors
       });
+    }
+
+    // Invalidate status if student edits a VERIFIED or REJECTED record
+    let updatedStatus = existing[0].status;
+    let updatedRejectionReason = null;
+    if (req.user.role !== 'ADMIN' && (existing[0].status === 'VERIFIED' || existing[0].status === 'REJECTED')) {
+      updatedStatus = 'DRAFT';
+      updatedRejectionReason = null;
     }
 
     // Prepare update query
@@ -186,70 +257,75 @@ const updateStudentDetails = async (req, res) => {
         bank_name = COALESCE(?, bank_name),
         bank_acc_no = COALESCE(?, bank_acc_no),
         bank_ifsc = COALESCE(?, bank_ifsc),
-        bank_branch = COALESCE(?, bank_branch)
+        bank_branch = COALESCE(?, bank_branch),
+
+        status = ?,
+        rejection_reason = CASE WHEN ? = 'DRAFT' THEN NULL ELSE rejection_reason END
       WHERE id = ?
     `;
 
     const commAddr = d.isSameAddress ? d.permanentAddress : d.communicationAddress;
 
     const values = [
-      d.gender !== undefined ? d.gender : null,
-      d.bloodGroup !== undefined ? d.bloodGroup : null,
-      d.religion !== undefined ? d.religion : null,
-      d.community !== undefined ? d.community : null,
-      d.caste !== undefined ? d.caste : null,
-      d.nationality !== undefined ? d.nationality : null,
-      d.aadhaarNo !== undefined ? d.aadhaarNo : null,
-      d.motherTongue !== undefined ? d.motherTongue : null,
+      d.gender !== undefined ? parseSafeString(d.gender) : null,
+      d.bloodGroup !== undefined ? parseSafeString(d.bloodGroup) : null,
+      d.religion !== undefined ? parseSafeString(d.religion) : null,
+      d.community !== undefined ? parseSafeString(d.community) : null,
+      d.caste !== undefined ? parseSafeString(d.caste) : null,
+      d.nationality !== undefined ? parseSafeString(d.nationality) : null,
+      d.aadhaarNo !== undefined ? parseSafeString(d.aadhaarNo) : null,
+      d.motherTongue !== undefined ? parseSafeString(d.motherTongue) : null,
 
-      d.mobile !== undefined ? d.mobile : null,
-      d.altMobile !== undefined ? d.altMobile : null,
-      d.email !== undefined ? d.email : null,
-      d.permanentAddress !== undefined ? d.permanentAddress : null,
-      commAddr !== undefined ? commAddr : null,
+      d.mobile !== undefined ? parseSafeString(d.mobile) : null,
+      d.altMobile !== undefined ? parseSafeString(d.altMobile) : null,
+      d.email !== undefined ? parseSafeString(d.email) : null,
+      d.permanentAddress !== undefined ? parseSafeString(d.permanentAddress) : null,
+      commAddr !== undefined ? parseSafeString(commAddr) : null,
       d.isSameAddress !== undefined ? (d.isSameAddress ? 1 : 0) : null,
-      d.district !== undefined ? d.district : null,
-      d.state !== undefined ? d.state : null,
-      d.pincode !== undefined ? d.pincode : null,
+      d.district !== undefined ? parseSafeString(d.district) : null,
+      d.state !== undefined ? parseSafeString(d.state) : null,
+      d.pincode !== undefined ? parseSafeString(d.pincode) : null,
 
-      d.fatherName !== undefined ? d.fatherName : null,
-      d.motherName !== undefined ? d.motherName : null,
-      d.guardianName !== undefined ? d.guardianName : null,
-      d.parentsOccupation !== undefined ? d.parentsOccupation : null,
-      d.parentsMobile !== undefined ? d.parentsMobile : null,
-      d.annualIncome !== undefined ? (d.annualIncome ? parseFloat(d.annualIncome) : null) : null,
+      d.fatherName !== undefined ? parseSafeString(d.fatherName) : null,
+      d.motherName !== undefined ? parseSafeString(d.motherName) : null,
+      d.guardianName !== undefined ? parseSafeString(d.guardianName) : null,
+      d.parentsOccupation !== undefined ? parseSafeString(d.parentsOccupation) : null,
+      d.parentsMobile !== undefined ? parseSafeString(d.parentsMobile) : null,
+      d.annualIncome !== undefined ? parseSafeFloat(d.annualIncome) : null,
 
-      d.sslcSchool !== undefined ? d.sslcSchool : null,
-      d.sslcBoard !== undefined ? d.sslcBoard : null,
-      d.sslcYear !== undefined ? (d.sslcYear ? parseInt(d.sslcYear, 10) : null) : null,
-      d.sslcPercentage !== undefined ? (d.sslcPercentage ? parseFloat(d.sslcPercentage) : null) : null,
-      d.hscSchool !== undefined ? d.hscSchool : null,
-      d.hscBoard !== undefined ? d.hscBoard : null,
-      d.hscYear !== undefined ? (d.hscYear ? parseInt(d.hscYear, 10) : null) : null,
-      d.hscPercentage !== undefined ? (d.hscPercentage ? parseFloat(d.hscPercentage) : null) : null,
-      d.currentSemester !== undefined ? (d.currentSemester ? parseInt(d.currentSemester, 10) : null) : null,
-      d.modeOfAdmission !== undefined ? d.modeOfAdmission : null,
+      d.sslcSchool !== undefined ? parseSafeString(d.sslcSchool) : null,
+      d.sslcBoard !== undefined ? parseSafeString(d.sslcBoard) : null,
+      d.sslcYear !== undefined ? parseSafeInt(d.sslcYear) : null,
+      d.sslcPercentage !== undefined ? parseSafeFloat(d.sslcPercentage) : null,
+      d.hscSchool !== undefined ? parseSafeString(d.hscSchool) : null,
+      d.hscBoard !== undefined ? parseSafeString(d.hscBoard) : null,
+      d.hscYear !== undefined ? parseSafeInt(d.hscYear) : null,
+      d.hscPercentage !== undefined ? parseSafeFloat(d.hscPercentage) : null,
+      d.currentSemester !== undefined ? parseSafeInt(d.currentSemester) : null,
+      d.modeOfAdmission !== undefined ? parseSafeString(d.modeOfAdmission) : null,
 
       d.isFirstGraduate !== undefined ? (d.isFirstGraduate ? 1 : 0) : null,
       d.isPms !== undefined ? (d.isPms ? 1 : 0) : null,
-      d.pmsApplicationNo !== undefined ? d.pmsApplicationNo : null,
-      d.pmsStatus !== undefined ? d.pmsStatus : null,
-      d.otherScholarshipName !== undefined ? d.otherScholarshipName : null,
-      d.otherScholarshipAmount !== undefined ? (d.otherScholarshipAmount ? parseFloat(d.otherScholarshipAmount) : null) : null,
-      d.otherScholarshipStatus !== undefined ? d.otherScholarshipStatus : null,
-      d.communityCertNo !== undefined ? d.communityCertNo : null,
-      d.communityCertIssuer !== undefined ? d.communityCertIssuer : null,
-      d.communityCertDate !== undefined ? (d.communityCertDate || null) : null,
-      d.incomeCertNo !== undefined ? d.incomeCertNo : null,
-      d.incomeCertIssuer !== undefined ? d.incomeCertIssuer : null,
-      d.incomeCertDate !== undefined ? (d.incomeCertDate || null) : null,
+      d.pmsApplicationNo !== undefined ? parseSafeString(d.pmsApplicationNo) : null,
+      d.pmsStatus !== undefined ? parseSafeString(d.pmsStatus) : null,
+      d.otherScholarshipName !== undefined ? parseSafeString(d.otherScholarshipName) : null,
+      d.otherScholarshipAmount !== undefined ? parseSafeFloat(d.otherScholarshipAmount) : null,
+      d.otherScholarshipStatus !== undefined ? parseSafeString(d.otherScholarshipStatus) : null,
+      d.communityCertNo !== undefined ? parseSafeString(d.communityCertNo) : null,
+      d.communityCertIssuer !== undefined ? parseSafeString(d.communityCertIssuer) : null,
+      d.communityCertDate !== undefined ? (parseSafeString(d.communityCertDate) || null) : null,
+      d.incomeCertNo !== undefined ? parseSafeString(d.incomeCertNo) : null,
+      d.incomeCertIssuer !== undefined ? parseSafeString(d.incomeCertIssuer) : null,
+      d.incomeCertDate !== undefined ? (parseSafeString(d.incomeCertDate) || null) : null,
 
-      d.bankAccHolder !== undefined ? d.bankAccHolder : null,
-      d.bankName !== undefined ? d.bankName : null,
-      d.bankAccNo !== undefined ? d.bankAccNo : null,
-      d.bankIfsc !== undefined ? (d.bankIfsc ? d.bankIfsc.toUpperCase() : null) : null,
-      d.bankBranch !== undefined ? d.bankBranch : null,
+      d.bankAccHolder !== undefined ? parseSafeString(d.bankAccHolder) : null,
+      d.bankName !== undefined ? parseSafeString(d.bankName) : null,
+      d.bankAccNo !== undefined ? parseSafeString(d.bankAccNo) : null,
+      safeIfsc !== null ? safeIfsc : null,
+      d.bankBranch !== undefined ? parseSafeString(d.bankBranch) : null,
 
+      updatedStatus,
+      updatedStatus,
       studentId
     ];
 
@@ -257,7 +333,8 @@ const updateStudentDetails = async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Student details saved successfully.'
+      message: 'Student details saved successfully.',
+      status: updatedStatus
     });
   } catch (error) {
     console.error('[updateStudentDetails Error]:', error);
@@ -285,7 +362,7 @@ const submitStudentDetails = async (req, res) => {
       });
     }
 
-    // Verify student is not locked
+    // Verify student is not locked and not already verified
     const [rows] = await pool.query(
       'SELECT is_locked, status FROM students WHERE id = ?',
       [studentId]
@@ -300,6 +377,45 @@ const submitStudentDetails = async (req, res) => {
         success: false,
         message: 'This record has already been locked by the department administrator.'
       });
+    }
+
+    if (rows[0].status === 'VERIFIED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Your profile has already been verified by the department administrator and cannot be resubmitted.'
+      });
+    }
+
+    // Verify mandatory profile fields before submission
+    const [students] = await pool.query(
+      `SELECT gender, community, religion, mobile, email, aadhaar_no,
+              permanent_address, district, state, pincode, father_name, annual_income, photo_path
+       FROM students WHERE id = ?`,
+      [studentId]
+    );
+
+    if (students.length > 0) {
+      const s = students[0];
+      const missing = [];
+      if (!s.gender) missing.push('Gender');
+      if (!s.community) missing.push('Community');
+      if (!s.religion) missing.push('Religion');
+      if (!s.mobile) missing.push('Mobile Number');
+      if (!s.email) missing.push('Email');
+      if (!s.aadhaar_no) missing.push('Aadhaar Number');
+      if (!s.permanent_address) missing.push('Permanent Address');
+      if (!s.district) missing.push('District');
+      if (!s.pincode) missing.push('Pincode');
+      if (!s.father_name) missing.push('Father Name');
+      if (s.annual_income === null || s.annual_income === undefined) missing.push('Annual Income');
+      if (!s.photo_path) missing.push('Passport Photo');
+
+      if (missing.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot submit profile: mandatory information is missing (${missing.join(', ')}). Please complete all required sections.`
+        });
+      }
     }
 
     await pool.query(
@@ -329,6 +445,7 @@ const uploadDocument = async (req, res) => {
     const studentId = req.params.id ? parseInt(req.params.id, 10) : req.user.id;
 
     if (req.user.role === 'STUDENT' && req.user.id !== studentId) {
+      discardUpload(req.file);
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
@@ -339,10 +456,12 @@ const uploadDocument = async (req, res) => {
     );
 
     if (existing.length === 0) {
+      discardUpload(req.file);
       return res.status(404).json({ success: false, message: 'Student record not found.' });
     }
 
     if (existing[0].is_locked && req.user.role !== 'ADMIN') {
+      discardUpload(req.file);
       return res.status(403).json({
         success: false,
         message: 'Record is locked. Cannot upload new documents.'
@@ -350,6 +469,7 @@ const uploadDocument = async (req, res) => {
     }
 
     if (req.fileValidationError) {
+      discardUpload(req.file);
       return res.status(400).json({ success: false, message: req.fileValidationError });
     }
 
@@ -362,7 +482,7 @@ const uploadDocument = async (req, res) => {
 
     // Enforce 2MB maximum limit
     if (req.file.size > 2 * 1024 * 1024) {
-      try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+      discardUpload(req.file);
       return res.status(400).json({
         success: false,
         message: `File size (${(req.file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the 2 MB limit. Please upload a smaller file.`
@@ -370,6 +490,14 @@ const uploadDocument = async (req, res) => {
     }
 
     const docType = req.body.docType || 'other';
+    if (!ALLOWED_DOC_TYPES.includes(docType)) {
+      discardUpload(req.file);
+      return res.status(400).json({
+        success: false,
+        message: `Invalid document type "${docType}". Allowed types: ${ALLOWED_DOC_TYPES.join(', ')}`
+      });
+    }
+
     const filePath = `/uploads/${req.file.filename}`;
 
     // If uploading photo, update photo_path in students table
@@ -419,6 +547,7 @@ const uploadDocument = async (req, res) => {
       }
     });
   } catch (error) {
+    discardUpload(req.file);
     console.error('[uploadDocument Error]:', error);
     return res.status(500).json({ success: false, message: 'Failed to upload document.' });
   }
@@ -476,3 +605,4 @@ module.exports = {
   uploadDocument,
   deleteDocument
 };
+

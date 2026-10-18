@@ -4,27 +4,46 @@ const { pool } = require('../config/db');
 const { maskAadhaar, maskBankAcc } = require('../utils/validators');
 const { logAdminAction } = require('../utils/auditLogger');
 
+// Helper to prevent Excel formula injection
+const sanitizeExcelValue = (val) => {
+  if (typeof val === 'string' && /^[=+\-@\t\r]/.test(val)) {
+    return `'${val}`;
+  }
+  return val;
+};
+
+const toSafeString = (v) => {
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v) && typeof v[0] === 'string') return v[0];
+  return '';
+};
+
 /**
  * Export students data to Excel (.xlsx)
  */
 const exportExcel = async (req, res) => {
   try {
-    const { year, section, status } = req.query;
+    const rawYear = req.query.year;
+    const section = toSafeString(req.query.section).trim().toUpperCase();
+    const status = toSafeString(req.query.status).trim().toUpperCase();
 
     const conditions = [];
     const params = [];
 
-    if (year) {
-      conditions.push('year = ?');
-      params.push(parseInt(year, 10));
+    if (rawYear !== undefined && rawYear !== '') {
+      const yearNum = parseInt(Array.isArray(rawYear) ? rawYear[0] : rawYear, 10);
+      if (Number.isFinite(yearNum) && [1, 2, 3, 4].includes(yearNum)) {
+        conditions.push('year = ?');
+        params.push(yearNum);
+      }
     }
     if (section) {
       conditions.push('section = ?');
-      params.push(section.trim().toUpperCase());
+      params.push(section);
     }
     if (status) {
       conditions.push('status = ?');
-      params.push(status.trim().toUpperCase());
+      params.push(status);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -66,8 +85,17 @@ const exportExcel = async (req, res) => {
 
     const [rows] = await pool.query(query, params);
 
+    // Sanitize values against Excel formula injection
+    const sanitizedRows = rows.map((row) => {
+      const cleanRow = {};
+      for (const [key, val] of Object.entries(row)) {
+        cleanRow[key] = sanitizeExcelValue(val);
+      }
+      return cleanRow;
+    });
+
     // Create workbook
-    const worksheet = xlsx.utils.json_to_sheet(rows);
+    const worksheet = xlsx.utils.json_to_sheet(sanitizedRows);
     const workbook = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(workbook, worksheet, 'AI&DS Students');
 
@@ -95,21 +123,26 @@ const exportExcel = async (req, res) => {
  */
 const exportPdf = async (req, res) => {
   try {
-    const { year, section, status } = req.query;
+    const rawYear = req.query.year;
+    const section = toSafeString(req.query.section).trim().toUpperCase();
+    const status = toSafeString(req.query.status).trim().toUpperCase();
 
     const conditions = [];
     const params = [];
-    if (year) {
-      conditions.push('year = ?');
-      params.push(parseInt(year, 10));
+    if (rawYear !== undefined && rawYear !== '') {
+      const yearNum = parseInt(Array.isArray(rawYear) ? rawYear[0] : rawYear, 10);
+      if (Number.isFinite(yearNum) && [1, 2, 3, 4].includes(yearNum)) {
+        conditions.push('year = ?');
+        params.push(yearNum);
+      }
     }
     if (section) {
       conditions.push('section = ?');
-      params.push(section.trim().toUpperCase());
+      params.push(section);
     }
     if (status) {
       conditions.push('status = ?');
-      params.push(status.trim().toUpperCase());
+      params.push(status);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -127,18 +160,33 @@ const exportPdf = async (req, res) => {
     let buffers = [];
     doc.on('data', buffers.push.bind(buffers));
     doc.on('end', async () => {
-      const pdfData = Buffer.concat(buffers);
-      await logAdminAction({
-        adminId: req.user.id,
-        adminUsername: req.user.username,
-        action: 'EXPORT_PDF',
-        details: `Exported PDF report of ${students.length} student records`,
-        ipAddress: req.ip
-      });
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'attachment; filename="AIDS_Department_Student_Report.pdf"');
-      res.send(pdfData);
+      try {
+        const pdfData = Buffer.concat(buffers);
+        await logAdminAction({
+          adminId: req.user.id,
+          adminUsername: req.user.username,
+          action: 'EXPORT_PDF',
+          details: `Exported PDF report of ${students.length} student records`,
+          ipAddress: req.ip
+        });
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename="AIDS_Department_Student_Report.pdf"');
+        res.send(pdfData);
+      } catch (err) {
+        console.error('[exportPdf end handler error]:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ success: false, message: 'Failed to complete PDF generation.' });
+        }
+      }
     });
+
+    doc.on('error', (err) => {
+      console.error('[exportPdf doc stream error]:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'PDF document generation error.' });
+      }
+    });
+
 
     // Header (Official Government / College style)
     doc.rect(30, 20, 782, 55).fill('#1F3A6E');

@@ -31,10 +31,10 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
     name: '',
     registerNo: '',
     dob: '',
-    gender: 'Male',
+    gender: '',
     bloodGroup: '',
-    religion: 'Hindu',
-    community: 'BC',
+    religion: '',
+    community: '',
     caste: '',
     nationality: 'Indian',
     aadhaarNo: '',
@@ -117,10 +117,10 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
           dob: s.dob || '',
           year: s.year || 1,
           section: s.section || 'A',
-          gender: s.gender || 'Male',
+          gender: s.gender || '',
           bloodGroup: s.blood_group || '',
-          religion: s.religion || 'Hindu',
-          community: s.community || 'BC',
+          religion: s.religion || '',
+          community: s.community || '',
           caste: s.caste || '',
           nationality: s.nationality || 'Indian',
           aadhaarNo: s.aadhaar_no || '',
@@ -224,6 +224,9 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
       }
       if (!formData.gender || !String(formData.gender).trim()) {
         errs.gender = 'Gender selection is mandatory.';
+      }
+      if (!formData.religion || !String(formData.religion).trim()) {
+        errs.religion = 'Religion selection is mandatory.';
       }
       if (!formData.community || !String(formData.community).trim()) {
         errs.community = 'Community selection is mandatory.';
@@ -616,7 +619,9 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
       setMessage({ type: 'success', text: res.message || 'Submitted successfully!' });
       setFormData((prev) => ({ ...prev, status: 'SUBMITTED' }));
       refreshUser && refreshUser();
-      if (onComplete) onComplete();
+      setTimeout(() => {
+        if (onComplete) onComplete();
+      }, 1500);
     } catch (err) {
       setMessage({ type: 'error', text: err.message || 'Submission failed.' });
     } finally {
@@ -811,6 +816,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   disabled={isLocked}
                   className={getInputClass('gender')}
                 >
+                  <option value="">-- Select Gender --</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
@@ -845,15 +851,16 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
               {/* Religion */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Religion
+                  Religion <span className="text-red-600">*</span>
                 </label>
                 <select
                   name="religion"
                   value={formData.religion}
                   onChange={handleChange}
                   disabled={isLocked}
-                  className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:border-gov-navy focus:outline-none disabled:bg-gray-100"
+                  className={getInputClass('religion')}
                 >
+                  <option value="">-- Select Religion --</option>
                   <option value="Hindu">Hindu</option>
                   <option value="Muslim">Muslim</option>
                   <option value="Christian">Christian</option>
@@ -861,6 +868,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   <option value="Sikh">Sikh</option>
                   <option value="Other">Other</option>
                 </select>
+                {errors.religion && <p className="text-xs text-red-600 mt-1 font-medium">{errors.religion}</p>}
               </div>
 
               {/* Community */}
@@ -875,6 +883,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   disabled={isLocked}
                   className={getInputClass('community')}
                 >
+                  <option value="">-- Select Community --</option>
                   <option value="OC">OC (Open Competition)</option>
                   <option value="BC">BC (Backward Class)</option>
                   <option value="BCM">BCM (BC Muslim)</option>

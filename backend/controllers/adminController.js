@@ -10,9 +10,22 @@ const {
   validatePincode,
   maskAadhaar,
   maskBankAcc,
-  dobToPasswordString
+  dobToPasswordString,
+  normalizeDob
 } = require('../utils/validators');
 const { logAdminAction } = require('../utils/auditLogger');
+
+// Safe parsing helpers
+const toPositiveInt = (v, fallback) => {
+  const n = parseInt(Array.isArray(v) ? v[0] : v, 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+
+const toSafeString = (v) => {
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v) && typeof v[0] === 'string') return v[0];
+  return '';
+};
 
 /**
  * Get Admin Dashboard Summary Cards statistics
@@ -72,41 +85,38 @@ const getDashboardStats = async (req, res) => {
  */
 const getStudents = async (req, res) => {
   try {
-    const {
-      search = '',
-      year,
-      section,
-      firstGraduate,
-      pms,
-      status,
-      sortBy = 'register_no',
-      sortOrder = 'ASC',
-      page = 1,
-      limit = 10
-    } = req.query;
+    const search = toSafeString(req.query.search).trim();
+    const section = toSafeString(req.query.section).trim().toUpperCase();
+    const status = toSafeString(req.query.status).trim().toUpperCase();
+    const sortBy = toSafeString(req.query.sortBy).trim();
+    const sortOrder = toSafeString(req.query.sortOrder).trim().toUpperCase();
+    const { firstGraduate, pms } = req.query;
 
-    const pageNum = Math.max(1, parseInt(page, 10));
-    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10)));
+    const pageNum = toPositiveInt(req.query.page, 1);
+    const limitNum = Math.min(100, toPositiveInt(req.query.limit, 10));
     const offset = (pageNum - 1) * limitNum;
 
     // Build conditions
     const conditions = [];
     const params = [];
 
-    if (search.trim()) {
+    if (search) {
       conditions.push('(register_no LIKE ? OR name LIKE ? OR mobile LIKE ?)');
-      const term = `%${search.trim()}%`;
+      const term = `%${search}%`;
       params.push(term, term, term);
     }
 
-    if (year) {
-      conditions.push('year = ?');
-      params.push(parseInt(year, 10));
+    if (req.query.year !== undefined && req.query.year !== '') {
+      const yearNum = parseInt(Array.isArray(req.query.year) ? req.query.year[0] : req.query.year, 10);
+      if (Number.isFinite(yearNum) && [1, 2, 3, 4].includes(yearNum)) {
+        conditions.push('year = ?');
+        params.push(yearNum);
+      }
     }
 
     if (section) {
       conditions.push('section = ?');
-      params.push(section.trim().toUpperCase());
+      params.push(section);
     }
 
     if (firstGraduate !== undefined && firstGraduate !== '') {
@@ -121,7 +131,7 @@ const getStudents = async (req, res) => {
 
     if (status) {
       conditions.push('status = ?');
-      params.push(status.trim().toUpperCase());
+      params.push(status);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -137,7 +147,7 @@ const getStudents = async (req, res) => {
       'submission_date': 'submission_date'
     };
     const sortCol = allowedSortColumns[sortBy] || 'register_no';
-    const sortDir = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    const sortDir = sortOrder === 'DESC' ? 'DESC' : 'ASC';
 
     // Total count
     const [countRows] = await pool.query(
@@ -192,14 +202,27 @@ const addStudent = async (req, res) => {
   try {
     const { registerNo, name, dob, year, section } = req.body;
 
-    if (!registerNo || !name || !dob || !year || !section) {
+    const regNo = toSafeString(registerNo).trim();
+    const studentName = toSafeString(name).trim();
+    const sec = toSafeString(section).trim().toUpperCase();
+    const normalizedDob = normalizeDob(dob);
+    const yearNum = parseInt(year, 10);
+
+    if (!regNo || !studentName || !normalizedDob || !Number.isFinite(yearNum) || !sec) {
       return res.status(400).json({
         success: false,
-        message: 'All fields (Register Number, Name, DOB, Year, Section) are required.'
+        message: 'All fields (Register Number, Name, valid DOB, Year, Section) are required.'
       });
     }
 
-    if (!validateRegisterNo(registerNo)) {
+    if (![1, 2, 3, 4].includes(yearNum)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Year must be between 1 and 4.'
+      });
+    }
+
+    if (!validateRegisterNo(regNo)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid Register Number format.'
@@ -209,17 +232,17 @@ const addStudent = async (req, res) => {
     // Check duplicate
     const [existing] = await pool.query(
       'SELECT id FROM students WHERE register_no = ?',
-      [registerNo.trim()]
+      [regNo]
     );
     if (existing.length > 0) {
       return res.status(409).json({
         success: false,
-        message: `Student with Register Number ${registerNo} already exists.`
+        message: `Student with Register Number ${regNo} already exists.`
       });
     }
 
     // Hash DOB (format DDMMYYYY) for default password
-    const pwdString = dobToPasswordString(dob);
+    const pwdString = dobToPasswordString(normalizedDob);
     const hashedPassword = await bcrypt.hash(pwdString, 10);
 
     const insertQuery = `
@@ -228,12 +251,12 @@ const addStudent = async (req, res) => {
     `;
 
     const [result] = await pool.query(insertQuery, [
-      registerNo.trim(),
-      name.trim(),
-      dob.trim(),
+      regNo,
+      studentName,
+      normalizedDob,
       hashedPassword,
-      parseInt(year, 10),
-      section.trim().toUpperCase()
+      yearNum,
+      sec
     ]);
 
     await logAdminAction({
@@ -241,14 +264,14 @@ const addStudent = async (req, res) => {
       adminUsername: req.user.username,
       action: 'ADD_STUDENT',
       studentId: result.insertId,
-      studentRegNo: registerNo.trim(),
-      details: `Added new student ${name} (${registerNo}) in Year ${year}, Sec ${section}`,
+      studentRegNo: regNo,
+      details: `Added new student ${studentName} (${regNo}) in Year ${yearNum}, Sec ${sec}`,
       ipAddress: req.ip
     });
 
     return res.status(201).json({
       success: true,
-      message: `Student ${name} (${registerNo}) added successfully. Default password is DOB (${pwdString}).`
+      message: `Student ${studentName} (${regNo}) added successfully.`
     });
   } catch (error) {
     console.error('[addStudent Error]:', error);
@@ -260,18 +283,18 @@ const addStudent = async (req, res) => {
  * Bulk import students from Excel or CSV
  */
 const bulkImportStudents = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'Please upload an Excel (.xlsx, .xls) or CSV file.' });
+  }
+
+  const filePath = req.file.path;
   try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Please upload an Excel (.xlsx, .xls) or CSV file.' });
-    }
-
-    const filePath = req.file.path;
-    const workbook = xlsx.readFile(filePath);
+    const workbook = xlsx.readFile(filePath, { cellDates: true });
     const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+      return res.status(400).json({ success: false, message: 'Spreadsheet has no sheets.' });
+    }
     const rawData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
-
-    // Remove temp uploaded file
-    try { fs.unlinkSync(filePath); } catch (e) { /* ignore */ }
 
     if (!rawData || rawData.length === 0) {
       return res.status(400).json({ success: false, message: 'The uploaded spreadsheet is empty.' });
@@ -280,31 +303,58 @@ const bulkImportStudents = async (req, res) => {
     let insertedCount = 0;
     let skippedCount = 0;
     const errors = [];
+    const seenInBatch = new Set();
 
     for (let i = 0; i < rawData.length; i++) {
       const row = rawData[i];
-      // Map possible column header aliases
+      const rowNum = i + 2;
       const regNo = String(row['Register Number'] || row['register_no'] || row['RegNo'] || row['Reg No'] || '').trim();
       const name = String(row['Name'] || row['name'] || row['Student Name'] || '').trim();
-      let dob = String(row['DOB'] || row['dob'] || row['Date of Birth'] || '').trim();
-      const year = parseInt(row['Year'] || row['year'] || '1', 10);
+      const rawDob = row['DOB'] !== undefined && row['DOB'] !== '' ? row['DOB'] : (row['dob'] !== undefined && row['dob'] !== '' ? row['dob'] : row['Date of Birth']);
+      const rawYear = row['Year'] !== undefined && row['Year'] !== '' ? row['Year'] : row['year'];
+      const year = parseInt(rawYear || '1', 10);
       const section = String(row['Section'] || row['section'] || 'A').trim().toUpperCase();
 
-      if (!regNo || !name || !dob) {
-        errors.push(`Row ${i + 2}: Missing required fields (Register Number, Name, or DOB).`);
+      if (!regNo || !name || rawDob === undefined || rawDob === '') {
+        errors.push(`Row ${rowNum}: Missing required fields (Register Number, Name, or DOB).`);
         skippedCount++;
         continue;
       }
 
-      // Check if student exists
+      if (!validateRegisterNo(regNo)) {
+        errors.push(`Row ${rowNum}: Invalid Register Number format (${regNo}).`);
+        skippedCount++;
+        continue;
+      }
+
+      if (seenInBatch.has(regNo.toLowerCase())) {
+        errors.push(`Row ${rowNum}: Duplicate Register Number (${regNo}) in spreadsheet.`);
+        skippedCount++;
+        continue;
+      }
+      seenInBatch.add(regNo.toLowerCase());
+
+      const dob = normalizeDob(rawDob);
+      if (!dob) {
+        errors.push(`Row ${rowNum}: Invalid DOB for ${regNo}. Please provide a valid calendar date.`);
+        skippedCount++;
+        continue;
+      }
+
+      if (![1, 2, 3, 4].includes(year)) {
+        errors.push(`Row ${rowNum}: Year must be between 1 and 4 for ${regNo}.`);
+        skippedCount++;
+        continue;
+      }
+
+      // Check if student exists in database
       const [existing] = await pool.query('SELECT id FROM students WHERE register_no = ?', [regNo]);
       if (existing.length > 0) {
-        errors.push(`Row ${i + 2}: Register Number ${regNo} already exists.`);
+        errors.push(`Row ${rowNum}: Register Number ${regNo} already exists in system.`);
         skippedCount++;
         continue;
       }
 
-      // Format DOB if needed
       const pwdString = dobToPasswordString(dob);
       const hashedPassword = await bcrypt.hash(pwdString, 10);
 
@@ -316,7 +366,8 @@ const bulkImportStudents = async (req, res) => {
         );
         insertedCount++;
       } catch (err) {
-        errors.push(`Row ${i + 2}: DB Error - ${err.message}`);
+        console.error(`[bulkImport DB Error row ${rowNum}]:`, err);
+        errors.push(`Row ${rowNum}: Database insertion error for ${regNo}.`);
         skippedCount++;
       }
     }
@@ -334,11 +385,19 @@ const bulkImportStudents = async (req, res) => {
       message: `Bulk import completed: ${insertedCount} students imported, ${skippedCount} skipped.`,
       insertedCount,
       skippedCount,
-      errors: errors.slice(0, 10) // show top 10 errors if any
+      errors: errors.slice(0, 15)
     });
   } catch (error) {
     console.error('[bulkImportStudents Error]:', error);
     return res.status(500).json({ success: false, message: 'Failed to process bulk import.' });
+  } finally {
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (e) {
+      console.error('[bulkImport cleanup error]:', e);
+    }
   }
 };
 
@@ -349,6 +408,13 @@ const toggleLockStudent = async (req, res) => {
   try {
     const studentId = parseInt(req.params.id, 10);
     const { lock } = req.body; // true = lock, false = unlock
+
+    if (typeof lock !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or missing "lock" parameter. Must be boolean true or false.'
+      });
+    }
 
     const [student] = await pool.query('SELECT register_no, name, is_locked FROM students WHERE id = ?', [studentId]);
     if (student.length === 0) {
@@ -404,19 +470,20 @@ const resetStudentPassword = async (req, res) => {
 
     await pool.query('UPDATE students SET password = ? WHERE id = ?', [hashedPassword, studentId]);
 
+    // Do NOT write the plain password to audit log
     await logAdminAction({
       adminId: req.user.id,
       adminUsername: req.user.username,
       action: 'RESET_PASSWORD',
       studentId,
       studentRegNo: student.register_no,
-      details: `Password reset to DOB (${pwdString}) for student ${student.name} (${student.register_no})`,
+      details: `Password reset to DOB for student ${student.name} (${student.register_no})`,
       ipAddress: req.ip
     });
 
     return res.json({
       success: true,
-      message: `Password for ${student.name} (${student.register_no}) has been reset back to Date of Birth (${pwdString}).`
+      message: `Password for ${student.name} (${student.register_no}) has been reset back to Date of Birth.`
     });
   } catch (error) {
     console.error('[resetStudentPassword Error]:', error);
@@ -471,8 +538,8 @@ const updateStudentStatus = async (req, res) => {
  */
 const getAuditLogs = async (req, res) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page || '1', 10));
-    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit || '20', 10)));
+    const page = toPositiveInt(req.query.page, 1);
+    const limit = Math.min(100, toPositiveInt(req.query.limit, 20));
     const offset = (page - 1) * limit;
 
     const [countRows] = await pool.query('SELECT COUNT(*) AS total FROM audit_logs');
@@ -512,3 +579,4 @@ module.exports = {
   updateStudentStatus,
   getAuditLogs
 };
+
