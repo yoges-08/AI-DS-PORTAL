@@ -62,7 +62,12 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
           {/* Instructions & Template Download */}
           <div className="p-3 bg-blue-50 border border-blue-200 rounded text-blue-900 leading-relaxed">
             <p className="font-semibold mb-1">Spreadsheet Template Instructions:</p>
-            <p>File must include columns: <strong>Register Number</strong>, <strong>Name</strong>, <strong>DOB (YYYY-MM-DD)</strong>, <strong>Year (1-4)</strong>, and <strong>Section (A/B/C)</strong>.</p>
+            <p>
+              Supported columns: <strong>Register Number</strong>, <strong>Name</strong>, <strong>DOB</strong> (supports <code>YYYY-MM-DD</code>, <code>DD/MM/YYYY</code>, or <code>M/D/YYYY</code>), <strong>Year (1-4)</strong>, and <strong>Section (A/B/C)</strong>.
+            </p>
+            <p className="mt-1 text-[11px] text-blue-700">
+              * Note: Re-importing existing student records automatically synchronizes their login password (DOB) and academic year/section without duplicate errors.
+            </p>
             <div className="mt-2.5">
               <a
                 href="/sample_student_bulk_import.csv"
@@ -88,7 +93,9 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
                 <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
                 <span>{result.message}</span>
               </div>
-              <p>Inserted: <strong>{result.insertedCount}</strong> | Skipped/Duplicate: <strong>{result.skippedCount}</strong></p>
+              <p>
+                New Added: <strong>{result.insertedCount || 0}</strong> | Existing Updated: <strong>{result.updatedCount || 0}</strong> | Skipped: <strong>{result.skippedCount || 0}</strong>
+              </p>
               {result.errors && result.errors.length > 0 && (
                 <div className="mt-2 text-[11px] text-amber-900 bg-amber-50 p-2 border border-amber-200 rounded">
                   <p className="font-semibold">Notice notes:</p>

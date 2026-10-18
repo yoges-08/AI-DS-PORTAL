@@ -3,6 +3,7 @@ const xlsx = require('xlsx');
 const fs = require('fs');
 const { pool } = require('../config/db');
 const {
+  cleanRegisterNo,
   validateRegisterNo,
   validateMobile,
   validateAadhaar,
@@ -202,7 +203,7 @@ const addStudent = async (req, res) => {
   try {
     const { registerNo, name, dob, year, section } = req.body;
 
-    const regNo = toSafeString(registerNo).trim();
+    const regNo = cleanRegisterNo(toSafeString(registerNo));
     const studentName = toSafeString(name).trim();
     const sec = toSafeString(section).trim().toUpperCase();
     const normalizedDob = normalizeDob(dob);
@@ -281,6 +282,9 @@ const addStudent = async (req, res) => {
 
 /**
  * Bulk import students from Excel or CSV
+ * Supports dynamic column detection, custom/missing headers, scientific notation (e.g. 8.20E+11),
+ * flexible date parsing (YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY), and smart synchronization (UPSERT)
+ * for existing students so their login credentials (DOB) and profile details are updated.
  */
 const bulkImportStudents = async (req, res) => {
   if (!req.file) {
@@ -294,63 +298,151 @@ const bulkImportStudents = async (req, res) => {
     if (!sheetName) {
       return res.status(400).json({ success: false, message: 'Spreadsheet has no sheets.' });
     }
-    const rawData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
 
-    if (!rawData || rawData.length === 0) {
+    // Read sheet as 2D array of rows
+    const allRows = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' });
+    const nonEmptyRows = allRows.filter(row => Array.isArray(row) && row.some(cell => String(cell).trim() !== ''));
+
+    if (!nonEmptyRows || nonEmptyRows.length === 0) {
       return res.status(400).json({ success: false, message: 'The uploaded spreadsheet is empty.' });
     }
 
+    const firstRow = nonEmptyRows[0];
+    const hasHeaderWords = firstRow.some(cell =>
+      /name|dob|birth|year|sec|reg|roll|student/i.test(String(cell).trim())
+    );
+
+    let headerRow;
+    let dataRows;
+    let startRowNum;
+
+    if (hasHeaderWords) {
+      headerRow = firstRow;
+      dataRows = nonEmptyRows.slice(1);
+      startRowNum = 2;
+    } else {
+      headerRow = null;
+      dataRows = nonEmptyRows;
+      startRowNum = 1;
+    }
+
+    if (dataRows.length === 0) {
+      return res.status(400).json({ success: false, message: 'The uploaded spreadsheet contains headers but no student records.' });
+    }
+
+    // Resolve column indices dynamically
+    let regCol = -1;
+    let nameCol = -1;
+    let dobCol = -1;
+    let yearCol = -1;
+    let secCol = -1;
+
+    if (headerRow) {
+      headerRow.forEach((cell, idx) => {
+        const header = String(cell).trim();
+        if (regCol === -1 && /^(reg(ister)?([_\s]?no|\.?)?|roll([_\s]?no|\.?)?|student([_\s]?(id|no))?|admission([_\s]?no)?)$/i.test(header)) {
+          regCol = idx;
+        } else if (regCol === -1 && /reg|roll|student_?id/i.test(header)) {
+          regCol = idx;
+        }
+
+        if (nameCol === -1 && /^(student([_\s]?name)?|name|full([_\s]?name)?)$/i.test(header)) {
+          nameCol = idx;
+        } else if (nameCol === -1 && /name/i.test(header)) {
+          nameCol = idx;
+        }
+
+        if (dobCol === -1 && /^(dob|date([_\s]?of[_\s]?birth)?|birth([_\s]?date)?)$/i.test(header)) {
+          dobCol = idx;
+        } else if (dobCol === -1 && /dob|birth/i.test(header)) {
+          dobCol = idx;
+        }
+
+        if (yearCol === -1 && /^(year|yr|class|grade)$/i.test(header)) {
+          yearCol = idx;
+        } else if (yearCol === -1 && /year|yr|class/i.test(header)) {
+          yearCol = idx;
+        }
+
+        if (secCol === -1 && /^(sec(tion)?)$/i.test(header)) {
+          secCol = idx;
+        } else if (secCol === -1 && /sec/i.test(header)) {
+          secCol = idx;
+        }
+      });
+    }
+
+    // Positional fallbacks for missing/unrecognized columns (e.g. cell A1 having '71762205052')
+    if (regCol === -1) regCol = 0;
+    if (nameCol === -1) nameCol = 1;
+    if (dobCol === -1) dobCol = 2;
+    if (yearCol === -1) yearCol = 3;
+    if (secCol === -1) secCol = 4;
+
+    // Scan batch for unambiguous date format hint (e.g. M/D/YYYY vs D/M/YYYY)
+    let batchDateFormat = null;
+    for (const r of dataRows) {
+      const raw = String(r[dobCol] || '').trim();
+      const m = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+      if (m) {
+        const p1 = parseInt(m[1], 10);
+        const p2 = parseInt(m[2], 10);
+        if (p2 > 12 && p1 <= 12) {
+          batchDateFormat = 'MDY';
+          break;
+        } else if (p1 > 12 && p2 <= 12) {
+          batchDateFormat = 'DMY';
+          break;
+        }
+      }
+    }
+
     let insertedCount = 0;
+    let updatedCount = 0;
     let skippedCount = 0;
     const errors = [];
     const seenInBatch = new Set();
 
-    for (let i = 0; i < rawData.length; i++) {
-      const row = rawData[i];
-      const rowNum = i + 2;
-      const regNo = String(row['Register Number'] || row['register_no'] || row['RegNo'] || row['Reg No'] || '').trim();
-      const name = String(row['Name'] || row['name'] || row['Student Name'] || '').trim();
-      const rawDob = row['DOB'] !== undefined && row['DOB'] !== '' ? row['DOB'] : (row['dob'] !== undefined && row['dob'] !== '' ? row['dob'] : row['Date of Birth']);
-      const rawYear = row['Year'] !== undefined && row['Year'] !== '' ? row['Year'] : row['year'];
-      const year = parseInt(rawYear || '1', 10);
-      const section = String(row['Section'] || row['section'] || 'A').trim().toUpperCase();
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+      const rowNum = i + startRowNum;
 
-      if (!regNo || !name || rawDob === undefined || rawDob === '') {
+      const rawRegNo = row[regCol];
+      const cleanRegNo = cleanRegisterNo(rawRegNo);
+      const name = String(row[nameCol] || '').trim();
+      const rawDob = row[dobCol];
+      const rawYear = row[yearCol];
+      const year = parseInt(String(rawYear || '1').trim(), 10);
+      const section = String(row[secCol] || 'A').trim().toUpperCase() || 'A';
+
+      if (!cleanRegNo || !name || rawDob === undefined || rawDob === '') {
         errors.push(`Row ${rowNum}: Missing required fields (Register Number, Name, or DOB).`);
         skippedCount++;
         continue;
       }
 
-      if (!validateRegisterNo(regNo)) {
-        errors.push(`Row ${rowNum}: Invalid Register Number format (${regNo}).`);
+      if (!validateRegisterNo(cleanRegNo)) {
+        errors.push(`Row ${rowNum}: Invalid Register Number format (${cleanRegNo}).`);
         skippedCount++;
         continue;
       }
 
-      if (seenInBatch.has(regNo.toLowerCase())) {
-        errors.push(`Row ${rowNum}: Duplicate Register Number (${regNo}) in spreadsheet.`);
+      if (seenInBatch.has(cleanRegNo.toLowerCase())) {
+        errors.push(`Row ${rowNum}: Duplicate Register Number (${cleanRegNo}) in spreadsheet.`);
         skippedCount++;
         continue;
       }
-      seenInBatch.add(regNo.toLowerCase());
+      seenInBatch.add(cleanRegNo.toLowerCase());
 
-      const dob = normalizeDob(rawDob);
+      const dob = normalizeDob(rawDob, batchDateFormat);
       if (!dob) {
-        errors.push(`Row ${rowNum}: Invalid DOB for ${regNo}. Please provide a valid calendar date.`);
+        errors.push(`Row ${rowNum}: Invalid DOB for ${cleanRegNo}. Please provide a valid calendar date.`);
         skippedCount++;
         continue;
       }
 
       if (![1, 2, 3, 4].includes(year)) {
-        errors.push(`Row ${rowNum}: Year must be between 1 and 4 for ${regNo}.`);
-        skippedCount++;
-        continue;
-      }
-
-      // Check if student exists in database
-      const [existing] = await pool.query('SELECT id FROM students WHERE register_no = ?', [regNo]);
-      if (existing.length > 0) {
-        errors.push(`Row ${rowNum}: Register Number ${regNo} already exists in system.`);
+        errors.push(`Row ${rowNum}: Year must be between 1 and 4 for ${cleanRegNo}.`);
         skippedCount++;
         continue;
       }
@@ -358,17 +450,48 @@ const bulkImportStudents = async (req, res) => {
       const pwdString = dobToPasswordString(dob);
       const hashedPassword = await bcrypt.hash(pwdString, 10);
 
-      try {
-        await pool.query(
-          `INSERT INTO students (register_no, name, dob, password, year, section, status, is_locked)
-           VALUES (?, ?, ?, ?, ?, ?, 'DRAFT', 0)`,
-          [regNo, name, dob, hashedPassword, year, section]
-        );
-        insertedCount++;
-      } catch (err) {
-        console.error(`[bulkImport DB Error row ${rowNum}]:`, err);
-        errors.push(`Row ${rowNum}: Database insertion error for ${regNo}.`);
-        skippedCount++;
+      // Check if student exists in database
+      const [existing] = await pool.query(
+        'SELECT id, name, is_locked FROM students WHERE register_no = ?',
+        [cleanRegNo]
+      );
+
+      if (existing.length > 0) {
+        const existingStudent = existing[0];
+        if (existingStudent.is_locked) {
+          errors.push(`Row ${rowNum}: Student ${cleanRegNo} is locked by admin; update skipped.`);
+          skippedCount++;
+          continue;
+        }
+
+        // Sync and update student record for login purpose
+        try {
+          await pool.query(
+            `UPDATE students 
+             SET name = ?, dob = ?, password = ?, year = ?, section = ?
+             WHERE id = ?`,
+            [name, dob, hashedPassword, year, section, existingStudent.id]
+          );
+          updatedCount++;
+        } catch (err) {
+          console.error(`[bulkImport DB Update Error row ${rowNum}]:`, err);
+          errors.push(`Row ${rowNum}: Database update error for ${cleanRegNo}.`);
+          skippedCount++;
+        }
+      } else {
+        // Insert new student record
+        try {
+          await pool.query(
+            `INSERT INTO students (register_no, name, dob, password, year, section, status, is_locked)
+             VALUES (?, ?, ?, ?, ?, ?, 'DRAFT', 0)`,
+            [cleanRegNo, name, dob, hashedPassword, year, section]
+          );
+          insertedCount++;
+        } catch (err) {
+          console.error(`[bulkImport DB Insert Error row ${rowNum}]:`, err);
+          errors.push(`Row ${rowNum}: Database insertion error for ${cleanRegNo}.`);
+          skippedCount++;
+        }
       }
     }
 
@@ -376,14 +499,15 @@ const bulkImportStudents = async (req, res) => {
       adminId: req.user.id,
       adminUsername: req.user.username,
       action: 'BULK_IMPORT',
-      details: `Bulk imported ${insertedCount} students. ${skippedCount} skipped.`,
+      details: `Bulk imported students: ${insertedCount} added, ${updatedCount} updated, ${skippedCount} skipped.`,
       ipAddress: req.ip
     });
 
     return res.json({
       success: true,
-      message: `Bulk import completed: ${insertedCount} students imported, ${skippedCount} skipped.`,
+      message: `Bulk import completed: ${insertedCount} new added, ${updatedCount} existing updated, ${skippedCount} skipped.`,
       insertedCount,
+      updatedCount,
       skippedCount,
       errors: errors.slice(0, 15)
     });

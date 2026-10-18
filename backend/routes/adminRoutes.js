@@ -22,8 +22,18 @@ if (!fs.existsSync(tempUploadDir)) {
 }
 
 // Multer storage for Excel/CSV bulk import
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, tempUploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `import-${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`);
+  }
+});
+
 const upload = multer({
-  dest: tempUploadDir,
+  storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();

@@ -31,10 +31,30 @@ const validateEmail = (email) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim());
 };
 
+const cleanRegisterNo = (regNo) => {
+  if (!regNo && regNo !== 0) return '';
+  let str = String(regNo).trim();
+  // Handle scientific notation from spreadsheets (e.g., 8.20E+11, 8.2E11)
+  if (/^[0-9]+(\.[0-9]+)?[eE]\+?[0-9]+$/i.test(str)) {
+    const num = Number(str);
+    if (Number.isFinite(num)) {
+      try {
+        str = BigInt(Math.round(num)).toString();
+      } catch (e) {
+        str = num.toFixed(0);
+      }
+    }
+  }
+  // Strip trailing float .0 from Excel (e.g. 71762305041.0)
+  str = str.replace(/\.0+$/, '').trim();
+  return str;
+};
+
 const validateRegisterNo = (regNo) => {
-  if (!regNo) return false;
-  // Typically 11 or 12 digits or alphanumeric e.g., 71762105001 or 312321104001
-  return /^[a-zA-Z0-9]{5,20}$/.test(String(regNo).trim());
+  const clean = cleanRegisterNo(regNo);
+  if (!clean) return false;
+  // Typically 5 to 20 alphanumeric characters
+  return /^[a-zA-Z0-9]{5,20}$/.test(clean);
 };
 
 /**
@@ -73,26 +93,27 @@ const dobToPasswordString = (dob) => {
 
 /**
  * Normalize and validate Date of Birth
+ * Supports YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY (Excel US), DDMMYYYY, JS Dates and Excel serial numbers.
  * Returns 'YYYY-MM-DD' on success, or null on invalid date
  */
-const normalizeDob = (rawDob) => {
+const normalizeDob = (rawDob, formatHint = null) => {
   if (!rawDob && rawDob !== 0) return null;
 
   let y, m, d;
 
   if (rawDob instanceof Date) {
     if (isNaN(rawDob.getTime())) return null;
-    y = rawDob.getUTCFullYear();
-    m = rawDob.getUTCMonth() + 1;
-    d = rawDob.getUTCDate();
+    y = rawDob.getFullYear();
+    m = rawDob.getMonth() + 1;
+    d = rawDob.getDate();
   } else if (typeof rawDob === 'number') {
     // Excel serial number (approx 1950 to 2050 is 18264 to 54789)
     if (!Number.isFinite(rawDob) || rawDob < 1000 || rawDob > 60000) return null;
     const excelDate = new Date(Math.round((rawDob - 25569) * 86400 * 1000));
     if (isNaN(excelDate.getTime())) return null;
-    y = excelDate.getUTCFullYear();
-    m = excelDate.getUTCMonth() + 1;
-    d = excelDate.getUTCDate();
+    y = excelDate.getFullYear();
+    m = excelDate.getMonth() + 1;
+    d = excelDate.getDate();
   } else if (typeof rawDob === 'string') {
     const trimmed = rawDob.trim();
     if (!trimmed) return null;
@@ -104,12 +125,37 @@ const normalizeDob = (rawDob) => {
       m = parseInt(matchYMD[2], 10);
       d = parseInt(matchYMD[3], 10);
     } else {
-      // 2) DD-MM-YYYY or DD/MM/YYYY
-      const matchDMY = trimmed.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
-      if (matchDMY) {
-        d = parseInt(matchDMY[1], 10);
-        m = parseInt(matchDMY[2], 10);
-        y = parseInt(matchDMY[3], 10);
+      // 2) Two-part date: M/D/YYYY or D/M/YYYY
+      const match2Part = trimmed.match(/^(\d{1,2})([-/.])(\d{1,2})[-/.](\d{4})$/);
+      if (match2Part) {
+        const p1 = parseInt(match2Part[1], 10);
+        const sep = match2Part[2];
+        const p2 = parseInt(match2Part[3], 10);
+        y = parseInt(match2Part[4], 10);
+
+        if (p2 > 12 && p1 <= 12) {
+          // Definitely M/D/YYYY (e.g. 2/14/2005)
+          m = p1;
+          d = p2;
+        } else if (p1 > 12 && p2 <= 12) {
+          // Definitely D/M/YYYY (e.g. 14/2/2005)
+          d = p1;
+          m = p2;
+        } else if (formatHint === 'MDY') {
+          m = p1;
+          d = p2;
+        } else if (formatHint === 'DMY') {
+          d = p1;
+          m = p2;
+        } else if (sep === '/') {
+          // In Excel default exports, slash format is typically M/D/YYYY
+          m = p1;
+          d = p2;
+        } else {
+          // Dash or dot is standard DD-MM-YYYY
+          d = p1;
+          m = p2;
+        }
       } else {
         // 3) DDMMYYYY (8 digits)
         const matchDigits = trimmed.match(/^(\d{2})(\d{2})(\d{4})$/);
@@ -141,6 +187,7 @@ const normalizeDob = (rawDob) => {
 };
 
 module.exports = {
+  cleanRegisterNo,
   validateMobile,
   validateAadhaar,
   validateIfsc,
@@ -152,4 +199,5 @@ module.exports = {
   dobToPasswordString,
   normalizeDob
 };
+
 
