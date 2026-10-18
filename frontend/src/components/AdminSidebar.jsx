@@ -18,10 +18,20 @@ export const AdminSidebar = ({ activeTab, onSelectTab }) => {
   ];
 
   return (
-    <aside className="w-56 bg-white border-r border-gov-border min-h-[calc(100vh-4rem)] shrink-0 no-print">
+    <aside className="w-60 bg-white border-r border-gov-border min-h-[calc(100vh-5rem)] shrink-0 no-print flex flex-col justify-between">
       <div className="p-3">
-        <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider px-3 py-2">
-          Department Portal
+        {/* Institutional Branding Card */}
+        <div className="flex items-center space-x-2.5 p-2.5 mb-3 bg-gradient-to-r from-blue-50 to-indigo-50/50 rounded-lg border border-blue-100">
+          <img src="/college-logo.webp" alt="AAMEC" className="w-9 h-9 object-contain" />
+          <img src="/aids-logo.jpg" alt="AI&DS" className="w-9 h-9 rounded-full border border-blue-200 object-cover shadow-xs" />
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-black text-gov-navy leading-none">AAMEC</p>
+            <p className="text-[10px] font-semibold text-blue-800 truncate">Dept of AI & DS</p>
+          </div>
+        </div>
+
+        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-3 py-1">
+          Menu Navigation
         </div>
         <nav className="space-y-1">
           {navItems.map((item) => {
@@ -46,10 +56,11 @@ export const AdminSidebar = ({ activeTab, onSelectTab }) => {
         </nav>
       </div>
 
-      <div className="p-4 mt-8 border-t border-gray-100 text-[11px] text-gray-500">
-        <p className="font-semibold text-gray-700">AI & DS Dept</p>
-        <p>UMIS Information Desk</p>
+      <div className="p-3 mt-auto border-t border-gray-100 text-[11px] text-gray-500 text-center">
+        <p className="font-bold text-gov-navy text-[10px] uppercase">Anjalai Ammal Mahalingam</p>
+        <p className="text-[10px] text-gray-600">Engineering College &bull; AI&DS</p>
       </div>
     </aside>
   );
 };
+

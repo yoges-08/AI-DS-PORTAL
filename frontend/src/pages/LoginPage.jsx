@@ -59,19 +59,27 @@ export const LoginPage = () => {
     <div className="min-h-screen bg-gov-bg flex flex-col justify-between">
       
       {/* Top Banner */}
-      <div className="bg-gov-navy text-white py-3.5 px-4 shadow-sm border-b border-gov-navy-dark">
+      <div className="bg-gov-navy text-white py-3 px-4 shadow-md border-b border-gov-navy-dark">
         <div className="max-w-7xl mx-auto flex items-center space-x-3.5">
           <img 
-            src="/logo.svg" 
-            alt="Emblem" 
-            className="w-10 h-10 p-0.5 bg-white rounded-full object-contain shrink-0" 
+            src="/college-logo.webp" 
+            alt="AAMEC College Crest" 
+            className="w-11 h-11 object-contain shrink-0 drop-shadow-sm" 
           />
-          <div>
-            <div className="text-sm sm:text-base font-bold uppercase tracking-wider leading-tight">
-              Department Student Information System
+          <img 
+            src="/aids-logo.jpg" 
+            alt="AI & DS Emblem" 
+            className="w-11 h-11 rounded-full border-2 border-white/80 object-cover shrink-0 shadow-sm" 
+          />
+          <div className="border-l border-blue-400/40 pl-3">
+            <div className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-amber-300 leading-tight">
+              Anjalai Ammal Mahalingam Engineering College
             </div>
-            <div className="text-xs text-blue-200">
-              Department of Artificial Intelligence & Data Science &bull; Student Information Portal
+            <div className="text-xs sm:text-base font-bold uppercase tracking-wider leading-tight text-white">
+              Department of Artificial Intelligence & Data Science
+            </div>
+            <div className="text-[11px] text-blue-200">
+              Department Student Information System (UMIS Portal)
             </div>
           </div>
         </div>
@@ -84,7 +92,32 @@ export const LoginPage = () => {
           {/* Left Side: Institutional Banner & Announcements */}
           <div className="md:col-span-5 bg-[#152950] text-white p-6 sm:p-8 flex flex-col justify-between border-b md:border-b-0 md:border-r border-gov-navy-dark">
             <div>
-              <div className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-900 border border-blue-400/40 rounded text-blue-200 mb-3">
+              {/* Institutional Crest Showcase */}
+              <div className="flex items-center space-x-3 bg-white/10 p-2.5 rounded-lg border border-white/15 backdrop-blur-sm mb-4">
+                <img 
+                  src="/college-logo.webp" 
+                  alt="AAMEC" 
+                  className="w-12 h-12 object-contain" 
+                />
+                <img 
+                  src="/aids-logo.jpg" 
+                  alt="AI&DS" 
+                  className="w-12 h-12 rounded-full border border-white/80 object-cover shadow" 
+                />
+                <div className="text-left">
+                  <div className="text-xs font-black tracking-wide text-amber-300 uppercase leading-none">
+                    AAMEC
+                  </div>
+                  <div className="text-[10px] text-blue-200 font-semibold tracking-wider uppercase mt-0.5">
+                    Character &bull; Health &bull; Education
+                  </div>
+                  <div className="text-[10px] text-white font-bold tracking-tight">
+                    Dept of AI & DS
+                  </div>
+                </div>
+              </div>
+
+              <div className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-900 border border-blue-400/40 rounded text-blue-200 mb-2">
                 Official Department Portal
               </div>
               <h2 className="text-lg sm:text-xl font-bold leading-snug">
@@ -269,7 +302,7 @@ export const LoginPage = () => {
 
       {/* Footer */}
       <footer className="bg-white border-t border-gov-border py-3 text-center text-xs text-gov-subtle">
-        Department of Artificial Intelligence & Data Science &copy; 2026 &bull; Department Student Information System
+        Anjalai Ammal Mahalingam Engineering College (AAMEC) &bull; Department of Artificial Intelligence & Data Science &copy; 2026
       </footer>
 
     </div>

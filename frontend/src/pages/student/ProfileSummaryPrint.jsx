@@ -65,24 +65,30 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
         {/* Institutional Header */}
         <div className="border-b-2 border-gov-navy pb-4 mb-5 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <img src="/logo.svg" alt="Emblem" className="w-16 h-16 object-contain" />
+            <img src="/college-logo.webp" alt="AAMEC Crest" className="w-16 h-16 object-contain shrink-0" />
             <div>
-              <h2 className="text-lg font-bold uppercase tracking-wider text-gov-navy">
+              <h1 className="text-base font-black uppercase tracking-wide text-gov-navy leading-tight">
+                Anjalai Ammal Mahalingam Engineering College
+              </h1>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-800">
                 Department of Artificial Intelligence & Data Science
               </h2>
-              <h3 className="text-xs font-semibold uppercase text-gray-700 tracking-wide">
+              <h3 className="text-[11px] font-semibold uppercase text-gray-600 tracking-wide">
                 Department Student Information System (UMIS Portal)
               </h3>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[10px] text-gray-500">
                 Official Student Master Profile & Statutory Concessions Verification Dossier
               </p>
             </div>
           </div>
 
-          <div className="text-right">
-            <StatusBadge status={student.status} isLocked={Boolean(student.is_locked)} />
-            <div className="text-[10px] text-gray-500 mt-1">
-              Generated: {new Date().toLocaleDateString('en-GB')}
+          <div className="flex items-center space-x-4 shrink-0">
+            <img src="/aids-logo.jpg" alt="AI & DS Emblem" className="w-16 h-16 rounded-full border border-gray-300 object-cover shadow-xs" />
+            <div className="text-right">
+              <StatusBadge status={student.status} isLocked={Boolean(student.is_locked)} />
+              <div className="text-[10px] text-gray-500 mt-1 font-mono">
+                {new Date().toLocaleDateString('en-GB')}
+              </div>
             </div>
           </div>
         </div>
