@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Local Database & SQLite
+*.sqlite
+*.sqlite3
+*.db
+backend/aids_portal.sqlite
+
+# Build outputs
+dist/
+frontend/dist/
+build/
+
+# Uploaded student files (preserve folder structure via .gitkeep)
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/uploads/temp/*
+!backend/uploads/temp/.gitkeep
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

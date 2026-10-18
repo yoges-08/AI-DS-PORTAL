@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #F5F7FA;
+    color: #1F2937;
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+
+  input, select, textarea {
+    font-size: 14px;
+  }
+}
+
+/* Print styling for Student Profile Verification Slip */
+@media print {
+  body {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    font-size: 12px !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-container {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .print-page-break {
+    page-break-before: always;
+  }
+}

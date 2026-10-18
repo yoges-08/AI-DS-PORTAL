@@ -1,0 +1,152 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Admin {
+  id         Int        @id @default(autoincrement())
+  username   String     @unique @db.VarChar(50)
+  password   String     @db.VarChar(255)
+  name       String     @db.VarChar(100)
+  email      String?    @db.VarChar(100)
+  department String     @default("Artificial Intelligence & Data Science") @db.VarChar(100)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+  auditLogs  AuditLog[]
+
+  @@map("admins")
+}
+
+enum Status {
+  DRAFT
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+model Student {
+  id                    Int               @id @default(autoincrement())
+  registerNo            String            @unique @map("register_no") @db.VarChar(20)
+  name                  String            @db.VarChar(100)
+  dob                   String            @db.VarChar(10) // Format: YYYY-MM-DD
+  password              String            @db.VarChar(255) // Bcrypt hash of DDMMYYYY initially
+  year                  Int               // 1, 2, 3, 4
+  section               String            @db.VarChar(5) // A, B, C
+  
+  // Step 1: Personal Details
+  gender                String?           @db.VarChar(20) // Male, Female, Other
+  bloodGroup            String?           @map("blood_group") @db.VarChar(10)
+  religion              String?           @db.VarChar(50)
+  community             String?           @db.VarChar(20) // OC, BC, BCM, MBC, DNC, SC, SCA, ST
+  caste                 String?           @db.VarChar(100)
+  nationality           String?           @default("Indian") @db.VarChar(50)
+  aadhaarNo             String?           @map("aadhaar_no") @db.VarChar(12)
+  motherTongue          String?           @map("mother_tongue") @db.VarChar(50)
+  photoPath             String?           @map("photo_path") @db.VarChar(255)
+
+  // Step 2: Contact Details
+  mobile                String?           @db.VarChar(15)
+  altMobile             String?           @map("alt_mobile") @db.VarChar(15)
+  email                 String?           @db.VarChar(100)
+  permanentAddress      String?           @map("permanent_address") @db.Text
+  communicationAddress  String?           @map("communication_address") @db.Text
+  isSameAddress         Boolean           @default(false) @map("is_same_address")
+  district              String?           @db.VarChar(100)
+  state                 String?           @default("Tamil Nadu") @db.VarChar(100)
+  pincode               String?           @db.VarChar(10)
+
+  // Step 3: Family Details
+  fatherName            String?           @map("father_name") @db.VarChar(100)
+  motherName            String?           @map("mother_name") @db.VarChar(100)
+  guardianName          String?           @map("guardian_name") @db.VarChar(100)
+  parentsOccupation     String?           @map("parents_occupation") @db.VarChar(100)
+  parentsMobile         String?           @map("parents_mobile") @db.VarChar(15)
+  annualIncome          Decimal?          @map("annual_income") @db.Decimal(12, 2)
+
+  // Step 4: Academic Details
+  sslcSchool            String?           @map("sslc_school") @db.VarChar(150)
+  sslcBoard             String?           @map("sslc_board") @db.VarChar(100)
+  sslcYear              Int?              @map("sslc_year")
+  sslcPercentage        Decimal?          @map("sslc_percentage") @db.Decimal(5, 2)
+  hscSchool             String?           @map("hsc_school") @db.VarChar(150)
+  hscBoard              String?           @map("hsc_board") @db.VarChar(100)
+  hscYear               Int?              @map("hsc_year")
+  hscPercentage         Decimal?          @map("hsc_percentage") @db.Decimal(5, 2)
+  currentSemester       Int?              @default(1) @map("current_semester")
+  modeOfAdmission       String?           @map("mode_of_admission") @db.VarChar(50) // Government Quota, Management Quota, Lateral Entry, 7.5% Govt School Quota
+
+  // Step 5: Scholarship and Category Details
+  isFirstGraduate       Boolean           @default(false) @map("is_first_graduate")
+  isPms                 Boolean           @default(false) @map("is_pms")
+  pmsApplicationNo      String?           @map("pms_application_no") @db.VarChar(50)
+  pmsStatus             String?           @default("N/A") @map("pms_status") @db.VarChar(50) // Applied, Approved, Disbursed, Rejected, N/A
+  otherScholarshipName   String?           @map("other_scholarship_name") @db.VarChar(100)
+  otherScholarshipAmount Decimal?          @map("other_scholarship_amount") @db.Decimal(10, 2)
+  otherScholarshipStatus String?           @map("other_scholarship_status") @db.VarChar(50)
+  communityCertNo       String?           @map("community_cert_no") @db.VarChar(50)
+  communityCertIssuer   String?           @map("community_cert_issuer") @db.VarChar(100)
+  communityCertDate     DateTime?         @map("community_cert_date") @db.Date
+  incomeCertNo          String?           @map("income_cert_no") @db.VarChar(50)
+  incomeCertIssuer      String?           @map("income_cert_issuer") @db.VarChar(100)
+  incomeCertDate        DateTime?         @map("income_cert_date") @db.Date
+
+  // Step 6: Bank Details
+  bankAccHolder         String?           @map("bank_acc_holder") @db.VarChar(100)
+  bankName              String?           @map("bank_name") @db.VarChar(100)
+  bankAccNo             String?           @map("bank_acc_no") @db.VarChar(30)
+  bankIfsc              String?           @map("bank_ifsc") @db.VarChar(15)
+  bankBranch            String?           @map("bank_branch") @db.VarChar(100)
+
+  // Status & Lock Workflow
+  status                Status            @default(DRAFT)
+  isLocked              Boolean           @default(false) @map("is_locked")
+  lockedAt              DateTime?         @map("locked_at")
+  lockedBy              String?           @map("locked_by") @db.VarChar(50)
+  submissionDate        DateTime?         @map("submission_date")
+  rejectionReason       String?           @map("rejection_reason") @db.Text
+  declarationAccepted   Boolean           @default(false) @map("declaration_accepted")
+
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  documents             StudentDocument[]
+  auditLogs             AuditLog[]
+
+  @@map("students")
+}
+
+model StudentDocument {
+  id         Int      @id @default(autoincrement())
+  studentId  Int      @map("student_id")
+  docType    String   @map("doc_type") @db.VarChar(50) // photo, aadhaar, community_cert, income_cert, first_graduate_cert, bank_passbook, marksheets
+  fileName   String   @map("file_name") @db.VarChar(255)
+  filePath   String   @map("file_path") @db.VarChar(255)
+  fileSize   Int      @map("file_size")
+  mimeType   String   @map("mime_type") @db.VarChar(50)
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("student_documents")
+}
+
+model AuditLog {
+  id           Int      @id @default(autoincrement())
+  adminId      Int?     @map("admin_id")
+  adminUsername String  @map("admin_username") @db.VarChar(50)
+  action       String   @db.VarChar(50) // LOCK, UNLOCK, RESET_PASSWORD, UPDATE_STUDENT, BULK_IMPORT, VERIFY, REJECT
+  studentId    Int?     @map("student_id")
+  studentRegNo String?  @map("student_reg_no") @db.VarChar(50)
+  details      String?  @db.Text
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  admin        Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  student      Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
