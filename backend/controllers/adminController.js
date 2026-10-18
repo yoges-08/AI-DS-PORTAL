@@ -509,8 +509,21 @@ const updateStudentStatus = async (req, res) => {
     }
 
     await pool.query(
-      'UPDATE students SET status = ?, rejection_reason = ? WHERE id = ?',
-      [status, status === 'REJECTED' ? rejectionReason || 'Information incomplete' : null, studentId]
+      `UPDATE students SET 
+         status = ?, 
+         rejection_reason = ?,
+         is_locked = CASE WHEN ? IN ('REJECTED', 'DRAFT') THEN 0 ELSE is_locked END,
+         locked_at = CASE WHEN ? IN ('REJECTED', 'DRAFT') THEN NULL ELSE locked_at END,
+         locked_by = CASE WHEN ? IN ('REJECTED', 'DRAFT') THEN NULL ELSE locked_by END
+       WHERE id = ?`,
+      [
+        status,
+        status === 'REJECTED' ? rejectionReason || 'Information incomplete' : null,
+        status,
+        status,
+        status,
+        studentId
+      ]
     );
 
     await logAdminAction({

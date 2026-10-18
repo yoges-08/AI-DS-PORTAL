@@ -422,14 +422,17 @@ const submitStudentDetails = async (req, res) => {
       `UPDATE students SET 
          status = 'SUBMITTED', 
          declaration_accepted = 1, 
-         submission_date = NOW() 
+         submission_date = NOW(),
+         is_locked = 1,
+         locked_at = NOW(),
+         locked_by = 'SYSTEM (auto-lock on submit)'
        WHERE id = ?`,
       [studentId]
     );
 
     return res.json({
       success: true,
-      message: 'Your student information has been submitted successfully for verification.'
+      message: 'Your student information has been submitted successfully and locked for verification.'
     });
   } catch (error) {
     console.error('[submitStudentDetails Error]:', error);

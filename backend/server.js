@@ -27,8 +27,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
-// Trust proxy for reverse proxy deployments (nginx, Render, etc.)
-app.set('trust proxy', 1);
+// Trust proxy only when configured for reverse proxy environments (nginx, Render, Cloudflare, etc.)
+if (process.env.TRUST_PROXY) {
+  const tp = process.env.TRUST_PROXY;
+  app.set('trust proxy', tp === 'true' ? 1 : (Number(tp) || tp));
+}
 
 // Ensure uploads folder exists
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -36,19 +39,34 @@ const tempDir = path.join(__dirname, 'uploads', 'temp');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
-// CORS Configuration: Whitelist specific client in production; allow local loopback in development
+// CORS Configuration: Whitelist CLIENT_URL, same-host requests, and dev loopbacks
 const localOriginRegex = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || origin === CLIENT_URL || (process.env.NODE_ENV !== 'production' && localOriginRegex.test(origin))) {
-      return callback(null, true);
+app.use(cors((req, callback) => {
+  const origin = req.headers.origin;
+  let allowed = !origin || origin === CLIENT_URL;
+
+  // Same-site request (site opened at its own served address / host)
+  if (!allowed && origin) {
+    try {
+      allowed = new URL(origin).host === req.headers.host;
+    } catch (e) {
+      allowed = false;
     }
-    return callback(new Error('Blocked by CORS policy: unauthorized origin'), false);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+  }
+
+  // Local development loopback
+  if (!allowed && process.env.NODE_ENV !== 'production') {
+    allowed = localOriginRegex.test(origin || '');
+  }
+
+  callback(null, {
+    origin: allowed,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+  });
 }));
+
 
 // API Request Logger (Development only)
 if (process.env.NODE_ENV !== 'production') {
@@ -102,10 +120,11 @@ app.get('/uploads/:filename', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied.' });
     }
 
-    // Security headers to prevent stored XSS and content sniffing
+    // Security headers to prevent content sniffing while allowing native Chrome/Edge PDF viewers
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'");
     return res.sendFile(absoluteDiskPath);
+
   } catch (err) {
     console.error('[Document Access Error]:', err);
     return res.status(500).json({ success: false, message: 'Error retrieving document.' });

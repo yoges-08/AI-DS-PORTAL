@@ -6,7 +6,7 @@ export const DocumentUploadField = ({
   label,
   docType,
   required = false,
-  helperText = 'PDF, JPG, PNG up to 2MB',
+  helperText = 'PDF, JPG, PNG, WebP up to 2MB',
   currentDoc,
   onUploadSuccess,
   onDeleteSuccess,
@@ -30,13 +30,13 @@ export const DocumentUploadField = ({
 
     // Check file type and extension
     const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
-    const allowedExts = ['.jpg', '.jpeg', '.png', '.webp', '.pdf', '.jfif'];
+    const allowedExts = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
     const allowedTypes = [
       'image/jpeg', 'image/png', 'image/jpg', 'image/pjpeg', 'image/x-png',
-      'image/webp', 'image/jfif', 'application/pdf', 'application/octet-stream'
+      'image/webp', 'application/pdf'
     ];
 
-    if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
+    if (!allowedExts.includes(ext) || (!allowedTypes.includes(file.type) && file.type !== '')) {
       setError('Only PDF, JPG, PNG, and WebP formats are permitted.');
       return;
     }
@@ -138,7 +138,7 @@ export const DocumentUploadField = ({
             <span>{uploading ? 'Uploading...' : 'Choose File to Upload'}</span>
             <input
               type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
               onChange={handleFileChange}
               disabled={disabled || uploading}
               className="sr-only"
