@@ -17,7 +17,8 @@ import {
   ChevronLeft, 
   ChevronRight,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Trash2
 } from 'lucide-react';
 import { StatusBadge } from '../../components/StatusBadge';
 import { StudentDetailModal } from '../../components/StudentDetailModal';
@@ -157,6 +158,20 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
     setFirstGraduate('');
     setPms('');
     setStatus('');
+  };
+
+  const handleDeleteStudent = async (student) => {
+    const confirmMsg = `Are you sure you want to PERMANENTLY delete student ${student.name} (${student.register_no})?\n\nThis will remove their login, profile, and all uploaded certificates. This action cannot be undone.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const res = await api.deleteStudent(student.id);
+      alert(res.message || 'Student deleted successfully.');
+      fetchStudents(currentPage);
+      fetchStats();
+    } catch (err) {
+      alert(err.message || 'Failed to delete student.');
+    }
   };
 
   return (
@@ -477,16 +492,26 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
                     <td className="py-2 px-3">
                       <StatusBadge status={student.status} isLocked={student.is_locked} />
                     </td>
-                    <td className="py-2 px-3 text-right">
+                    <td className="py-2 px-3 text-right space-x-1 whitespace-nowrap">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleRowClick(student.id);
                         }}
-                        className="p-1 text-gov-navy hover:bg-gray-100 rounded"
+                        className="p-1 text-gov-navy hover:bg-gray-100 rounded inline-flex items-center"
                         title="View Full Profile"
                       >
                         <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteStudent(student);
+                        }}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded inline-flex items-center"
+                        title="Permanently Delete Student"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>

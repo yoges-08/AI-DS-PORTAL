@@ -10,7 +10,8 @@ import {
   ExternalLink, 
   FileText, 
   Edit3, 
-  AlertCircle 
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import { api } from '../services/api';
 import { StatusBadge } from './StatusBadge';
@@ -98,6 +99,25 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
     }
   };
 
+  // Permanently Delete Student Record and Login
+  const handleDeleteStudent = async () => {
+    if (!student) return;
+    const confirmPrompt = `Are you sure you want to PERMANENTLY delete student ${student.name} (${student.register_no})?\n\nThis will permanently delete:\n• Their login credentials\n• Their entire master profile\n• All uploaded certificates and documents\n\nThis action cannot be undone. Proceed?`;
+    if (!window.confirm(confirmPrompt)) return;
+
+    try {
+      setActionLoading(true);
+      const res = await api.deleteStudent(student.id);
+      alert(res.message || 'Student record deleted successfully.');
+      onClose();
+      onRefresh && onRefresh();
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message || 'Failed to delete student record.' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-center justify-center p-3 sm:p-6">
       <div className="bg-white border border-gov-border rounded-md shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
@@ -117,7 +137,7 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
 
         {/* Action Toolbar */}
         <div className="bg-gray-100 border-b border-gray-200 px-5 py-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0 text-xs">
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleToggleLock}
               disabled={actionLoading}
@@ -147,6 +167,16 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
             >
               <Edit3 className="w-3.5 h-3.5 mr-1 text-blue-700" />
               <span>Edit Details</span>
+            </button>
+
+            <button
+              onClick={handleDeleteStudent}
+              disabled={actionLoading}
+              className="inline-flex items-center px-3 py-1.5 bg-white border border-red-300 text-red-700 rounded font-semibold hover:bg-red-50"
+              title="Permanently delete student profile and login"
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1 text-red-600" />
+              <span>Delete Record</span>
             </button>
           </div>
 

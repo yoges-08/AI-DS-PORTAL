@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const xlsx = require('xlsx');
 const fs = require('fs');
+const path = require('path');
 const { pool } = require('../config/db');
 const {
   cleanRegisterNo,
@@ -706,6 +707,88 @@ const getAuditLogs = async (req, res) => {
   }
 };
 
+/**
+ * Permanently delete student record, uploaded documents, and login
+ */
+const deleteStudent = async (req, res) => {
+  try {
+    const studentId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(studentId) || studentId <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid student ID.' });
+    }
+
+    const [rows] = await pool.query(
+      'SELECT id, register_no, name, photo_path FROM students WHERE id = ?',
+      [studentId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Student record not found.' });
+    }
+
+    const student = rows[0];
+
+    // Find and delete all uploaded documents from disk
+    const [docs] = await pool.query(
+      'SELECT file_path FROM student_documents WHERE student_id = ?',
+      [studentId]
+    );
+
+    const uploadsDir = path.join(__dirname, '..', 'uploads');
+
+    for (const doc of docs) {
+      if (doc.file_path) {
+        const filename = path.basename(doc.file_path);
+        const absPath = path.join(uploadsDir, filename);
+        if (fs.existsSync(absPath)) {
+          try {
+            fs.unlinkSync(absPath);
+          } catch (e) {
+            console.error('[deleteStudent file cleanup error]:', e);
+          }
+        }
+      }
+    }
+
+    // Delete photo from disk if present
+    if (student.photo_path) {
+      const photoName = path.basename(student.photo_path);
+      const photoAbsPath = path.join(uploadsDir, photoName);
+      if (fs.existsSync(photoAbsPath)) {
+        try {
+          fs.unlinkSync(photoAbsPath);
+        } catch (e) {
+          console.error('[deleteStudent photo cleanup error]:', e);
+        }
+      }
+    }
+
+    // Delete documents from database
+    await pool.query('DELETE FROM student_documents WHERE student_id = ?', [studentId]);
+
+    // Delete student record from database
+    await pool.query('DELETE FROM students WHERE id = ?', [studentId]);
+
+    await logAdminAction({
+      adminId: req.user.id,
+      adminUsername: req.user.username,
+      action: 'DELETE_STUDENT',
+      studentId: null,
+      studentRegNo: student.register_no,
+      details: `Permanently deleted student record & login for ${student.name} (${student.register_no})`,
+      ipAddress: req.ip
+    });
+
+    return res.json({
+      success: true,
+      message: `Student ${student.name} (${student.register_no}) and all associated records have been permanently deleted.`
+    });
+  } catch (error) {
+    console.error('[deleteStudent Error]:', error);
+    return res.status(500).json({ success: false, message: 'Failed to delete student record.' });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getStudents,
@@ -714,6 +797,8 @@ module.exports = {
   toggleLockStudent,
   resetStudentPassword,
   updateStudentStatus,
-  getAuditLogs
+  getAuditLogs,
+  deleteStudent
 };
+
 

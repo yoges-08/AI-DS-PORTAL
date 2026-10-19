@@ -198,6 +198,14 @@ export const api = {
     return handleResponse(res);
   },
 
+  async deleteStudent(studentId) {
+    const res = await apiFetch(`${BASE_URL}/admin/students/${studentId}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    return handleResponse(res);
+  },
+
   async getAuditLogs(page = 1) {
     const res = await apiFetch(`${BASE_URL}/admin/audit-logs?page=${page}`, { credentials: 'include' });
     return handleResponse(res);

@@ -8,7 +8,8 @@ const {
   toggleLockStudent,
   resetStudentPassword,
   updateStudentStatus,
-  getAuditLogs
+  getAuditLogs,
+  deleteStudent
 } = require('../controllers/adminController');
 const { authenticateToken, requireAdmin } = require('../middleware/authMiddleware');
 const multer = require('multer');
@@ -58,6 +59,7 @@ router.post('/students/bulk-import', upload.single('file'), bulkImportStudents);
 router.patch('/students/:id/lock', toggleLockStudent);
 router.post('/students/:id/reset-password', resetStudentPassword);
 router.patch('/students/:id/status', updateStudentStatus);
+router.delete('/students/:id', deleteStudent);
 router.get('/audit-logs', getAuditLogs);
 
 module.exports = router;
