@@ -3,20 +3,21 @@
  * Handles cookies, JSON requests, and file uploads with automatic proxy failover.
  */
 
-const BASE_URL = '/api';
+const API_HOST = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).replace(/\/$/, '') : '';
+const BASE_URL = `${API_HOST}/api`;
 
 /**
  * Robust fetch wrapper:
- * 1. Attempts relative URL via Vite proxy (/api/...).
- * 2. If browser encounters a proxy/network reset ("Failed to fetch"), automatically retries directly against backend port 5000.
+ * 1. Attempts relative URL via Vite proxy or direct base URL.
+ * 2. In local development, if proxy is disconnected, falls back to direct port 5000.
  */
 const apiFetch = async (url, options = {}) => {
   try {
     return await fetch(url, options);
   } catch (err) {
     const method = (options.method || 'GET').toUpperCase();
-    // Only safely retry idempotent GET requests to prevent duplicate uploads or inserts
-    if (method === 'GET' && (err.name === 'TypeError' || err.message?.includes('fetch'))) {
+    // Only safely retry idempotent GET requests in local dev to prevent duplicate uploads or inserts
+    if (!API_HOST && method === 'GET' && (err.name === 'TypeError' || err.message?.includes('fetch'))) {
       const cleanPath = url.startsWith('/') ? url : '/' + url;
       const directTarget = `http://127.0.0.1:5000${cleanPath}`;
       console.warn(`[API Proxy Failover] Request to ${url} failed (${err.message}). Retrying directly at ${directTarget}...`);

@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: ai-sa-portal
+    env: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: DEFAULT_ADMIN_USERNAME
+        value: admin
+      - key: DEFAULT_ADMIN_PASSWORD
+        value: Admin@123
+      - key: DEFAULT_ADMIN_EMAIL
+        value: admin.aids@college.edu
