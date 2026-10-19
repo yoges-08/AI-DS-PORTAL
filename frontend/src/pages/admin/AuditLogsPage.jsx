@@ -67,7 +67,47 @@ export const AuditLogsPage = () => {
       </div>
 
       <div className="bg-white border border-gov-border rounded shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        
+        {/* Mobile Stacked Card View (Screens < 768px) */}
+        <div className="md:hidden divide-y divide-gray-200">
+          {loading ? (
+            <div className="py-8 text-center text-gray-500 text-xs">
+              Loading audit trail...
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="py-8 px-4 text-center text-gray-500 text-xs">
+              No audit records logged yet.
+            </div>
+          ) : (
+            logs.map((log) => (
+              <div key={log.id} className="p-3.5 space-y-2 hover:bg-gray-50 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${getActionBadge(log.action)}`}>
+                    {log.action}
+                  </span>
+                  <span className="text-[11px] text-gray-500 font-mono">
+                    {new Date(log.created_at).toLocaleString('en-GB')}
+                  </span>
+                </div>
+                {log.student_reg_no && (
+                  <div className="flex items-center gap-1 font-mono text-gov-navy font-bold">
+                    <span className="text-gray-400 font-normal">Student:</span> {log.student_reg_no}
+                  </div>
+                )}
+                <div className="text-gray-700 bg-gray-50 p-2 rounded border border-gray-100">
+                  {log.details || '-'}
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
+                  <span>Admin: <strong className="text-gray-700">{log.admin_username}</strong></span>
+                  <span className="font-mono text-[10px]">{log.ip_address || '127.0.0.1'}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View (Screens >= 768px) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-[#F5F7FA] border-b border-gov-border text-gray-700 font-bold uppercase tracking-wider text-[11px]">
               <tr>

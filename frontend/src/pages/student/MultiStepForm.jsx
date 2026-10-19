@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ProgressBar } from '../../components/ProgressBar';
@@ -505,7 +505,9 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
     return true;
   };
 
-  const isCurrentStepComplete = checkCurrentStepComplete();
+  const isCurrentStepComplete = useMemo(() => {
+    return checkCurrentStepComplete();
+  }, [formData, currentStep]);
 
   // Save current step data as draft - LOCKED until mandatory fields are filled
   const handleSaveDraft = async () => {
@@ -2337,7 +2339,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-6 right-6 p-3 bg-gov-navy text-white rounded-full shadow-lg hover:bg-gov-navy-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gov-navy z-40 transition-all duration-200"
+          className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 p-3 bg-gov-navy text-white rounded-full shadow-lg hover:bg-gov-navy-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gov-navy z-40 transition-all duration-200"
           title="Back to Top"
           aria-label="Back to Top"
         >

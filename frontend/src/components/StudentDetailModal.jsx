@@ -119,8 +119,8 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-center justify-center p-3 sm:p-6">
-      <div className="bg-white border border-gov-border rounded-md shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-start sm:items-center justify-center p-2 sm:p-6">
+      <div className="bg-white border border-gov-border rounded-md shadow-2xl w-full max-w-4xl my-auto max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
         
         {/* Header */}
         <div className="bg-gov-navy text-white px-5 py-3.5 flex items-center justify-between shrink-0">

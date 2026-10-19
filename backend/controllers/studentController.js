@@ -248,7 +248,12 @@ const updateStudentDetails = async (req, res) => {
       ['altMobile', 'alt_mobile', (v) => parseSafeString(v)],
       ['email', 'email', (v) => parseSafeString(v)],
       ['permanentAddress', 'permanent_address', (v) => parseSafeString(v)],
-      ['communicationAddress', 'communication_address', () => (commAddr !== undefined ? parseSafeString(commAddr) : null)],
+      ['communicationAddress', 'communication_address', () => {
+        if (isSameAddressBool === 1 && d.permanentAddress !== undefined) {
+          return parseSafeString(d.permanentAddress);
+        }
+        return parseSafeString(d.communicationAddress);
+      }],
       ['isSameAddress', 'is_same_address', () => (isSameAddressBool !== null ? isSameAddressBool : 0)],
       ['district', 'district', (v) => parseSafeString(v)],
       ['state', 'state', (v) => parseSafeString(v)],
@@ -293,11 +298,18 @@ const updateStudentDetails = async (req, res) => {
       ['bankBranch', 'bank_branch', (v) => parseSafeString(v)],
     ];
 
+    const shouldUpdateField = (key) => {
+      if (key === 'communicationAddress') {
+        return d.communicationAddress !== undefined || (isSameAddressBool === 1 && d.permanentAddress !== undefined);
+      }
+      return d[key] !== undefined;
+    };
+
     const setClauses = [];
     const values = [];
 
     for (const [key, col, parser] of fieldDefinitions) {
-      if (d[key] !== undefined || (key === 'communicationAddress' && d.permanentAddress !== undefined)) {
+      if (shouldUpdateField(key)) {
         setClauses.push(`${col} = ?`);
         values.push(parser(d[key]));
       }

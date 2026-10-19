@@ -6,15 +6,28 @@ export const ReportsPage = () => {
   const [year, setYear] = useState('');
   const [section, setSection] = useState('');
   const [status, setStatus] = useState('');
+  const [downloading, setDownloading] = useState(false);
 
-  const handleDownloadExcel = () => {
-    const url = api.getExcelExportUrl({ year, section, status });
-    window.open(url, '_blank');
+  const handleDownloadExcel = async () => {
+    try {
+      setDownloading(true);
+      await api.downloadExcel({ year, section, status });
+    } catch (err) {
+      alert(`Excel export failed: ${err.message || 'Unable to download register.'}`);
+    } finally {
+      setDownloading(false);
+    }
   };
 
-  const handleDownloadPdf = () => {
-    const url = api.getPdfExportUrl({ year, section, status });
-    window.open(url, '_blank');
+  const handleDownloadPdf = async () => {
+    try {
+      setDownloading(true);
+      await api.downloadPdf({ year, section, status });
+    } catch (err) {
+      alert(`PDF export failed: ${err.message || 'Unable to download report.'}`);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   return (
@@ -81,18 +94,20 @@ export const ReportsPage = () => {
         <div className="pt-4 border-t border-gray-200 flex flex-wrap items-center gap-3">
           <button
             onClick={handleDownloadExcel}
-            className="inline-flex items-center px-4 py-2 bg-green-700 text-white rounded text-xs font-bold hover:bg-green-800 shadow-sm"
+            disabled={downloading}
+            className="inline-flex items-center px-4 py-2 bg-green-700 text-white rounded text-xs font-bold hover:bg-green-800 shadow-sm disabled:opacity-50 transition-colors"
           >
             <FileSpreadsheet className="w-4 h-4 mr-2" />
-            <span>Generate & Download Excel (.xlsx)</span>
+            <span>{downloading ? 'Downloading...' : 'Generate & Download Excel (.xlsx)'}</span>
           </button>
 
           <button
             onClick={handleDownloadPdf}
-            className="inline-flex items-center px-4 py-2 bg-gov-navy text-white rounded text-xs font-bold hover:bg-gov-navy-dark shadow-sm"
+            disabled={downloading}
+            className="inline-flex items-center px-4 py-2 bg-gov-navy text-white rounded text-xs font-bold hover:bg-gov-navy-dark shadow-sm disabled:opacity-50 transition-colors"
           >
             <FileDown className="w-4 h-4 mr-2" />
-            <span>Generate & Download Official PDF Register</span>
+            <span>{downloading ? 'Downloading...' : 'Generate & Download Official PDF Register'}</span>
           </button>
         </div>
       </div>
