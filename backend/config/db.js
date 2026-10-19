@@ -12,7 +12,7 @@ let sqliteDb = null;
 
 // Initialize MySQL pool
 try {
-  mysqlPool = mysql.createPool({
+  const mysqlConfig = {
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
@@ -22,7 +22,24 @@ try {
     connectionLimit: 15,
     queueLimit: 0,
     decimalNumbers: true
-  });
+  };
+
+  // Enable SSL/TLS for cloud MySQL (TiDB Cloud, Aiven, Clever Cloud)
+  if (
+    process.env.DB_SSL === 'true' ||
+    (process.env.DB_HOST && (
+      process.env.DB_HOST.includes('tidbcloud.com') ||
+      process.env.DB_HOST.includes('aivencloud.com') ||
+      process.env.DB_HOST.includes('clever-cloud.com')
+    ))
+  ) {
+    mysqlConfig.ssl = {
+      minVersion: 'TLSv1.2',
+      rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true'
+    };
+  }
+
+  mysqlPool = mysql.createPool(mysqlConfig);
 } catch (e) {
   // handled in testConnection
 }

@@ -18,13 +18,28 @@ const seedDatabase = async () => {
 
   let connection;
   try {
-    // Connect without database first to ensure database can be created if it doesn't exist
-    connection = await mysql.createConnection({
+    const connectionConfig = {
       host: DB_HOST,
       user: DB_USER,
       password: DB_PASSWORD,
       port: DB_PORT
-    });
+    };
+
+    if (
+      process.env.DB_SSL === 'true' ||
+      (DB_HOST && (
+        DB_HOST.includes('tidbcloud.com') ||
+        DB_HOST.includes('aivencloud.com') ||
+        DB_HOST.includes('clever-cloud.com')
+      ))
+    ) {
+      connectionConfig.ssl = {
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true'
+      };
+    }
+
+    connection = await mysql.createConnection(connectionConfig);
     console.log(' -> Connected to MySQL server successfully.');
 
     // 1. Create Database if not exists
