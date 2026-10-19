@@ -13,7 +13,10 @@ import {
   CheckCircle, 
   Printer, 
   Lock,
-  ArrowLeft
+  ArrowLeft,
+  ArrowUp,
+  X,
+  ShieldAlert
 } from 'lucide-react';
 
 export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
@@ -24,6 +27,9 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [errors, setErrors] = useState({});
+  const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   // Student form state
   const [formData, setFormData] = useState({
@@ -191,6 +197,14 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
   useEffect(() => {
     fetchProfile();
   }, [studentId]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -500,6 +514,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
       setSaving(true);
       setMessage({ type: '', text: '' });
       await api.updateStudentProfile(formData, studentId);
+      setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       setMessage({ type: 'success', text: `Step ${currentStep} details saved as draft successfully.` });
       refreshUser && refreshUser();
     } catch (err) {
@@ -524,6 +539,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
       setSaving(true);
       setMessage({ type: '', text: '' });
       await api.updateStudentProfile(formData, studentId);
+      setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       setMessage({ type: 'success', text: 'Details saved successfully. Returning...' });
       refreshUser && refreshUser();
       if (onBack) {
@@ -556,6 +572,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
     try {
       setSaving(true);
       await api.updateStudentProfile(formData, studentId);
+      setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       setCurrentStep((prev) => Math.min(8, prev + 1));
       setMessage({ type: '', text: '' });
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -589,9 +606,9 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Step 8 Final Submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Step 8 Final Submission Prompt
+  const handleSubmit = (e) => {
+    e && e.preventDefault();
     if (!formData.declarationAccepted) {
       setErrors((prev) => ({ ...prev, declarationAccepted: 'You must check the declaration checkbox to submit.' }));
       setMessage({ type: 'error', text: 'You must check the declaration box before final submission.' });
@@ -611,18 +628,25 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
       }
     }
 
+    // Open confirmation modal
+    setShowConfirmSubmit(true);
+  };
+
+  const executeFinalSubmit = async () => {
     try {
       setSubmitting(true);
       setMessage({ type: '', text: '' });
       await api.updateStudentProfile(formData, studentId);
       const res = await api.submitStudentProfile(true, studentId);
-      setMessage({ type: 'success', text: res.message || 'Submitted successfully!' });
-      setFormData((prev) => ({ ...prev, status: 'SUBMITTED' }));
+      setShowConfirmSubmit(false);
+      setMessage({ type: 'success', text: res.message || 'Profile submitted successfully and locked for verification.' });
+      setFormData((prev) => ({ ...prev, status: 'SUBMITTED', is_locked: 1 }));
       refreshUser && refreshUser();
       setTimeout(() => {
         if (onComplete) onComplete();
       }, 1500);
     } catch (err) {
+      setShowConfirmSubmit(false);
       setMessage({ type: 'error', text: err.message || 'Submission failed.' });
     } finally {
       setSubmitting(false);
@@ -692,8 +716,15 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
             <h1 className="text-xl font-bold text-gov-navy tracking-tight">
               Student Details Form
             </h1>
-            <p className="text-xs text-gov-subtle">
-              Register No: <span className="font-semibold text-gray-800">{formData.registerNo}</span> | Year: <span className="font-semibold text-gray-800">{formData.year}</span> | Section: <span className="font-semibold text-gray-800">{formData.section}</span>
+            <p className="text-xs text-gov-subtle flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>Register No: <span className="font-semibold text-gray-800">{formData.registerNo}</span></span>
+              <span>| Year: <span className="font-semibold text-gray-800">{formData.year}</span></span>
+              <span>| Section: <span className="font-semibold text-gray-800">{formData.section}</span></span>
+              {lastSavedTime && (
+                <span className="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-medium">
+                  <CheckCircle className="w-3 h-3 mr-1" /> Last saved {lastSavedTime}
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -2247,6 +2278,90 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
         </div>
 
       </div>
+
+      {/* Floating Back to Top Button */}
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 right-6 p-3 bg-gov-navy text-white rounded-full shadow-lg hover:bg-gov-navy-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gov-navy z-40 transition-all duration-200"
+          title="Back to Top"
+          aria-label="Back to Top"
+        >
+          <ArrowUp className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Final Submit Confirmation Modal */}
+      {showConfirmSubmit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full border border-gray-200 overflow-hidden transform transition-all">
+            <div className="p-5 border-b border-gray-100 flex items-start justify-between bg-amber-50/50">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-amber-100 rounded-full text-amber-700">
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Confirm Final Submission</h3>
+                  <p className="text-xs text-gray-500">Department of AI & DS – Student Record Portal</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowConfirmSubmit(false)}
+                className="text-gray-400 hover:text-gray-600 rounded-md p-1"
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="p-5 text-xs text-gray-600 space-y-3 leading-relaxed">
+              <div className="p-3 bg-red-50 border border-red-200 rounded text-red-800 flex items-start space-x-2">
+                <Lock className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Important Notice:</strong> Once submitted, your profile will be <strong>locked</strong> for administrative verification. You will not be able to edit your personal or academic information or re-upload documents without administrator permission.
+                </span>
+              </div>
+              <p>
+                Please verify that all details entered across all 8 sections (Personal, Contact, Family, Academic, Scholarship, Bank, and Documents) are accurate and match your original certificates.
+              </p>
+            </div>
+
+            <div className="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-end space-x-2.5">
+              <button
+                type="button"
+                onClick={() => setShowConfirmSubmit(false)}
+                disabled={submitting}
+                className="px-3.5 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+              >
+                Review Details
+              </button>
+              <button
+                type="button"
+                onClick={executeFinalSubmit}
+                disabled={submitting}
+                className="inline-flex items-center px-4 py-1.5 text-xs font-bold text-white bg-green-700 hover:bg-green-800 rounded shadow-sm transition-colors disabled:opacity-50"
+              >
+                {submitting ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5 mr-1.5" />
+                    Confirm & Lock Profile
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

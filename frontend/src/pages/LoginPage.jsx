@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, UserCheck, Lock, AlertCircle, ArrowRight } from 'lucide-react';
+import { ShieldCheck, UserCheck, Lock, AlertCircle, ArrowRight, Eye, EyeOff, Phone, Mail } from 'lucide-react';
 
 export const LoginPage = () => {
   const { loginStudent, loginAdmin } = useAuth();
@@ -9,10 +9,12 @@ export const LoginPage = () => {
   // Student form state
   const [studentRegNo, setStudentRegNo] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
+  const [showStudentPassword, setShowStudentPassword] = useState(false);
 
   // Admin form state
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -216,14 +218,25 @@ export const LoginPage = () => {
                   <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     Password (Date of Birth)
                   </label>
-                  <input
-                    type="password"
-                    value={studentPassword}
-                    onChange={(e) => setStudentPassword(e.target.value)}
-                    placeholder="DDMMYYYY (e.g. 14052003)"
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:border-gov-navy focus:outline-none"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showStudentPassword ? "text" : "password"}
+                      value={studentPassword}
+                      onChange={(e) => setStudentPassword(e.target.value)}
+                      placeholder="DDMMYYYY (e.g. 14052003)"
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded text-sm focus:border-gov-navy focus:outline-none font-mono"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowStudentPassword((prev) => !prev)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 focus:outline-none p-1"
+                      title={showStudentPassword ? "Hide password" : "Show password"}
+                      aria-label="Toggle password visibility"
+                    >
+                      {showStudentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                   <div className="mt-1 text-[11px] text-amber-800 bg-amber-50 p-2 border border-amber-200 rounded">
                     <strong>Helper:</strong> Password is your Date of Birth in <strong>DDMMYYYY</strong> format (e.g., if born on 14-May-2003, enter 14052003).
                   </div>
@@ -239,10 +252,6 @@ export const LoginPage = () => {
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
-
-                <div className="pt-2 text-center text-[11px] text-gray-500">
-                  Default credentials demo: <strong className="text-gray-700">71762105001</strong> / <strong className="text-gray-700">14052003</strong>
-                </div>
               </form>
             )}
 
@@ -257,7 +266,7 @@ export const LoginPage = () => {
                     type="text"
                     value={adminUsername}
                     onChange={(e) => setAdminUsername(e.target.value)}
-                    placeholder="e.g. admin"
+                    placeholder="Enter admin username"
                     className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:border-gov-navy focus:outline-none"
                     autoFocus
                     required
@@ -268,14 +277,25 @@ export const LoginPage = () => {
                   <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     Admin Password
                   </label>
-                  <input
-                    type="password"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="Enter admin password"
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:border-gov-navy focus:outline-none"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showAdminPassword ? "text" : "password"}
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      placeholder="Enter admin password"
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded text-sm focus:border-gov-navy focus:outline-none"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPassword((prev) => !prev)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 focus:outline-none p-1"
+                      title={showAdminPassword ? "Hide password" : "Show password"}
+                      aria-label="Toggle password visibility"
+                    >
+                      {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="pt-2">
@@ -288,10 +308,6 @@ export const LoginPage = () => {
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
-
-                <div className="pt-2 text-center text-[11px] text-gray-500">
-                  Default credentials: <strong className="text-gray-700">admin</strong> / <strong className="text-gray-700">Admin@123</strong>
-                </div>
               </form>
             )}
 
@@ -301,8 +317,19 @@ export const LoginPage = () => {
       </div>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gov-border py-3 text-center text-xs text-gov-subtle">
-        Anjalai Ammal Mahalingam Engineering College (AAMEC) &bull; Department of Artificial Intelligence & Data Science &copy; 2026
+      <footer className="bg-white border-t border-gov-border py-3 text-center text-xs text-gov-subtle px-4">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>Anjalai Ammal Mahalingam Engineering College (AAMEC) &bull; Dept. of AI & DS &copy; {new Date().getFullYear()}</span>
+          <div className="flex items-center space-x-3 text-[11px]">
+            <a href="tel:+914374245522" className="text-gov-navy hover:underline inline-flex items-center">
+              <Phone className="w-3 h-3 mr-1" /> +91 4374 245522
+            </a>
+            <span>&bull;</span>
+            <a href="mailto:aids@aamec.edu.in" className="text-gov-navy hover:underline inline-flex items-center">
+              <Mail className="w-3 h-3 mr-1" /> aids@aamec.edu.in
+            </a>
+          </div>
+        </div>
       </footer>
 
     </div>

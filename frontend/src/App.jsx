@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { Navbar } from './components/Navbar';
@@ -10,20 +10,49 @@ import { BulkImportPage } from './pages/admin/BulkImportPage';
 import { ReportsPage } from './pages/admin/ReportsPage';
 import { AuditLogsPage } from './pages/admin/AuditLogsPage';
 import { MultiStepForm } from './pages/student/MultiStepForm';
+import { NotFoundPage } from './pages/NotFoundPage';
 
 export const App = () => {
   const { user, loading } = useAuth();
   const [adminTab, setAdminTab] = useState('dashboard');
   const [editingStudentId, setEditingStudentId] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentPath, setCurrentPath] = useState(
+    typeof window !== 'undefined' ? window.location.pathname : '/'
+  );
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const isUnknownRoute = currentPath && currentPath !== '/' && currentPath !== '' && currentPath !== '/login';
+
+  if (isUnknownRoute) {
+    return (
+      <NotFoundPage 
+        onGoHome={() => {
+          window.history.pushState({}, '', '/');
+          setCurrentPath('/');
+        }} 
+      />
+    );
+  }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gov-bg flex flex-col items-center justify-center p-4">
-        <img src="/logo.svg" alt="Emblem" className="w-12 h-12 mb-3 animate-pulse" />
-        <div className="text-sm font-semibold text-gov-navy">
-          Connecting to Department Student Information System...
+        <div className="relative mb-4">
+          <img src="/college-logo.webp" alt="AAMEC" className="w-14 h-14 object-contain" />
+          <div className="absolute -inset-2 border-2 border-gov-navy border-t-transparent rounded-full animate-spin"></div>
         </div>
-        <div className="text-xs text-gray-400 mt-1">Please wait a moment</div>
+        <div className="text-sm font-bold text-gov-navy uppercase tracking-wider">
+          AI & DS Department Portal
+        </div>
+        <div className="text-xs text-gray-500 mt-1">Connecting to Student Information System...</div>
       </div>
     );
   }
@@ -37,7 +66,7 @@ export const App = () => {
   if (user.role === 'STUDENT') {
     return (
       <div className="min-h-screen flex flex-col bg-gov-bg">
-        <Navbar />
+        <Navbar onLogoClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
         <main className="flex-1">
           <StudentDashboard />
         </main>
@@ -47,18 +76,60 @@ export const App = () => {
   }
 
   // ADMIN VIEW
+  const adminNavTabs = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'students', label: 'Students' },
+    { id: 'bulk-import', label: 'Bulk Import' },
+    { id: 'reports', label: 'Reports' },
+    { id: 'audit-logs', label: 'Audit Logs' }
+  ];
+
   return (
     <div className="min-h-screen flex flex-col bg-gov-bg">
-      <Navbar />
+      <Navbar 
+        onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
+        isMobileMenuOpen={mobileMenuOpen}
+        onLogoClick={() => {
+          setEditingStudentId(null);
+          setAdminTab('dashboard');
+        }}
+      />
+
+      {/* Mobile Top Quick-Tab Navigation Bar (Admins on phones) */}
+      <div className="md:hidden bg-white border-b border-gray-200 px-2 py-1.5 flex items-center space-x-1 overflow-x-auto no-scrollbar shadow-xs shrink-0">
+        {adminNavTabs.map((t) => {
+          const isActive = (editingStudentId ? 'students' : adminTab) === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => {
+                setEditingStudentId(null);
+                setAdminTab(t.id);
+                setMobileMenuOpen(false);
+              }}
+              className={`px-2.5 py-1 rounded text-[11px] font-semibold whitespace-nowrap transition-colors ${
+                isActive
+                  ? 'bg-gov-navy text-white shadow-xs'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
 
       <div className="flex-1 flex flex-col md:flex-row">
-        {/* Left Sidebar */}
+        {/* Left Sidebar (Desktop persistent, Mobile slide-over drawer) */}
         <AdminSidebar 
           activeTab={editingStudentId ? 'students' : adminTab} 
           onSelectTab={(tab) => {
             setEditingStudentId(null);
             setAdminTab(tab);
+            setMobileMenuOpen(false);
           }} 
+          isOpenMobile={mobileMenuOpen}
+          onCloseMobile={() => setMobileMenuOpen(false)}
         />
 
         {/* Right Main Content Area */}

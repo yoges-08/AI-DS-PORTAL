@@ -5,10 +5,10 @@ import {
   FileSpreadsheet, 
   FileDown, 
   History, 
-  Settings 
+  X
 } from 'lucide-react';
 
-export const AdminSidebar = ({ activeTab, onSelectTab }) => {
+export const AdminSidebar = ({ activeTab, onSelectTab, isOpenMobile, onCloseMobile }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'students', label: 'Student Records', icon: Users },
@@ -17,13 +17,13 @@ export const AdminSidebar = ({ activeTab, onSelectTab }) => {
     { id: 'audit-logs', label: 'Audit Logs', icon: History }
   ];
 
-  return (
-    <aside className="w-60 bg-white border-r border-gov-border min-h-[calc(100vh-5rem)] shrink-0 no-print flex flex-col justify-between">
+  const renderNavContent = () => (
+    <>
       <div className="p-3">
         {/* Institutional Branding Card */}
         <div className="flex items-center space-x-2.5 p-2.5 mb-3 bg-gradient-to-r from-blue-50 to-indigo-50/50 rounded-lg border border-blue-100">
-          <img src="/college-logo.webp" alt="AAMEC" className="w-9 h-9 object-contain" />
-          <img src="/aids-logo.jpg" alt="AI&DS" className="w-9 h-9 rounded-full border border-blue-200 object-cover shadow-xs" />
+          <img src="/college-logo.webp" alt="AAMEC" className="w-8 h-8 object-contain shrink-0" />
+          <img src="/aids-logo.jpg" alt="AI&DS" className="w-8 h-8 rounded-full border border-blue-200 object-cover shadow-xs shrink-0" />
           <div className="overflow-hidden">
             <p className="text-[11px] font-black text-gov-navy leading-none">AAMEC</p>
             <p className="text-[10px] font-semibold text-blue-800 truncate">Dept of AI & DS</p>
@@ -41,10 +41,13 @@ export const AdminSidebar = ({ activeTab, onSelectTab }) => {
             return (
               <button
                 key={item.id}
-                onClick={() => onSelectTab(item.id)}
+                onClick={() => {
+                  onSelectTab(item.id);
+                  onCloseMobile && onCloseMobile();
+                }}
                 className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded text-xs font-semibold transition-colors text-left ${
                   isActive
-                    ? 'bg-blue-50 text-gov-navy border-l-4 border-gov-navy font-bold'
+                    ? 'bg-blue-50 text-gov-navy border-l-4 border-gov-navy font-bold shadow-xs'
                     : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
@@ -60,7 +63,48 @@ export const AdminSidebar = ({ activeTab, onSelectTab }) => {
         <p className="font-bold text-gov-navy text-[10px] uppercase">Anjalai Ammal Mahalingam</p>
         <p className="text-[10px] text-gray-600">Engineering College &bull; AI&DS</p>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar */}
+      <aside className="w-60 bg-white border-r border-gov-border min-h-[calc(100vh-5rem)] shrink-0 no-print hidden md:flex flex-col justify-between">
+        {renderNavContent()}
+      </aside>
+
+      {/* Mobile Slide-over Drawer */}
+      {isOpenMobile && (
+        <div className="fixed inset-0 z-50 md:hidden flex no-print animate-fade-in">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity" 
+            onClick={onCloseMobile}
+            aria-hidden="true"
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative w-64 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col justify-between z-10 transform transition-transform">
+            {/* Top Close Bar */}
+            <div className="px-4 py-3 bg-gov-navy text-white flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider">Navigation Menu</span>
+              <button 
+                onClick={onCloseMobile}
+                className="p-1 text-gray-300 hover:text-white rounded"
+                aria-label="Close menu"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto flex flex-col justify-between">
+              {renderNavContent()}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
+
 
