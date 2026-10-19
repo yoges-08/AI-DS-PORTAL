@@ -63,8 +63,8 @@ const loginStudent = async (req, res) => {
         role: 'STUDENT',
         registerNo: student.register_no,
         name: student.name,
-        year: student.year,
-        section: student.section
+        year: student.year !== null && student.year !== undefined ? student.year : null,
+        section: student.section || null
       },
       JWT_SECRET,
       { expiresIn: '7d' }
@@ -81,8 +81,8 @@ const loginStudent = async (req, res) => {
         role: 'STUDENT',
         registerNo: student.register_no,
         name: student.name,
-        year: student.year,
-        section: student.section,
+        year: student.year !== null && student.year !== undefined ? student.year : null,
+        section: student.section || null,
         status: student.status,
         isLocked: Boolean(student.is_locked)
       }
@@ -247,8 +247,8 @@ const getCurrentUser = async (req, res) => {
           registerNo: s.register_no,
           name: s.name,
           dob: s.dob,
-          year: s.year,
-          section: s.section,
+          year: s.year !== null && s.year !== undefined ? s.year : null,
+          section: s.section || null,
           status: s.status,
           isLocked: Boolean(s.is_locked),
           submissionDate: s.submission_date,

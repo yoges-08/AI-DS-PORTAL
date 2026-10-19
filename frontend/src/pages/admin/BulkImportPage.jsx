@@ -44,23 +44,31 @@ export const BulkImportPage = () => {
           Import File Requirements & Mapping Rules
         </h3>
         <p className="text-xs text-gray-700 leading-relaxed">
-          The spreadsheet must contain the following header columns (case-insensitive):
+          The spreadsheet requires the following 3 columns (case-insensitive):
         </p>
         <ul className="list-disc list-inside text-xs text-gray-600 space-y-1">
           <li><strong>Register Number:</strong> e.g., 71762305041 (must be unique).</li>
           <li><strong>Name:</strong> Full name as per 10th/12th marksheet.</li>
-          <li><strong>DOB:</strong> Format YYYY-MM-DD (e.g., 2005-02-14). Initial password is set to DDMMYYYY (14022005).</li>
-          <li><strong>Year:</strong> Numeric integer between 1 and 4.</li>
-          <li><strong>Section:</strong> Department section letter: A, B, or C.</li>
+          <li><strong>DOB:</strong> Date of Birth (e.g., 2005-02-14 or 14/02/2005). Initial password is encrypted as DDMMYYYY.</li>
         </ul>
+        <p className="text-[11.5px] text-blue-900 bg-blue-50 p-2.5 rounded border border-blue-200 mt-2">
+          <strong>Note:</strong> Year of Study and Section are optional during bulk import. Students select their own Year and Section upon logging into the student portal. Existing students' selected year/section will be preserved.
+        </p>
 
-        <div className="pt-3 border-t border-gray-100 flex items-center space-x-3">
+        <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center gap-3">
           <a
             href="/sample_student_bulk_import.csv"
             download="sample_student_bulk_import.csv"
             className="inline-flex items-center px-3 py-1.5 bg-gov-navy text-white text-xs font-semibold rounded hover:bg-gov-navy-dark shadow-sm"
           >
             <Download className="w-3.5 h-3.5 mr-1.5" /> Download CSV Template
+          </a>
+          <a
+            href="/sample_student_bulk_import.xlsx"
+            download="sample_student_bulk_import.xlsx"
+            className="inline-flex items-center px-3 py-1.5 bg-green-700 text-white text-xs font-semibold rounded hover:bg-green-800 shadow-sm"
+          >
+            <Download className="w-3.5 h-3.5 mr-1.5" /> Download Excel Template (.xlsx)
           </a>
         </div>
       </div>

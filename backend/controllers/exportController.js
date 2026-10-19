@@ -85,11 +85,17 @@ const exportExcel = async (req, res) => {
 
     const [rows] = await pool.query(query, params);
 
-    // Sanitize values against Excel formula injection
+    // Sanitize values against Excel formula injection and format NULLs safely
     const sanitizedRows = rows.map((row) => {
       const cleanRow = {};
       for (const [key, val] of Object.entries(row)) {
-        cleanRow[key] = sanitizeExcelValue(val);
+        if (key === 'Year') {
+          cleanRow[key] = val !== null && val !== undefined ? val : 'Not set';
+        } else if (key === 'Section') {
+          cleanRow[key] = val ? val : 'Not set';
+        } else {
+          cleanRow[key] = sanitizeExcelValue(val);
+        }
       }
       return cleanRow;
     });
@@ -245,7 +251,8 @@ const exportPdf = async (req, res) => {
       doc.text(s.register_no || '-', 70, y + 2, { width: 95 });
       doc.text(s.name || '-', 170, y + 2, { width: 170 });
       doc.text(s.dob || '-', 345, y + 2, { width: 75 });
-      doc.text(`${s.year} - ${s.section}`, 425, y + 2, { width: 60 });
+      const yearSec = (s.year || s.section) ? `${s.year ? `Y${s.year}` : '-'} / ${s.section ? `Sec ${s.section}` : '-'}` : '-';
+      doc.text(yearSec, 425, y + 2, { width: 60 });
       doc.text(s.mobile || 'Not Updated', 490, y + 2, { width: 90 });
       doc.text(s.is_first_graduate ? 'Yes' : 'No', 585, y + 2, { width: 65 });
       doc.text(s.is_pms ? 'Yes' : 'No', 655, y + 2, { width: 50 });

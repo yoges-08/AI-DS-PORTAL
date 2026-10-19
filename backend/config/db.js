@@ -55,8 +55,8 @@ const initSqliteFallback = async () => {
         name TEXT NOT NULL,
         dob TEXT NOT NULL,
         password TEXT NOT NULL,
-        year INTEGER NOT NULL,
-        section TEXT NOT NULL,
+        year INTEGER,
+        section TEXT,
         gender TEXT,
         blood_group TEXT,
         religion TEXT,
@@ -146,6 +146,96 @@ const initSqliteFallback = async () => {
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL
       );
     `);
+
+    // Safe migration: ensure existing SQLite students table allows NULL for student-chosen year and section
+    try {
+      const cols = sqliteDb.prepare("PRAGMA table_info(students)").all();
+      const yearCol = cols.find(c => c.name === 'year');
+      const secCol = cols.find(c => c.name === 'section');
+      if ((yearCol && yearCol.notnull) || (secCol && secCol.notnull)) {
+        console.log('[DB Fallback] Upgrading local SQLite students schema to allow student-chosen Year and Section...');
+        sqliteDb.exec(`
+          PRAGMA foreign_keys=off;
+          CREATE TABLE IF NOT EXISTS students_temp_migration (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            register_no TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            dob TEXT NOT NULL,
+            password TEXT NOT NULL,
+            year INTEGER,
+            section TEXT,
+            gender TEXT,
+            blood_group TEXT,
+            religion TEXT,
+            community TEXT,
+            caste TEXT,
+            nationality TEXT DEFAULT 'Indian',
+            aadhaar_no TEXT,
+            mother_tongue TEXT,
+            photo_path TEXT,
+            mobile TEXT,
+            alt_mobile TEXT,
+            email TEXT,
+            permanent_address TEXT,
+            communication_address TEXT,
+            is_same_address INTEGER DEFAULT 0,
+            district TEXT,
+            state TEXT DEFAULT 'Tamil Nadu',
+            pincode TEXT,
+            father_name TEXT,
+            mother_name TEXT,
+            guardian_name TEXT,
+            parents_occupation TEXT,
+            parents_mobile TEXT,
+            annual_income REAL,
+            sslc_school TEXT,
+            sslc_board TEXT,
+            sslc_year INTEGER,
+            sslc_percentage REAL,
+            hsc_school TEXT,
+            hsc_board TEXT,
+            hsc_year INTEGER,
+            hsc_percentage REAL,
+            current_semester INTEGER DEFAULT 1,
+            mode_of_admission TEXT,
+            is_first_graduate INTEGER DEFAULT 0,
+            is_pms INTEGER DEFAULT 0,
+            pms_application_no TEXT,
+            pms_status TEXT DEFAULT 'N/A',
+            other_scholarship_name TEXT,
+            other_scholarship_amount REAL,
+            other_scholarship_status TEXT,
+            community_cert_no TEXT,
+            community_cert_issuer TEXT,
+            community_cert_date DATE,
+            income_cert_no TEXT,
+            income_cert_issuer TEXT,
+            income_cert_date DATE,
+            bank_acc_holder TEXT,
+            bank_name TEXT,
+            bank_acc_no TEXT,
+            bank_ifsc TEXT,
+            bank_branch TEXT,
+            status TEXT DEFAULT 'DRAFT',
+            is_locked INTEGER DEFAULT 0,
+            locked_at DATETIME,
+            locked_by TEXT,
+            submission_date DATETIME,
+            rejection_reason TEXT,
+            declaration_accepted INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          );
+          INSERT INTO students_temp_migration SELECT * FROM students;
+          DROP TABLE students;
+          ALTER TABLE students_temp_migration RENAME TO students;
+          PRAGMA foreign_keys=on;
+        `);
+        console.log('[DB Fallback] Local SQLite students schema upgraded successfully.');
+      }
+    } catch (migErr) {
+      console.warn('[DB Fallback] SQLite migration notice:', migErr.message);
+    }
 
     // Check if admin exists in SQLite, if not seed
     const adminCheck = sqliteDb.prepare('SELECT id FROM admins LIMIT 1').all();
@@ -271,6 +361,11 @@ const testConnection = async () => {
   try {
     const conn = await mysqlPool.getConnection();
     console.log(`[DB] Connected successfully to MySQL database "${process.env.DB_NAME || 'aids_portal'}" at ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '3306'}`);
+    try {
+      await conn.query('ALTER TABLE `students` MODIFY `year` INT NULL, MODIFY `section` VARCHAR(5) NULL;');
+    } catch (migErr) {
+      // Ignore if columns are already nullable or table not created yet
+    }
     conn.release();
     dbMode = 'mysql';
     return true;

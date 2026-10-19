@@ -63,19 +63,30 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
           <div className="p-3 bg-blue-50 border border-blue-200 rounded text-blue-900 leading-relaxed">
             <p className="font-semibold mb-1">Spreadsheet Template Instructions:</p>
             <p>
-              Supported columns: <strong>Register Number</strong>, <strong>Name</strong>, <strong>DOB</strong> (supports <code>YYYY-MM-DD</code>, <code>DD/MM/YYYY</code>, or <code>M/D/YYYY</code>), <strong>Year (1-4)</strong>, and <strong>Section (A/B/C)</strong>.
+              Required columns: <strong>Register Number</strong>, <strong>Name</strong>, and <strong>DOB</strong> (supports <code>YYYY-MM-DD</code>, <code>DD/MM/YYYY</code>, or <code>M/D/YYYY</code>).
+            </p>
+            <p className="mt-1 text-[11px] text-blue-800">
+              * Year of Study and Section are optional: students will choose their own Year and Section in their profile form.
             </p>
             <p className="mt-1 text-[11px] text-blue-700">
-              * Note: Re-importing existing student records automatically synchronizes their login password (DOB) and academic year/section without duplicate errors.
+              * Re-importing existing student records safely updates their credentials without modifying their chosen Year, Section, or completed form details.
             </p>
-            <div className="mt-2.5">
+            <div className="mt-2.5 flex flex-wrap items-center gap-3">
               <a
                 href="/sample_student_bulk_import.csv"
                 download="sample_student_bulk_import.csv"
                 className="inline-flex items-center text-xs text-gov-navy font-bold hover:underline"
               >
                 <Download className="w-3.5 h-3.5 mr-1" />
-                Download Sample CSV Template
+                Download Sample CSV
+              </a>
+              <a
+                href="/sample_student_bulk_import.xlsx"
+                download="sample_student_bulk_import.xlsx"
+                className="inline-flex items-center text-xs text-green-700 font-bold hover:underline"
+              >
+                <Download className="w-3.5 h-3.5 mr-1" />
+                Download Sample Excel (.xlsx)
               </a>
             </div>
           </div>

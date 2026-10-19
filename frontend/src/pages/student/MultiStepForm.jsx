@@ -67,8 +67,8 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
     annualIncome: '',
 
     // Step 4: Academic
-    year: 1,
-    section: 'A',
+    year: '',
+    section: '',
     currentSemester: 1,
     sslcSchool: '',
     sslcBoard: 'State Board',
@@ -121,8 +121,8 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
           name: s.name || '',
           registerNo: s.register_no || '',
           dob: s.dob || '',
-          year: s.year || 1,
-          section: s.section || 'A',
+          year: s.year !== null && s.year !== undefined ? s.year : '',
+          section: s.section || '',
           gender: s.gender || '',
           bloodGroup: s.blood_group || '',
           religion: s.religion || '',
@@ -235,6 +235,12 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
     if (step === 1) {
       if (!formData.name || !String(formData.name).trim()) {
         errs.name = 'Full Name is mandatory and cannot be empty.';
+      }
+      if (!formData.year || !['1', '2', '3', '4', 1, 2, 3, 4].includes(formData.year)) {
+        errs.year = 'Please select your Year of Study.';
+      }
+      if (!formData.section || !['A', 'B', 'C', 'D'].includes(String(formData.section).trim().toUpperCase())) {
+        errs.section = 'Please select your Section.';
       }
       if (!formData.gender || !String(formData.gender).trim()) {
         errs.gender = 'Gender selection is mandatory.';
@@ -427,7 +433,9 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
         formData.name && String(formData.name).trim() &&
         formData.gender && String(formData.gender).trim() &&
         formData.community && String(formData.community).trim() &&
-        formData.aadhaarNo && /^\d{12}$/.test(String(formData.aadhaarNo).trim())
+        formData.aadhaarNo && /^\d{12}$/.test(String(formData.aadhaarNo).trim()) &&
+        formData.year && [1, 2, 3, 4].includes(Number(formData.year)) &&
+        formData.section && ['A', 'B', 'C', 'D'].includes(String(formData.section).trim().toUpperCase())
       );
     }
     if (currentStep === 2) {
@@ -718,8 +726,8 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
             </h1>
             <p className="text-xs text-gov-subtle flex flex-wrap items-center gap-x-2 gap-y-1">
               <span>Register No: <span className="font-semibold text-gray-800">{formData.registerNo}</span></span>
-              <span>| Year: <span className="font-semibold text-gray-800">{formData.year}</span></span>
-              <span>| Section: <span className="font-semibold text-gray-800">{formData.section}</span></span>
+              <span>| Year: <span className="font-semibold text-gray-800">{formData.year ? `Year ${formData.year}` : 'Not set yet'}</span></span>
+              <span>| Section: <span className="font-semibold text-gray-800">{formData.section ? `Sec ${formData.section}` : 'Not set yet'}</span></span>
               {lastSavedTime && (
                 <span className="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-medium">
                   <CheckCircle className="w-3 h-3 mr-1" /> Last saved {lastSavedTime}
@@ -833,6 +841,50 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   className="w-full px-3 py-1.5 border border-gray-200 bg-gray-100 rounded text-sm font-medium text-gray-700 cursor-not-allowed"
                 />
                 <span className="text-[11px] text-gray-500">For DOB corrections, contact department admin.</span>
+              </div>
+
+              {/* Year of Study */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Year of Study <span className="text-red-600">*</span>
+                </label>
+                <select
+                  name="year"
+                  value={formData.year || ''}
+                  onChange={handleChange}
+                  disabled={isLocked}
+                  className={getInputClass('year')}
+                  required
+                >
+                  <option value="">-- Select Year of Study --</option>
+                  <option value="1">1st Year</option>
+                  <option value="2">2nd Year</option>
+                  <option value="3">3rd Year</option>
+                  <option value="4">4th Year</option>
+                </select>
+                {errors.year && <p className="text-xs text-red-600 mt-1 font-medium">{errors.year}</p>}
+              </div>
+
+              {/* Section */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Section <span className="text-red-600">*</span>
+                </label>
+                <select
+                  name="section"
+                  value={formData.section || ''}
+                  onChange={handleChange}
+                  disabled={isLocked}
+                  className={getInputClass('section')}
+                  required
+                >
+                  <option value="">-- Select Section --</option>
+                  <option value="A">Section A</option>
+                  <option value="B">Section B</option>
+                  <option value="C">Section C</option>
+                  <option value="D">Section D</option>
+                </select>
+                {errors.section && <p className="text-xs text-red-600 mt-1 font-medium">{errors.section}</p>}
               </div>
 
               {/* Gender */}
@@ -1337,7 +1389,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   <label className="block text-[11px] font-semibold text-gray-600 mb-1">Current Year</label>
                   <input
                     type="text"
-                    value={`Year ${formData.year}`}
+                    value={formData.year ? `Year ${formData.year}` : 'Not set yet'}
                     readOnly
                     className="w-full px-2.5 py-1 border border-gray-200 bg-white rounded text-xs text-gray-700 font-semibold"
                   />
@@ -1346,7 +1398,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   <label className="block text-[11px] font-semibold text-gray-600 mb-1">Section</label>
                   <input
                     type="text"
-                    value={`Section ${formData.section}`}
+                    value={formData.section ? `Section ${formData.section}` : 'Not set yet'}
                     readOnly
                     className="w-full px-2.5 py-1 border border-gray-200 bg-white rounded text-xs text-gray-700 font-semibold"
                   />
@@ -2069,6 +2121,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div><span className="text-gray-500">Name:</span> <strong className="text-gray-800">{formData.name || '-'}</strong></div>
                   <div><span className="text-gray-500">Reg No:</span> <strong className="text-gray-800">{formData.registerNo}</strong></div>
+                  <div><span className="text-gray-500">Year & Sec:</span> <strong className="text-gray-800">{formData.year ? `Year ${formData.year}` : 'Not set'}{formData.section ? ` - Sec ${formData.section}` : ''}</strong></div>
                   <div><span className="text-gray-500">DOB:</span> <strong className="text-gray-800">{formData.dob}</strong></div>
                   <div><span className="text-gray-500">Gender:</span> <strong className="text-gray-800">{formData.gender}</strong></div>
                   <div><span className="text-gray-500">Community:</span> <strong className="text-gray-800">{formData.community} ({formData.caste || '-'})</strong></div>

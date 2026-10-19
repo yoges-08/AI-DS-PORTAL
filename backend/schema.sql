@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS `students` (
   `name` VARCHAR(100) NOT NULL,
   `dob` VARCHAR(10) NOT NULL COMMENT 'Format: YYYY-MM-DD',
   `password` VARCHAR(255) NOT NULL COMMENT 'Bcrypt hash of DDMMYYYY',
-  `year` INT NOT NULL,
-  `section` VARCHAR(5) NOT NULL,
+  `year` INT NULL,
+  `section` VARCHAR(5) NULL,
   
   -- Step 1: Personal Details
   `gender` VARCHAR(20) NULL,

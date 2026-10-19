@@ -34,8 +34,8 @@ model Student {
   name                  String            @db.VarChar(100)
   dob                   String            @db.VarChar(10) // Format: YYYY-MM-DD
   password              String            @db.VarChar(255) // Bcrypt hash of DDMMYYYY initially
-  year                  Int               // 1, 2, 3, 4
-  section               String            @db.VarChar(5) // A, B, C
+  year                  Int?              // 1, 2, 3, 4
+  section               String?           @db.VarChar(5) // A, B, C
   
   // Step 1: Personal Details
   gender                String?           @db.VarChar(20) // Male, Female, Other

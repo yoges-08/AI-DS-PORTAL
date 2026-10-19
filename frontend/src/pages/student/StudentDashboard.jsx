@@ -42,7 +42,7 @@ export const StudentDashboard = () => {
             <StatusBadge status={user?.status} isLocked={user?.isLocked} />
           </div>
           <p className="text-xs text-gov-subtle mt-1">
-            Register Number: <span className="font-semibold text-gray-800 font-mono">{user?.registerNo}</span> | Year {user?.year} | Section {user?.section} | Artificial Intelligence & Data Science
+            Register Number: <span className="font-semibold text-gray-800 font-mono">{user?.registerNo}</span> | {user?.year ? `Year ${user.year}` : 'Year: Not set yet'} | {user?.section ? `Section ${user.section}` : 'Section: Not set yet'} | Artificial Intelligence & Data Science
           </p>
         </div>
 
@@ -73,6 +73,24 @@ export const StudentDashboard = () => {
           </button>
         </div>
       </div>
+
+      {/* Missing Year/Section Alert Banner */}
+      {(!user?.year || !user?.section) && (
+        <div className="bg-amber-50 border border-amber-300 rounded p-3 text-xs text-amber-900 flex items-center justify-between no-print">
+          <div className="flex items-center space-x-2">
+            <span className="font-bold uppercase tracking-wider text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded text-[10px]">Action Required</span>
+            <span>Please select your <strong>Year of Study</strong> and <strong>Section</strong> in Step 1 of the form.</span>
+          </div>
+          {activeTab !== 'form' && (
+            <button
+              onClick={() => setActiveTab('form')}
+              className="text-xs font-semibold text-amber-900 underline hover:text-amber-700 ml-2 whitespace-nowrap"
+            >
+              Go to Form &rarr;
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Render Active View */}
       {activeTab === 'form' ? (

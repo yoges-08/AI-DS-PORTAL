@@ -109,7 +109,7 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
               </tr>
               <tr className="border-b border-gray-300">
                 <td className="bg-gray-50 font-bold p-2 border-r border-gray-300">Class & Section</td>
-                <td className="p-2 border-r border-gray-300">Year {student.year} - Section {student.section}</td>
+                <td className="p-2 border-r border-gray-300">{student.year ? `Year ${student.year}` : 'Not set'}{student.section ? ` - Section ${student.section}` : ''}</td>
                 <td className="bg-gray-50 font-bold p-2 border-r border-gray-300">Current Semester</td>
                 <td className="p-2">Semester {student.current_semester || 1}</td>
               </tr>

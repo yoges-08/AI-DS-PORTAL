@@ -60,8 +60,8 @@ const seedDatabase = async () => {
         \`name\` VARCHAR(100) NOT NULL,
         \`dob\` VARCHAR(10) NOT NULL,
         \`password\` VARCHAR(255) NOT NULL,
-        \`year\` INT NOT NULL,
-        \`section\` VARCHAR(5) NOT NULL,
+        \`year\` INT NULL,
+        \`section\` VARCHAR(5) NULL,
         \`gender\` VARCHAR(20) NULL,
         \`blood_group\` VARCHAR(10) NULL,
         \`religion\` VARCHAR(50) NULL,
@@ -161,6 +161,13 @@ const seedDatabase = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
     console.log(' -> Database tables verified and created successfully.');
+
+    // Safe migration for existing MySQL database to allow NULL for student-chosen year and section
+    try {
+      await connection.query('ALTER TABLE `students` MODIFY `year` INT NULL, MODIFY `section` VARCHAR(5) NULL;');
+    } catch (migErr) {
+      // Ignore if table was just created or columns are already nullable
+    }
 
     // 3. Seed Admin
     console.log('\n[4/4] Seeding default administrator and 10 students...');

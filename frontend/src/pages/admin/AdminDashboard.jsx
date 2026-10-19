@@ -351,6 +351,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
               <option value="A">Section A</option>
               <option value="B">Section B</option>
               <option value="C">Section C</option>
+              <option value="D">Section D</option>
             </select>
           </div>
 
@@ -479,7 +480,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
                       {student.name}
                     </td>
                     <td className="py-2 px-3 text-gray-700">
-                      Year {student.year} - {student.section}
+                      {student.year ? `Year ${student.year}` : '-'}{student.section ? ` - ${student.section}` : ''}
                     </td>
                     <td className="py-2 px-3 text-gray-600">
                       {student.mobile || '-'}

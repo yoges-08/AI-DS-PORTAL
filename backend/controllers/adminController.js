@@ -46,21 +46,31 @@ const getDashboardStats = async (req, res) => {
       FROM students
     `);
 
-    // Distribution by Year
+    // Distribution by Year (handle NULL as 'Not set')
     const [byYear] = await pool.query(`
       SELECT year, COUNT(*) AS count 
       FROM students 
       GROUP BY year 
-      ORDER BY year ASC
+      ORDER BY CASE WHEN year IS NULL THEN 1 ELSE 0 END, year ASC
     `);
 
-    // Distribution by Section
+    // Distribution by Section (handle NULL as 'Not set')
     const [bySection] = await pool.query(`
       SELECT section, COUNT(*) AS count 
       FROM students 
       GROUP BY section 
-      ORDER BY section ASC
+      ORDER BY CASE WHEN section IS NULL THEN 1 ELSE 0 END, section ASC
     `);
+
+    const formattedByYear = byYear.map(item => ({
+      year: item.year !== null && item.year !== undefined ? item.year : 'Not set',
+      count: item.count || 0
+    }));
+
+    const formattedBySection = bySection.map(item => ({
+      section: item.section ? item.section : 'Not set',
+      count: item.count || 0
+    }));
 
     return res.json({
       success: true,
@@ -72,8 +82,8 @@ const getDashboardStats = async (req, res) => {
         firstGraduates: counts[0].first_graduate_count || 0,
         pmsBeneficiaries: counts[0].pms_count || 0,
         lockedRecords: counts[0].locked_count || 0,
-        byYear,
-        bySection
+        byYear: formattedByYear,
+        bySection: formattedBySection
       }
     });
   } catch (error) {
@@ -206,21 +216,12 @@ const addStudent = async (req, res) => {
 
     const regNo = cleanRegisterNo(toSafeString(registerNo));
     const studentName = toSafeString(name).trim();
-    const sec = toSafeString(section).trim().toUpperCase();
     const normalizedDob = normalizeDob(dob);
-    const yearNum = parseInt(year, 10);
 
-    if (!regNo || !studentName || !normalizedDob || !Number.isFinite(yearNum) || !sec) {
+    if (!regNo || !studentName || !normalizedDob) {
       return res.status(400).json({
         success: false,
-        message: 'All fields (Register Number, Name, valid DOB, Year, Section) are required.'
-      });
-    }
-
-    if (![1, 2, 3, 4].includes(yearNum)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Year must be between 1 and 4.'
+        message: 'Register Number, Name, and valid Date of Birth (DOB) are required.'
       });
     }
 
@@ -229,6 +230,34 @@ const addStudent = async (req, res) => {
         success: false,
         message: 'Invalid Register Number format.'
       });
+    }
+
+    // Optional Year validation (1-4 if provided, otherwise null)
+    let yearNum = null;
+    if (year !== undefined && year !== null && String(year).trim() !== '') {
+      const parsedYear = parseInt(year, 10);
+      if ([1, 2, 3, 4].includes(parsedYear)) {
+        yearNum = parsedYear;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Year must be between 1 and 4 if provided.'
+        });
+      }
+    }
+
+    // Optional Section validation (A-D if provided, otherwise null)
+    let sec = null;
+    if (section !== undefined && section !== null && String(section).trim() !== '') {
+      const parsedSec = toSafeString(section).trim().toUpperCase();
+      if (['A', 'B', 'C', 'D'].includes(parsedSec)) {
+        sec = parsedSec;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Section must be A, B, C, or D if provided.'
+        });
+      }
     }
 
     // Check duplicate
@@ -267,7 +296,7 @@ const addStudent = async (req, res) => {
       action: 'ADD_STUDENT',
       studentId: result.insertId,
       studentRegNo: regNo,
-      details: `Added new student ${studentName} (${regNo}) in Year ${yearNum}, Sec ${sec}`,
+      details: `Added new student ${studentName} (${regNo})${yearNum ? ` in Year ${yearNum}` : ''}${sec ? `, Sec ${sec}` : ''}`,
       ipAddress: req.ip
     });
 
@@ -377,8 +406,13 @@ const bulkImportStudents = async (req, res) => {
     if (regCol === -1) regCol = 0;
     if (nameCol === -1) nameCol = 1;
     if (dobCol === -1) dobCol = 2;
-    if (yearCol === -1) yearCol = 3;
-    if (secCol === -1) secCol = 4;
+    // yearCol and secCol are optional: only fallback if there are extra columns in the sheet
+    if (yearCol === -1 && (headerRow ? headerRow.length > 3 : firstRow.length > 3)) {
+      yearCol = 3;
+    }
+    if (secCol === -1 && (headerRow ? headerRow.length > 4 : firstRow.length > 4)) {
+      secCol = 4;
+    }
 
     // Scan batch for unambiguous date format hint (e.g. M/D/YYYY vs D/M/YYYY)
     let batchDateFormat = null;
@@ -412,9 +446,8 @@ const bulkImportStudents = async (req, res) => {
       const cleanRegNo = cleanRegisterNo(rawRegNo);
       const name = String(row[nameCol] || '').trim();
       const rawDob = row[dobCol];
-      const rawYear = row[yearCol];
-      const year = parseInt(String(rawYear || '1').trim(), 10);
-      const section = String(row[secCol] || 'A').trim().toUpperCase() || 'A';
+      const rawYear = yearCol !== -1 ? row[yearCol] : undefined;
+      const rawSec = secCol !== -1 ? row[secCol] : undefined;
 
       if (!cleanRegNo || !name || rawDob === undefined || rawDob === '') {
         errors.push(`Row ${rowNum}: Missing required fields (Register Number, Name, or DOB).`);
@@ -442,10 +475,30 @@ const bulkImportStudents = async (req, res) => {
         continue;
       }
 
-      if (![1, 2, 3, 4].includes(year)) {
-        errors.push(`Row ${rowNum}: Year must be between 1 and 4 for ${cleanRegNo}.`);
-        skippedCount++;
-        continue;
+      // Optional Year validation (1-4 if provided, otherwise null)
+      let year = null;
+      if (rawYear !== undefined && rawYear !== null && String(rawYear).trim() !== '') {
+        const parsedYear = parseInt(String(rawYear).trim(), 10);
+        if ([1, 2, 3, 4].includes(parsedYear)) {
+          year = parsedYear;
+        } else {
+          errors.push(`Row ${rowNum}: Year must be between 1 and 4 for ${cleanRegNo}.`);
+          skippedCount++;
+          continue;
+        }
+      }
+
+      // Optional Section validation (A-D if provided, otherwise null)
+      let section = null;
+      if (rawSec !== undefined && rawSec !== null && String(rawSec).trim() !== '') {
+        const parsedSec = String(rawSec).trim().toUpperCase();
+        if (['A', 'B', 'C', 'D'].includes(parsedSec)) {
+          section = parsedSec;
+        } else {
+          errors.push(`Row ${rowNum}: Section must be A, B, C, or D for ${cleanRegNo}.`);
+          skippedCount++;
+          continue;
+        }
       }
 
       const pwdString = dobToPasswordString(dob);
@@ -465,11 +518,11 @@ const bulkImportStudents = async (req, res) => {
           continue;
         }
 
-        // Sync and update student record for login purpose
+        // Sync and update student record for login purpose (preserve existing year/section if row doesn't provide them)
         try {
           await pool.query(
             `UPDATE students 
-             SET name = ?, dob = ?, password = ?, year = ?, section = ?
+             SET name = ?, dob = ?, password = ?, year = COALESCE(?, year), section = COALESCE(?, section)
              WHERE id = ?`,
             [name, dob, hashedPassword, year, section, existingStudent.id]
           );
@@ -480,7 +533,7 @@ const bulkImportStudents = async (req, res) => {
           skippedCount++;
         }
       } else {
-        // Insert new student record
+        // Insert new student record (year and section can be NULL)
         try {
           await pool.query(
             `INSERT INTO students (register_no, name, dob, password, year, section, status, is_locked)

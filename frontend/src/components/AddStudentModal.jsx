@@ -6,9 +6,7 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     registerNo: '',
     name: '',
-    dob: '',
-    year: '1',
-    section: 'A'
+    dob: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -126,35 +124,8 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Year</label>
-              <select
-                name="year"
-                value={formData.year}
-                onChange={handleChange}
-                className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:border-gov-navy focus:outline-none"
-              >
-                <option value="1">1st Year</option>
-                <option value="2">2nd Year</option>
-                <option value="3">3rd Year</option>
-                <option value="4">4th Year</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Section</label>
-              <select
-                name="section"
-                value={formData.section}
-                onChange={handleChange}
-                className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:border-gov-navy focus:outline-none"
-              >
-                <option value="A">Section A</option>
-                <option value="B">Section B</option>
-                <option value="C">Section C</option>
-              </select>
-            </div>
+          <div className="p-2.5 bg-blue-50/70 border border-blue-200 rounded text-[11.5px] text-blue-900">
+            <strong>Note:</strong> Year of Study and Section will be selected by the student in their profile form.
           </div>
 
           {/* Modal Footer */}

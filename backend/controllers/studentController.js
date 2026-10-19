@@ -138,6 +138,27 @@ const updateStudentDetails = async (req, res) => {
     const d = req.body;
     const errors = {};
 
+    // Validate year & section if provided
+    let validYear = null;
+    if (d.year !== undefined && d.year !== null && String(d.year).trim() !== '') {
+      const parsedYear = parseInt(d.year, 10);
+      if ([1, 2, 3, 4].includes(parsedYear)) {
+        validYear = parsedYear;
+      } else {
+        errors.year = 'Year of study must be between 1 and 4.';
+      }
+    }
+
+    let validSection = null;
+    if (d.section !== undefined && d.section !== null && String(d.section).trim() !== '') {
+      const parsedSec = String(d.section).trim().toUpperCase();
+      if (['A', 'B', 'C', 'D'].includes(parsedSec)) {
+        validSection = parsedSec;
+      } else {
+        errors.section = 'Section must be A, B, C, or D.';
+      }
+    }
+
     // Validate if provided
     if (d.mobile && !validateMobile(d.mobile)) {
       errors.mobile = 'Mobile number must be exactly 10 digits starting with 6-9.';
@@ -202,6 +223,8 @@ const updateStudentDetails = async (req, res) => {
     // Prepare update query
     const updateQuery = `
       UPDATE students SET
+        year = COALESCE(?, year),
+        section = COALESCE(?, section),
         gender = COALESCE(?, gender),
         blood_group = COALESCE(?, blood_group),
         religion = COALESCE(?, religion),
@@ -267,6 +290,8 @@ const updateStudentDetails = async (req, res) => {
     const commAddr = d.isSameAddress ? d.permanentAddress : d.communicationAddress;
 
     const values = [
+      validYear !== null ? validYear : null,
+      validSection !== null ? validSection : null,
       d.gender !== undefined ? parseSafeString(d.gender) : null,
       d.bloodGroup !== undefined ? parseSafeString(d.bloodGroup) : null,
       d.religion !== undefined ? parseSafeString(d.religion) : null,
@@ -388,7 +413,7 @@ const submitStudentDetails = async (req, res) => {
 
     // Verify mandatory profile fields before submission
     const [students] = await pool.query(
-      `SELECT gender, community, religion, mobile, email, aadhaar_no,
+      `SELECT year, section, gender, community, religion, mobile, email, aadhaar_no,
               permanent_address, district, state, pincode, father_name, annual_income, photo_path
        FROM students WHERE id = ?`,
       [studentId]
@@ -397,6 +422,8 @@ const submitStudentDetails = async (req, res) => {
     if (students.length > 0) {
       const s = students[0];
       const missing = [];
+      if (!s.year) missing.push('Year of Study');
+      if (!s.section) missing.push('Section');
       if (!s.gender) missing.push('Gender');
       if (!s.community) missing.push('Community');
       if (!s.religion) missing.push('Religion');

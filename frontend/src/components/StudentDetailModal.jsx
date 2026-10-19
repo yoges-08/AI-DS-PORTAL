@@ -274,7 +274,7 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
                   </div>
                   <div>
                     <span className="text-gray-500 block text-[11px]">Year & Section</span>
-                    <strong>Year {student.year} - Sec {student.section}</strong>
+                    <strong>{student.year ? `Year ${student.year}` : 'Not set'}{student.section ? ` - Sec ${student.section}` : ''}</strong>
                   </div>
                   <div>
                     <span className="text-gray-500 block text-[11px]">Gender / Blood Group</span>
