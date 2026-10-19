@@ -167,8 +167,13 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
     try {
       const res = await api.deleteStudent(student.id);
       alert(res.message || 'Student deleted successfully.');
-      fetchStudents(currentPage);
-      fetchStats();
+      if (search) {
+        setSearch('');
+      } else if (students.length === 1 && currentPage > 1) {
+        setCurrentPage((prev) => Math.max(1, prev - 1));
+      } else {
+        setRefreshTrigger((prev) => prev + 1);
+      }
     } catch (err) {
       alert(err.message || 'Failed to delete student.');
     }
@@ -446,7 +451,15 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
               ) : students.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-gray-500">
-                    No student records matching current filters.
+                    <p className="font-medium">No student records matching current filters.</p>
+                    {(search || year || section || status || firstGraduate || pms) && (
+                      <button
+                        onClick={clearFilters}
+                        className="mt-2 inline-flex items-center text-xs text-gov-navy font-semibold hover:underline"
+                      >
+                        Reset / Show All Students
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -555,6 +568,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         onRefresh={() => {
+          if (search) setSearch('');
           setRefreshTrigger((prev) => prev + 1);
         }}
         onEditStudent={(id) => {
