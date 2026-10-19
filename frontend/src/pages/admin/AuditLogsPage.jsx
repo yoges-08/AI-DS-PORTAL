@@ -131,19 +131,21 @@ export const AuditLogsPage = () => {
             <button
               onClick={() => fetchLogs(pagination.page - 1)}
               disabled={pagination.page <= 1 || loading}
-              className="px-2 py-1 bg-white border border-gray-300 rounded disabled:opacity-40"
+              className="p-2 min-w-[38px] min-h-[38px] flex items-center justify-center bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 transition-colors"
+              aria-label="Previous page"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
-            <span>
+            <span className="px-1 font-medium">
               Page {pagination.page} of {pagination.totalPages || 1}
             </span>
             <button
               onClick={() => fetchLogs(pagination.page + 1)}
               disabled={pagination.page >= pagination.totalPages || loading}
-              className="px-2 py-1 bg-white border border-gray-300 rounded disabled:opacity-40"
+              className="p-2 min-w-[38px] min-h-[38px] flex items-center justify-center bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 transition-colors"
+              aria-label="Next page"
             >
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>

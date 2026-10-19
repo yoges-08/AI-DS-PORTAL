@@ -36,3 +36,7 @@ yarn-error.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local student data & monitoring PDF (local machine only)
+students_60_import.*
+TiDB_Storage_Monitoring_Queries.pdf

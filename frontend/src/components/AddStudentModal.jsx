@@ -56,8 +56,12 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
             <UserPlus className="w-4 h-4" />
             <h3 className="text-sm font-bold uppercase tracking-wide">Add New Student</h3>
           </div>
-          <button onClick={onClose} className="text-gray-300 hover:text-white">
-            <X className="w-4 h-4" />
+          <button 
+            onClick={onClose} 
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 rounded transition-colors"
+            aria-label="Close modal"
+          >
+            <X className="w-5 h-5" />
           </button>
         </div>
 

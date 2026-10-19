@@ -275,7 +275,7 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
               const doc = student.documents?.find((d) => d.doc_type === type);
               return (
                 <div key={type} className="border border-gray-200 p-1.5 rounded flex items-center justify-between">
-                  <span className="capitalize text-gray-700 text-[11px] font-medium">{type.replace('_', ' ')}:</span>
+                  <span className="capitalize text-gray-700 text-[11px] font-medium">{type.replace(/_/g, ' ')}:</span>
                   {doc ? (
                     <span className="text-green-700 font-bold text-[10px]">Verified/Uploaded</span>
                   ) : (

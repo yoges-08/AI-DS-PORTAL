@@ -1,15 +1,15 @@
+const dotenv = require('dotenv');
+// Load environment variables immediately before requiring application modules
+dotenv.config();
+
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
-const dotenv = require('dotenv');
 const fs = require('fs');
 const { testConnection, pool } = require('./config/db');
 const { authenticateToken } = require('./middleware/authMiddleware');
 const { apiLimiter } = require('./middleware/rateLimiter');
-
-// Load environment variables
-dotenv.config();
 
 // Check critical production secrets
 if (process.env.NODE_ENV === 'production') {

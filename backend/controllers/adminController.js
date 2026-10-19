@@ -816,11 +816,19 @@ const deleteStudent = async (req, res) => {
       }
     }
 
-    // Delete documents from database
-    await pool.query('DELETE FROM student_documents WHERE student_id = ?', [studentId]);
-
-    // Delete student record from database
-    await pool.query('DELETE FROM students WHERE id = ?', [studentId]);
+    // Delete documents and student record atomically within a database transaction
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.query('DELETE FROM student_documents WHERE student_id = ?', [studentId]);
+      await conn.query('DELETE FROM students WHERE id = ?', [studentId]);
+      await conn.commit();
+    } catch (dbErr) {
+      await conn.rollback();
+      throw dbErr;
+    } finally {
+      conn.release();
+    }
 
     await logAdminAction({
       adminId: req.user.id,

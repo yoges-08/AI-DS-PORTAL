@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -9,6 +9,17 @@ import {
 } from 'lucide-react';
 
 export const AdminSidebar = ({ activeTab, onSelectTab, isOpenMobile, onCloseMobile }) => {
+  // Lock body scroll when mobile drawer is open to prevent background scrolling
+  useEffect(() => {
+    if (isOpenMobile) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpenMobile]);
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'students', label: 'Student Records', icon: Users },
@@ -90,10 +101,10 @@ export const AdminSidebar = ({ activeTab, onSelectTab, isOpenMobile, onCloseMobi
               <span className="text-xs font-bold uppercase tracking-wider">Navigation Menu</span>
               <button 
                 onClick={onCloseMobile}
-                className="p-1 text-gray-300 hover:text-white rounded"
+                className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 rounded transition-colors"
                 aria-label="Close menu"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 

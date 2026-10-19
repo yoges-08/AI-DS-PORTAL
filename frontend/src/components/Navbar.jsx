@@ -81,9 +81,10 @@ export const Navbar = ({ onToggleMobileMenu, isMobileMenuOpen, onLogoClick }) =>
               <button
                 onClick={logout}
                 title="Sign out of portal"
-                className="inline-flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded bg-white/10 hover:bg-white/20 border border-blue-300/40 hover:border-white transition-all shadow-sm shrink-0"
+                aria-label="Logout"
+                className="inline-flex items-center justify-center space-x-1.5 px-3 py-2 min-h-[38px] sm:min-h-[40px] text-xs font-semibold rounded bg-white/10 hover:bg-white/20 border border-blue-300/40 hover:border-white transition-all shadow-sm shrink-0 focus:outline-none focus:ring-2 focus:ring-white/40"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="w-4 h-4 shrink-0" />
                 <span className="hidden xs:inline">Logout</span>
               </button>
             </div>

@@ -3,6 +3,7 @@ import { api } from '../../services/api';
 import { 
   Users, 
   CheckCircle, 
+  CheckCheck,
   Clock, 
   Award, 
   GraduationCap, 
@@ -38,6 +39,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
 
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -141,14 +143,26 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
     setIsDetailOpen(true);
   };
 
-  const handleExportExcel = () => {
-    const url = api.getExcelExportUrl({ year, section, status });
-    window.open(url, '_blank');
+  const handleExportExcel = async () => {
+    try {
+      setExporting(true);
+      await api.downloadExcel({ year, section, status });
+    } catch (err) {
+      alert(`Excel export failed: ${err.message || 'Unable to download file.'}`);
+    } finally {
+      setExporting(false);
+    }
   };
 
-  const handleExportPdf = () => {
-    const url = api.getPdfExportUrl({ year, section, status });
-    window.open(url, '_blank');
+  const handleExportPdf = async () => {
+    try {
+      setExporting(true);
+      await api.downloadPdf({ year, section, status });
+    } catch (err) {
+      alert(`PDF export failed: ${err.message || 'Unable to download file.'}`);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const clearFilters = () => {
@@ -213,26 +227,28 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
 
           <button
             onClick={handleExportExcel}
-            className="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 text-green-800 text-xs font-semibold rounded hover:bg-green-50 shadow-sm"
+            disabled={exporting}
+            className="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 text-green-800 text-xs font-semibold rounded hover:bg-green-50 shadow-sm disabled:opacity-50 transition-colors"
             title="Download Excel register"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-green-700" />
-            <span>Export Excel</span>
+            <span>{exporting ? 'Exporting...' : 'Export Excel'}</span>
           </button>
 
           <button
             onClick={handleExportPdf}
-            className="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 text-red-800 text-xs font-semibold rounded hover:bg-red-50 shadow-sm"
+            disabled={exporting}
+            className="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 text-red-800 text-xs font-semibold rounded hover:bg-red-50 shadow-sm disabled:opacity-50 transition-colors"
             title="Download official PDF report"
           >
             <FileDown className="w-3.5 h-3.5 mr-1.5 text-red-700" />
-            <span>Export PDF</span>
+            <span>{exporting ? 'Exporting...' : 'Export PDF'}</span>
           </button>
         </div>
       </div>
 
-      {/* Top Summary Cards (6 standard metrics) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* Top Summary Cards (7 key metrics including Verified) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         
         {/* Total Students */}
         <div className="bg-white border border-gov-border rounded p-3.5 shadow-sm">
@@ -252,6 +268,16 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
           </div>
           <div className="text-xl font-bold text-blue-900">{stats.submitted}</div>
           <div className="text-[10px] text-gray-500 mt-0.5">Awaiting verification</div>
+        </div>
+
+        {/* Verified */}
+        <div className="bg-white border border-gov-border rounded p-3.5 shadow-sm">
+          <div className="flex items-center justify-between text-emerald-700 mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Verified</span>
+            <CheckCheck className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="text-xl font-bold text-emerald-900">{stats.verified || 0}</div>
+          <div className="text-[10px] text-gray-500 mt-0.5">Approved & Verified</div>
         </div>
 
         {/* Pending / Draft */}
@@ -276,11 +302,11 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
 
         {/* PMS Beneficiaries */}
         <div className="bg-white border border-gov-border rounded p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-emerald-700 mb-1">
+          <div className="flex items-center justify-between text-teal-700 mb-1">
             <span className="text-[11px] font-semibold uppercase tracking-wider">PMS Beneficiary</span>
-            <Award className="w-4 h-4 text-emerald-700" />
+            <Award className="w-4 h-4 text-teal-700" />
           </div>
-          <div className="text-xl font-bold text-emerald-900">{stats.pmsBeneficiaries}</div>
+          <div className="text-xl font-bold text-teal-900">{stats.pmsBeneficiaries}</div>
           <div className="text-[10px] text-gray-500 mt-0.5">Post Matric Scheme</div>
         </div>
 
@@ -512,8 +538,9 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
                           e.stopPropagation();
                           handleRowClick(student.id);
                         }}
-                        className="p-1 text-gov-navy hover:bg-gray-100 rounded inline-flex items-center"
+                        className="p-2 min-w-[36px] min-h-[36px] text-gov-navy hover:bg-gray-200/60 rounded inline-flex items-center justify-center transition-colors"
                         title="View Full Profile"
+                        aria-label="View Student Profile"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -522,8 +549,9 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
                           e.stopPropagation();
                           handleDeleteStudent(student);
                         }}
-                        className="p-1 text-red-600 hover:bg-red-50 rounded inline-flex items-center"
+                        className="p-2 min-w-[36px] min-h-[36px] text-red-600 hover:bg-red-100/60 rounded inline-flex items-center justify-center transition-colors"
                         title="Permanently Delete Student"
+                        aria-label="Delete Student"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -545,19 +573,19 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
             <button
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={currentPage <= 1 || loading}
-              className="inline-flex items-center px-2 py-1 border border-gray-300 rounded bg-white text-gray-700 disabled:opacity-40 hover:bg-gray-50"
+              className="inline-flex items-center px-3 py-1.5 min-h-[36px] border border-gray-300 rounded bg-white text-gray-700 disabled:opacity-40 hover:bg-gray-50 transition-colors shadow-xs font-medium"
             >
-              <ChevronLeft className="w-3.5 h-3.5 mr-0.5" /> Prev
+              <ChevronLeft className="w-4 h-4 mr-1" /> Prev
             </button>
-            <span className="text-xs">
+            <span className="text-xs px-1">
               Page <strong>{pagination.page || currentPage}</strong> of <strong>{pagination.totalPages || 1}</strong>
             </span>
             <button
               onClick={() => setCurrentPage((prev) => Math.min(pagination.totalPages || 1, prev + 1))}
               disabled={currentPage >= (pagination.totalPages || 1) || loading}
-              className="inline-flex items-center px-2 py-1 border border-gray-300 rounded bg-white text-gray-700 disabled:opacity-40 hover:bg-gray-50"
+              className="inline-flex items-center px-3 py-1.5 min-h-[36px] border border-gray-300 rounded bg-white text-gray-700 disabled:opacity-40 hover:bg-gray-50 transition-colors shadow-xs font-medium"
             >
-              Next <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+              Next <ChevronRight className="w-4 h-4 ml-1" />
             </button>
           </div>
         </div>

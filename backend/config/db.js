@@ -322,24 +322,11 @@ const toSqliteParam = (v) => {
 const pool = {
   async query(sql, params = []) {
     if (dbMode === 'mysql') {
-      try {
-        return await mysqlPool.query(sql, params);
-      } catch (err) {
-        // If MySQL server is down or refused connection
-        if (err.code === 'ECONNREFUSED' || err.code === 'PROTOCOL_CONNECTION_LOST') {
-          if (process.env.NODE_ENV === 'production') {
-            console.error('[DB Fatal] MySQL database unreachable in production mode. Aborting to prevent data loss.');
-            process.exit(1);
-          }
-          console.warn('[DB] MySQL connection lost or unreachable. Activating local SQLite database...');
-          await initSqliteFallback();
-          return this.query(sql, params);
-        }
-        throw err;
-      }
+      // Direct query execution without silent divergence into SQLite
+      return await mysqlPool.query(sql, params);
     }
 
-    // SQLite Execution
+    // SQLite Execution (only used if DB was intentionally initialized in sqlite mode)
     let cleanSql = sql
       .replace(/NOW\(\)/gi, "datetime('now', 'localtime')")
       .replace(/DATE_FORMAT\(([^,]+),\s*'[^']+'\)/gi, "strftime('%d-%m-%Y %H:%M', $1)");
@@ -366,8 +353,12 @@ const pool = {
     if (dbMode === 'mysql') {
       return await mysqlPool.getConnection();
     }
+    // Transaction-safe shim for SQLite / mock connection
     return {
       query: (sql, params) => pool.query(sql, params),
+      beginTransaction: async () => {},
+      commit: async () => {},
+      rollback: async () => {},
       release: () => {}
     };
   }

@@ -63,23 +63,31 @@ const requireStudent = (req, res, next) => {
  */
 const requireSelfOrAdmin = (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
+    return res.status(401).json({ success: false, message: 'Authentication required. Please log in.' });
   }
 
   if (req.user.role === 'ADMIN') {
     return next();
   }
 
-  const targetId = req.params?.id || req.body?.studentId;
-  const requestedStudentId = targetId ? parseInt(targetId, 10) : null;
-  if (requestedStudentId && req.user.id !== requestedStudentId) {
-    return res.status(403).json({
-      success: false,
-      message: 'Unauthorized: You can only access and modify your own student record.'
-    });
+  if (req.user.role === 'STUDENT') {
+    const targetId = req.params?.id || req.body?.studentId;
+    if (targetId) {
+      const requestedStudentId = parseInt(targetId, 10);
+      if (isNaN(requestedStudentId) || req.user.id !== requestedStudentId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Unauthorized: You can only access and modify your own student record.'
+        });
+      }
+    }
+    return next();
   }
 
-  next();
+  return res.status(403).json({
+    success: false,
+    message: 'Access denied: Invalid user role.'
+  });
 };
 
 module.exports = {

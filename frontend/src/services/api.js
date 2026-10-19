@@ -212,7 +212,48 @@ export const api = {
     return handleResponse(res);
   },
 
-  // Export URLs
+  // Authenticated File Downloads (Fixes 401 Unauthorized in window.open)
+  async downloadExcel(filters = {}) {
+    const query = new URLSearchParams(filters).toString();
+    const res = await apiFetch(`${BASE_URL}/export/excel?${query}`, {
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || `Excel export failed with status ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `AAMEC_AIDS_Student_Register_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+  },
+
+  async downloadPdf(filters = {}) {
+    const query = new URLSearchParams(filters).toString();
+    const res = await apiFetch(`${BASE_URL}/export/pdf?${query}`, {
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || `PDF export failed with status ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `AAMEC_AIDS_Official_Register_${new Date().toISOString().slice(0, 10)}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+  },
+
+  // Export URLs (legacy string references)
   getExcelExportUrl(filters = {}) {
     const query = new URLSearchParams(filters).toString();
     return `${BASE_URL}/export/excel?${query}`;

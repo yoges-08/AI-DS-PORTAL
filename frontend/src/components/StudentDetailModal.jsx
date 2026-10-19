@@ -130,7 +130,11 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
             </h3>
             {student && <StatusBadge status={student.status} isLocked={Boolean(student.is_locked)} />}
           </div>
-          <button onClick={onClose} className="text-gray-300 hover:text-white">
+          <button 
+            onClick={onClose} 
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 rounded transition-colors"
+            aria-label="Close modal"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -366,7 +370,7 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
                         <div className="flex items-center space-x-2 truncate">
                           <FileText className="w-4 h-4 text-gov-navy shrink-0" />
                           <div className="truncate">
-                            <span className="font-semibold block capitalize truncate">{doc.doc_type.replace('_', ' ')}</span>
+                            <span className="font-semibold block capitalize truncate">{doc.doc_type.replace(/_/g, ' ')}</span>
                             <span className="text-[10px] text-gray-500 truncate block">{doc.file_name}</span>
                           </div>
                         </div>

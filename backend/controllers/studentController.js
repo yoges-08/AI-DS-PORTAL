@@ -220,140 +220,98 @@ const updateStudentDetails = async (req, res) => {
       updatedRejectionReason = null;
     }
 
-    // Prepare update query
-    const updateQuery = `
-      UPDATE students SET
-        year = COALESCE(?, year),
-        section = COALESCE(?, section),
-        gender = COALESCE(?, gender),
-        blood_group = COALESCE(?, blood_group),
-        religion = COALESCE(?, religion),
-        community = COALESCE(?, community),
-        caste = COALESCE(?, caste),
-        nationality = COALESCE(?, nationality),
-        aadhaar_no = COALESCE(?, aadhaar_no),
-        mother_tongue = COALESCE(?, mother_tongue),
+    // Helper to safely parse boolean values from string/number/boolean
+    const parseSafeBoolean = (val) => {
+      if (val === undefined || val === null) return null;
+      if (val === true || val === 1 || val === 'true' || val === '1') return 1;
+      if (val === false || val === 0 || val === 'false' || val === '0') return 0;
+      return null;
+    };
 
-        mobile = COALESCE(?, mobile),
-        alt_mobile = COALESCE(?, alt_mobile),
-        email = COALESCE(?, email),
-        permanent_address = COALESCE(?, permanent_address),
-        communication_address = COALESCE(?, communication_address),
-        is_same_address = COALESCE(?, is_same_address),
-        district = COALESCE(?, district),
-        state = COALESCE(?, state),
-        pincode = COALESCE(?, pincode),
+    const isSameAddressBool = parseSafeBoolean(d.isSameAddress);
+    const commAddr = (isSameAddressBool === 1) ? d.permanentAddress : d.communicationAddress;
 
-        father_name = COALESCE(?, father_name),
-        mother_name = COALESCE(?, mother_name),
-        guardian_name = COALESCE(?, guardian_name),
-        parents_occupation = COALESCE(?, parents_occupation),
-        parents_mobile = COALESCE(?, parents_mobile),
-        annual_income = COALESCE(?, annual_income),
+    // Field mapping definition: [bodyKey, dbColumn, parserFunction]
+    const fieldDefinitions = [
+      ['year', 'year', () => (validYear !== null ? validYear : null)],
+      ['section', 'section', () => (validSection !== null ? validSection : null)],
+      ['gender', 'gender', (v) => parseSafeString(v)],
+      ['bloodGroup', 'blood_group', (v) => parseSafeString(v)],
+      ['religion', 'religion', (v) => parseSafeString(v)],
+      ['community', 'community', (v) => parseSafeString(v)],
+      ['caste', 'caste', (v) => parseSafeString(v)],
+      ['nationality', 'nationality', (v) => parseSafeString(v)],
+      ['aadhaarNo', 'aadhaar_no', (v) => parseSafeString(v)],
+      ['motherTongue', 'mother_tongue', (v) => parseSafeString(v)],
 
-        sslc_school = COALESCE(?, sslc_school),
-        sslc_board = COALESCE(?, sslc_board),
-        sslc_year = COALESCE(?, sslc_year),
-        sslc_percentage = COALESCE(?, sslc_percentage),
-        hsc_school = COALESCE(?, hsc_school),
-        hsc_board = COALESCE(?, hsc_board),
-        hsc_year = COALESCE(?, hsc_year),
-        hsc_percentage = COALESCE(?, hsc_percentage),
-        current_semester = COALESCE(?, current_semester),
-        mode_of_admission = COALESCE(?, mode_of_admission),
+      ['mobile', 'mobile', (v) => parseSafeString(v)],
+      ['altMobile', 'alt_mobile', (v) => parseSafeString(v)],
+      ['email', 'email', (v) => parseSafeString(v)],
+      ['permanentAddress', 'permanent_address', (v) => parseSafeString(v)],
+      ['communicationAddress', 'communication_address', () => (commAddr !== undefined ? parseSafeString(commAddr) : null)],
+      ['isSameAddress', 'is_same_address', () => (isSameAddressBool !== null ? isSameAddressBool : 0)],
+      ['district', 'district', (v) => parseSafeString(v)],
+      ['state', 'state', (v) => parseSafeString(v)],
+      ['pincode', 'pincode', (v) => parseSafeString(v)],
 
-        is_first_graduate = COALESCE(?, is_first_graduate),
-        is_pms = COALESCE(?, is_pms),
-        pms_application_no = COALESCE(?, pms_application_no),
-        pms_status = COALESCE(?, pms_status),
-        other_scholarship_name = COALESCE(?, other_scholarship_name),
-        other_scholarship_amount = COALESCE(?, other_scholarship_amount),
-        other_scholarship_status = COALESCE(?, other_scholarship_status),
-        community_cert_no = COALESCE(?, community_cert_no),
-        community_cert_issuer = COALESCE(?, community_cert_issuer),
-        community_cert_date = COALESCE(?, community_cert_date),
-        income_cert_no = COALESCE(?, income_cert_no),
-        income_cert_issuer = COALESCE(?, income_cert_issuer),
-        income_cert_date = COALESCE(?, income_cert_date),
+      ['fatherName', 'father_name', (v) => parseSafeString(v)],
+      ['motherName', 'mother_name', (v) => parseSafeString(v)],
+      ['guardianName', 'guardian_name', (v) => parseSafeString(v)],
+      ['parentsOccupation', 'parents_occupation', (v) => parseSafeString(v)],
+      ['parentsMobile', 'parents_mobile', (v) => parseSafeString(v)],
+      ['annualIncome', 'annual_income', (v) => parseSafeFloat(v)],
 
-        bank_acc_holder = COALESCE(?, bank_acc_holder),
-        bank_name = COALESCE(?, bank_name),
-        bank_acc_no = COALESCE(?, bank_acc_no),
-        bank_ifsc = COALESCE(?, bank_ifsc),
-        bank_branch = COALESCE(?, bank_branch),
+      ['sslcSchool', 'sslc_school', (v) => parseSafeString(v)],
+      ['sslcBoard', 'sslc_board', (v) => parseSafeString(v)],
+      ['sslcYear', 'sslc_year', (v) => parseSafeInt(v)],
+      ['sslcPercentage', 'sslc_percentage', (v) => parseSafeFloat(v)],
+      ['hscSchool', 'hsc_school', (v) => parseSafeString(v)],
+      ['hscBoard', 'hsc_board', (v) => parseSafeString(v)],
+      ['hscYear', 'hsc_year', (v) => parseSafeInt(v)],
+      ['hscPercentage', 'hsc_percentage', (v) => parseSafeFloat(v)],
+      ['currentSemester', 'current_semester', (v) => parseSafeInt(v)],
+      ['modeOfAdmission', 'mode_of_admission', (v) => parseSafeString(v)],
 
-        status = ?,
-        rejection_reason = CASE WHEN ? = 'DRAFT' THEN NULL ELSE rejection_reason END
-      WHERE id = ?
-    `;
+      ['isFirstGraduate', 'is_first_graduate', (v) => parseSafeBoolean(v)],
+      ['isPms', 'is_pms', (v) => parseSafeBoolean(v)],
+      ['pmsApplicationNo', 'pms_application_no', (v) => parseSafeString(v)],
+      ['pmsStatus', 'pms_status', (v) => parseSafeString(v)],
+      ['otherScholarshipName', 'other_scholarship_name', (v) => parseSafeString(v)],
+      ['otherScholarshipAmount', 'other_scholarship_amount', (v) => parseSafeFloat(v)],
+      ['otherScholarshipStatus', 'other_scholarship_status', (v) => parseSafeString(v)],
+      ['communityCertNo', 'community_cert_no', (v) => parseSafeString(v)],
+      ['communityCertIssuer', 'community_cert_issuer', (v) => parseSafeString(v)],
+      ['communityCertDate', 'community_cert_date', (v) => (parseSafeString(v) || null)],
+      ['incomeCertNo', 'income_cert_no', (v) => parseSafeString(v)],
+      ['incomeCertIssuer', 'income_cert_issuer', (v) => parseSafeString(v)],
+      ['incomeCertDate', 'income_cert_date', (v) => (parseSafeString(v) || null)],
 
-    const commAddr = d.isSameAddress ? d.permanentAddress : d.communicationAddress;
-
-    const values = [
-      validYear !== null ? validYear : null,
-      validSection !== null ? validSection : null,
-      d.gender !== undefined ? parseSafeString(d.gender) : null,
-      d.bloodGroup !== undefined ? parseSafeString(d.bloodGroup) : null,
-      d.religion !== undefined ? parseSafeString(d.religion) : null,
-      d.community !== undefined ? parseSafeString(d.community) : null,
-      d.caste !== undefined ? parseSafeString(d.caste) : null,
-      d.nationality !== undefined ? parseSafeString(d.nationality) : null,
-      d.aadhaarNo !== undefined ? parseSafeString(d.aadhaarNo) : null,
-      d.motherTongue !== undefined ? parseSafeString(d.motherTongue) : null,
-
-      d.mobile !== undefined ? parseSafeString(d.mobile) : null,
-      d.altMobile !== undefined ? parseSafeString(d.altMobile) : null,
-      d.email !== undefined ? parseSafeString(d.email) : null,
-      d.permanentAddress !== undefined ? parseSafeString(d.permanentAddress) : null,
-      commAddr !== undefined ? parseSafeString(commAddr) : null,
-      d.isSameAddress !== undefined ? (d.isSameAddress ? 1 : 0) : null,
-      d.district !== undefined ? parseSafeString(d.district) : null,
-      d.state !== undefined ? parseSafeString(d.state) : null,
-      d.pincode !== undefined ? parseSafeString(d.pincode) : null,
-
-      d.fatherName !== undefined ? parseSafeString(d.fatherName) : null,
-      d.motherName !== undefined ? parseSafeString(d.motherName) : null,
-      d.guardianName !== undefined ? parseSafeString(d.guardianName) : null,
-      d.parentsOccupation !== undefined ? parseSafeString(d.parentsOccupation) : null,
-      d.parentsMobile !== undefined ? parseSafeString(d.parentsMobile) : null,
-      d.annualIncome !== undefined ? parseSafeFloat(d.annualIncome) : null,
-
-      d.sslcSchool !== undefined ? parseSafeString(d.sslcSchool) : null,
-      d.sslcBoard !== undefined ? parseSafeString(d.sslcBoard) : null,
-      d.sslcYear !== undefined ? parseSafeInt(d.sslcYear) : null,
-      d.sslcPercentage !== undefined ? parseSafeFloat(d.sslcPercentage) : null,
-      d.hscSchool !== undefined ? parseSafeString(d.hscSchool) : null,
-      d.hscBoard !== undefined ? parseSafeString(d.hscBoard) : null,
-      d.hscYear !== undefined ? parseSafeInt(d.hscYear) : null,
-      d.hscPercentage !== undefined ? parseSafeFloat(d.hscPercentage) : null,
-      d.currentSemester !== undefined ? parseSafeInt(d.currentSemester) : null,
-      d.modeOfAdmission !== undefined ? parseSafeString(d.modeOfAdmission) : null,
-
-      d.isFirstGraduate !== undefined ? (d.isFirstGraduate ? 1 : 0) : null,
-      d.isPms !== undefined ? (d.isPms ? 1 : 0) : null,
-      d.pmsApplicationNo !== undefined ? parseSafeString(d.pmsApplicationNo) : null,
-      d.pmsStatus !== undefined ? parseSafeString(d.pmsStatus) : null,
-      d.otherScholarshipName !== undefined ? parseSafeString(d.otherScholarshipName) : null,
-      d.otherScholarshipAmount !== undefined ? parseSafeFloat(d.otherScholarshipAmount) : null,
-      d.otherScholarshipStatus !== undefined ? parseSafeString(d.otherScholarshipStatus) : null,
-      d.communityCertNo !== undefined ? parseSafeString(d.communityCertNo) : null,
-      d.communityCertIssuer !== undefined ? parseSafeString(d.communityCertIssuer) : null,
-      d.communityCertDate !== undefined ? (parseSafeString(d.communityCertDate) || null) : null,
-      d.incomeCertNo !== undefined ? parseSafeString(d.incomeCertNo) : null,
-      d.incomeCertIssuer !== undefined ? parseSafeString(d.incomeCertIssuer) : null,
-      d.incomeCertDate !== undefined ? (parseSafeString(d.incomeCertDate) || null) : null,
-
-      d.bankAccHolder !== undefined ? parseSafeString(d.bankAccHolder) : null,
-      d.bankName !== undefined ? parseSafeString(d.bankName) : null,
-      d.bankAccNo !== undefined ? parseSafeString(d.bankAccNo) : null,
-      safeIfsc !== null ? safeIfsc : null,
-      d.bankBranch !== undefined ? parseSafeString(d.bankBranch) : null,
-
-      updatedStatus,
-      updatedStatus,
-      studentId
+      ['bankAccHolder', 'bank_acc_holder', (v) => parseSafeString(v)],
+      ['bankName', 'bank_name', (v) => parseSafeString(v)],
+      ['bankAccNo', 'bank_acc_no', (v) => parseSafeString(v)],
+      ['bankIfsc', 'bank_ifsc', () => (safeIfsc || null)],
+      ['bankBranch', 'bank_branch', (v) => parseSafeString(v)],
     ];
 
+    const setClauses = [];
+    const values = [];
+
+    for (const [key, col, parser] of fieldDefinitions) {
+      if (d[key] !== undefined || (key === 'communicationAddress' && d.permanentAddress !== undefined)) {
+        setClauses.push(`${col} = ?`);
+        values.push(parser(d[key]));
+      }
+    }
+
+    setClauses.push('status = ?');
+    values.push(updatedStatus);
+
+    setClauses.push("rejection_reason = CASE WHEN ? = 'DRAFT' THEN NULL ELSE rejection_reason END");
+    values.push(updatedStatus);
+
+    values.push(studentId);
+
+    const updateQuery = `UPDATE students SET ${setClauses.join(', ')} WHERE id = ?`;
     await pool.query(updateQuery, values);
 
     return res.json({
