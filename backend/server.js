@@ -95,22 +95,32 @@ app.get('/uploads/:filename', authenticateToken, async (req, res) => {
     const filePath = `/uploads/${filename}`;
     const absoluteDiskPath = path.join(uploadsDir, filename);
 
-    if (!fs.existsSync(absoluteDiskPath)) {
-      return res.status(404).json({ success: false, message: 'Document file not found.' });
+    // 1. Look up document in database (including file_data BLOB from TiDB)
+    const [docs] = await pool.query(
+      'SELECT id, student_id, file_name, mime_type, file_data FROM student_documents WHERE file_path = ?',
+      [filePath]
+    );
+
+    let docRow = docs.length > 0 ? docs[0] : null;
+
+    if (!docRow) {
+      const [photo] = await pool.query(
+        'SELECT id, name, photo_path FROM students WHERE photo_path = ?',
+        [filePath]
+      );
+      if (photo.length > 0) {
+        docRow = {
+          student_id: photo[0].id,
+          file_name: `${photo[0].name}_photo.jpg`,
+          mime_type: 'image/jpeg',
+          file_data: null
+        };
+      }
     }
 
     // Role-based access control: Students can only view their own documents; Admins can view all departmental files
     if (req.user.role === 'STUDENT') {
-      const [docs] = await pool.query(
-        'SELECT id FROM student_documents WHERE student_id = ? AND file_path = ?',
-        [req.user.id, filePath]
-      );
-      const [photo] = await pool.query(
-        'SELECT id FROM students WHERE id = ? AND photo_path = ?',
-        [req.user.id, filePath]
-      );
-
-      if (docs.length === 0 && photo.length === 0) {
+      if (!docRow || docRow.student_id !== req.user.id) {
         return res.status(403).json({
           success: false,
           message: 'Access denied: You do not have permission to view this document.'
@@ -123,7 +133,20 @@ app.get('/uploads/:filename', authenticateToken, async (req, res) => {
     // Security headers to prevent content sniffing while allowing native Chrome/Edge PDF viewers
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'");
-    return res.sendFile(absoluteDiskPath);
+
+    // 2. Serve from database LONGBLOB (TiDB Cloud)
+    if (docRow && docRow.file_data) {
+      res.setHeader('Content-Type', docRow.mime_type || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(docRow.file_name || filename)}"`);
+      return res.send(docRow.file_data);
+    }
+
+    // 3. Fallback to local server disk if file_data is not in database
+    if (fs.existsSync(absoluteDiskPath)) {
+      return res.sendFile(absoluteDiskPath);
+    }
+
+    return res.status(404).json({ success: false, message: 'Document file not found.' });
 
   } catch (err) {
     console.error('[Document Access Error]:', err);

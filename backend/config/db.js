@@ -145,6 +145,7 @@ const initSqliteFallback = async () => {
         file_path TEXT NOT NULL,
         file_size INTEGER NOT NULL,
         mime_type TEXT NOT NULL,
+        file_data BLOB,
         uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
       );
@@ -305,6 +306,7 @@ const initSqliteFallback = async () => {
  */
 const toSqliteParam = (v) => {
   if (v === undefined) return null;
+  if (Buffer.isBuffer(v) || v instanceof Uint8Array) return v;
   if (v instanceof Date) {
     const p = (n) => String(n).padStart(2, '0');
     return `${v.getFullYear()}-${p(v.getMonth() + 1)}-${p(v.getDate())} ${p(v.getHours())}:${p(v.getMinutes())}:${p(v.getSeconds())}`;
@@ -382,6 +384,11 @@ const testConnection = async () => {
       await conn.query('ALTER TABLE `students` MODIFY `year` INT NULL, MODIFY `section` VARCHAR(5) NULL;');
     } catch (migErr) {
       // Ignore if columns are already nullable or table not created yet
+    }
+    try {
+      await conn.query('ALTER TABLE `student_documents` ADD COLUMN IF NOT EXISTS `file_data` LONGBLOB NULL;');
+    } catch (migErr) {
+      // Ignore if column exists
     }
     conn.release();
     dbMode = 'mysql';

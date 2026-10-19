@@ -530,6 +530,16 @@ const uploadDocument = async (req, res) => {
 
     const filePath = `/uploads/${req.file.filename}`;
 
+    // Read file buffer for permanent storage in TiDB / database
+    let fileBuffer = null;
+    if (req.file.path && fs.existsSync(req.file.path)) {
+      try {
+        fileBuffer = fs.readFileSync(req.file.path);
+      } catch (readErr) {
+        console.warn('[uploadDocument] Could not read file buffer:', readErr.message);
+      }
+    }
+
     // If uploading photo, update photo_path in students table
     if (docType === 'photo') {
       await pool.query(
@@ -553,15 +563,15 @@ const uploadDocument = async (req, res) => {
 
       await pool.query(
         `UPDATE student_documents SET 
-           file_name = ?, file_path = ?, file_size = ?, mime_type = ?, uploaded_at = NOW() 
+           file_name = ?, file_path = ?, file_size = ?, mime_type = ?, file_data = ?, uploaded_at = NOW() 
          WHERE id = ?`,
-        [req.file.originalname, filePath, req.file.size, req.file.mimetype, existingDoc[0].id]
+        [req.file.originalname, filePath, req.file.size, req.file.mimetype, fileBuffer, existingDoc[0].id]
       );
     } else {
       await pool.query(
-        `INSERT INTO student_documents (student_id, doc_type, file_name, file_path, file_size, mime_type, uploaded_at)
-         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-        [studentId, docType, req.file.originalname, filePath, req.file.size, req.file.mimetype]
+        `INSERT INTO student_documents (student_id, doc_type, file_name, file_path, file_size, mime_type, file_data, uploaded_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [studentId, docType, req.file.originalname, filePath, req.file.size, req.file.mimetype, fileBuffer]
       );
     }
 
