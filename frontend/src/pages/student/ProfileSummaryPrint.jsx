@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../../services/api';
+import { api, getFileUrl } from '../../services/api';
 import { Printer, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { StatusBadge } from '../../components/StatusBadge';
 
@@ -133,7 +133,7 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
           {/* Student Photo Box */}
           <div className="w-28 h-36 border border-gray-400 bg-gray-50 rounded flex flex-col items-center justify-center p-1 shrink-0 self-center sm:self-start">
             {student.photo_path ? (
-              <img src={student.photo_path} alt="Photo" className="w-full h-full object-cover" />
+              <img src={getFileUrl(student.photo_path)} alt="Photo" className="w-full h-full object-cover" />
             ) : (
               <div className="text-[10px] text-gray-400 text-center">Affix Passport Photo</div>
             )}

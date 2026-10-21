@@ -1,20 +1,81 @@
 # AI-SA-PORTAL – Production Deployment Guide
 
 **Project:** Department Student Information System (AI & DS)  
-**Stack:** React 18 (Vite + Tailwind CSS) + Express 5 (Node.js) + MySQL (with SQLite zero-config fallback)
+**Stack:** React 18 (Vite + Tailwind CSS) + Express 5 (Node.js) + MySQL / TiDB (with SQLite zero-config fallback)
 
 ---
 
-## Architecture Overview
+## Deployment Architecture Options
 
-This project is configured as a **unified full-stack application**:
-- The React frontend compiles into static assets in `frontend/dist/`.
-- The Express backend (`backend/server.js`) serves both the `/api` REST endpoints and the compiled React production frontend with client-side SPA routing (`index.html`).
-- This means you can deploy the **entire system as a single web service** on one domain with **no CORS issues**!
+1. **Option A (Frontend on Vercel + Backend on Render – Recommended):**
+   - **Frontend (Vercel):** Lightning-fast global Edge CDN, instant previews, zero build timeouts, automated SSL.
+   - **Backend (Render):** Express REST API, background database connections (TiDB Cloud / MySQL), document streaming.
+   - Fully configured with CORS whitelisting, cross-domain Bearer auth tokens, and SPA routing.
+
+2. **Option B (All-in-One on Render):**
+   - Express server serves both compiled Vite frontend (`dist/`) and `/api` routes from a single Render Web Service.
 
 ---
 
-## Method 1: Deploy on Render.com (Recommended – 100% Free & Easy)
+## Method 1: Deploy Frontend on Vercel + Backend on Render (Recommended)
+
+### Step 1: Prepare Your Backend on Render
+
+If your backend is already deployed on Render:
+1. Go to your **Render Dashboard** -> Open your Web Service (e.g., `ai-sa-portal` or `aids-portal-api`).
+2. Copy your Render backend URL (e.g., `https://your-backend.onrender.com`).
+3. Under **Environment**, make sure the following variables are configured:
+   - `NODE_ENV` = `production`
+   - `TRUST_PROXY` = `1`
+   - `JWT_SECRET` = `(your 32+ character random string)`
+   - `COOKIE_SECRET` = `(your 32+ character random string)`
+   - `CLIENT_URL` = `https://your-frontend-app.vercel.app` *(or comma-separated list of your Vercel domains)*
+   - Database credentials (`DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_PORT`)
+4. *(Optional Build Speedup)*: Since frontend is on Vercel, you can set the **Build Command** on Render to:
+   ```bash
+   npm run build:backend
+   ```
+   and **Start Command** to:
+   ```bash
+   npm start
+   ```
+
+---
+
+### Step 2: Deploy Frontend on Vercel
+
+1. **Sign in to Vercel:**
+   - Go to [vercel.com](https://vercel.com) and log in with your GitHub account (`yoges-08`).
+
+2. **Import Your Repository:**
+   - Click **Add New...** -> **Project**.
+   - Under *Import Git Repository*, locate `yoges-08/AI-SA-PORTAL` and click **Import**.
+
+3. **Configure Project Settings:**
+   - **Framework Preset:** `Vite` (automatically detected)
+   - **Root Directory:** Click **Edit** and select or type `frontend` *(Note: If you leave it as `./`, the root `vercel.json` will also build it automatically)*.
+   - **Build and Output Settings:** Leave at default:
+     - Build Command: `npm run build` (or `vite build`)
+     - Output Directory: `dist`
+     - Install Command: `npm install`
+
+4. **Add Environment Variable:**
+   - Expand the **Environment Variables** section:
+     - **Key:** `VITE_API_URL`
+     - **Value:** `https://your-backend.onrender.com` *(Replace with your actual live Render backend URL, without trailing slash)*
+
+5. **Deploy:**
+   - Click **Deploy**.
+   - In ~30–45 seconds, Vercel will build and publish your frontend to a global edge domain (e.g. `https://ai-sa-portal.vercel.app`).
+
+6. **Connect the Backend (CORS Final Step):**
+   - Copy your new Vercel production URL (e.g., `https://ai-sa-portal.vercel.app`).
+   - In Render Dashboard -> Environment Variables -> update `CLIENT_URL` to include your Vercel URL.
+   *(Note: The backend also has automatic regex matching for all `*.vercel.app` domains, so preview and production deployments are accepted automatically).*
+
+---
+
+## Method 2: Deploy All-in-One on Render.com (Single Service)
 
 Render allows you to deploy Node.js web services directly from your GitHub repository for free.
 

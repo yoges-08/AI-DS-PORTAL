@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { api } from '../../services/api';
+import { api, getFileUrl } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ProgressBar } from '../../components/ProgressBar';
 import { DocumentUploadField } from '../../components/DocumentUploadField';
@@ -1057,7 +1057,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                 <div className="w-24 h-28 border border-gray-300 bg-gray-50 rounded flex items-center justify-center overflow-hidden shrink-0">
                   {formData.photoPath ? (
                     <img 
-                      src={formData.photoPath} 
+                      src={getFileUrl(formData.photoPath)} 
                       alt="Student" 
                       className="w-full h-full object-cover" 
                     />

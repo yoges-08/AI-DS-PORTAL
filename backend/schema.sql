@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS `students` (
   `aadhaar_no` VARCHAR(12) NULL,
   `mother_tongue` VARCHAR(50) NULL,
   `photo_path` VARCHAR(255) NULL,
+  `photo_data` LONGBLOB NULL,
 
   -- Step 2: Contact Details
   `mobile` VARCHAR(15) NULL,

@@ -39,24 +39,35 @@ const tempDir = path.join(__dirname, 'uploads', 'temp');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
-// CORS Configuration: Whitelist CLIENT_URL, same-host requests, and dev loopbacks
+// CORS Configuration: Whitelist CLIENT_URL (supports comma-separated list), Vercel deployments, same-host, and dev loopbacks
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map(url => url.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+
+const vercelOriginRegex = /^https:\/\/([a-zA-Z0-9_\-]+\.)*vercel\.app$/;
 const localOriginRegex = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
 app.use(cors((req, callback) => {
   const origin = req.headers.origin;
-  let allowed = !origin || origin === CLIENT_URL;
+  let allowed = false;
 
-  // Same-site request (site opened at its own served address / host)
-  if (!allowed && origin) {
+  if (!origin) {
+    allowed = true; // Non-browser or same-origin requests
+  } else if (allowedOrigins.includes(origin)) {
+    allowed = true;
+  } else if (vercelOriginRegex.test(origin)) {
+    // Automatically allow Vercel production and preview domains
+    allowed = true;
+  } else if (process.env.NODE_ENV !== 'production' && localOriginRegex.test(origin)) {
+    allowed = true;
+  } else {
     try {
+      // Same-site request (site opened at its own served address / host)
       allowed = new URL(origin).host === req.headers.host;
     } catch (e) {
       allowed = false;
     }
-  }
-
-  // Local development loopback
-  if (!allowed && process.env.NODE_ENV !== 'production') {
-    allowed = localOriginRegex.test(origin || '');
   }
 
   callback(null, {
@@ -189,6 +200,16 @@ app.use('/api', (req, res) => {
 if (fs.existsSync(frontendDist)) {
   app.get('/{*splat}', (req, res) => {
     res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.json({
+      status: 'UP',
+      service: 'Department Student Information System API (AI & DS)',
+      message: 'Backend server is running on Render.',
+      clientUrl: CLIENT_URL,
+      health: '/api/health'
+    });
   });
 }
 

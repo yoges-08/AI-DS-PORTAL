@@ -86,6 +86,7 @@ const seedDatabase = async () => {
         \`aadhaar_no\` VARCHAR(12) NULL,
         \`mother_tongue\` VARCHAR(50) NULL,
         \`photo_path\` VARCHAR(255) NULL,
+        \`photo_data\` LONGBLOB NULL,
         \`mobile\` VARCHAR(15) NULL,
         \`alt_mobile\` VARCHAR(15) NULL,
         \`email\` VARCHAR(100) NULL,

@@ -13,7 +13,7 @@ import {
   AlertCircle,
   Trash2
 } from 'lucide-react';
-import { api } from '../services/api';
+import { api, getFileUrl } from '../services/api';
 import { StatusBadge } from './StatusBadge';
 
 export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEditStudent }) => {
@@ -257,7 +257,7 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
               <div className="flex flex-col sm:flex-row gap-5 border border-gray-200 p-4 rounded bg-gray-50/50">
                 <div className="w-24 h-32 border border-gray-300 bg-gray-100 rounded flex items-center justify-center overflow-hidden shrink-0">
                   {student.photo_path ? (
-                    <img src={student.photo_path} alt="Student" className="w-full h-full object-cover" />
+                    <img src={getFileUrl(student.photo_path)} alt="Student" className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-[11px] text-gray-400 text-center">No Photo</span>
                   )}
@@ -375,7 +375,7 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
                           </div>
                         </div>
                         <a
-                          href={doc.file_path}
+                          href={getFileUrl(doc.file_path)}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center px-2 py-1 bg-white border border-gray-300 text-gov-navy rounded text-[11px] font-semibold hover:bg-gray-100 shrink-0 ml-2"

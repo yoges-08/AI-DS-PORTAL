@@ -1,6 +1,7 @@
 /**
  * API Service for Department Student Information System
- * Handles cookies, JSON requests, and file uploads with automatic proxy failover.
+ * Handles cookies, JSON requests, and file uploads with automatic proxy failover
+ * and Bearer token synchronization for cross-domain Vercel -> Render deployments.
  */
 
 const API_HOST = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).replace(/\/$/, '') : '';
@@ -8,12 +9,25 @@ const BASE_URL = `${API_HOST}/api`;
 
 /**
  * Robust fetch wrapper:
- * 1. Attempts relative URL via Vite proxy or direct base URL.
- * 2. In local development, if proxy is disconnected, falls back to direct port 5000.
+ * 1. Attaches Bearer token from localStorage (essential for cross-origin deployments if 3rd-party cookies are restricted)
+ * 2. Attempts relative URL via Vite proxy or direct base URL
+ * 3. In local development, if proxy is disconnected, falls back to direct port 5000.
  */
 const apiFetch = async (url, options = {}) => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const headers = new Headers(options.headers || {});
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const finalOptions = {
+    ...options,
+    headers,
+    credentials: options.credentials || 'include'
+  };
+
   try {
-    return await fetch(url, options);
+    return await fetch(url, finalOptions);
   } catch (err) {
     const method = (options.method || 'GET').toUpperCase();
     // Only safely retry idempotent GET requests in local dev to prevent duplicate uploads or inserts
@@ -22,16 +36,15 @@ const apiFetch = async (url, options = {}) => {
       const directTarget = `http://127.0.0.1:5000${cleanPath}`;
       console.warn(`[API Proxy Failover] Request to ${url} failed (${err.message}). Retrying directly at ${directTarget}...`);
       try {
-        return await fetch(directTarget, options);
+        return await fetch(directTarget, finalOptions);
       } catch (directErr) {
         const localhostTarget = `http://localhost:5000${cleanPath}`;
-        return await fetch(localhostTarget, options);
+        return await fetch(localhostTarget, finalOptions);
       }
     }
     throw err;
   }
 };
-
 
 const handleResponse = async (response) => {
   const data = await response.json().catch(() => ({}));
@@ -44,6 +57,25 @@ const handleResponse = async (response) => {
   return data;
 };
 
+/**
+ * Helper to construct full authenticated URLs for photos, uploaded documents, and files.
+ * Supports cross-domain Vercel frontend -> Render backend, with Bearer token authentication fallback.
+ */
+export const getFileUrl = (filePath) => {
+  if (!filePath) return '';
+  if (filePath.startsWith('http://') || filePath.startsWith('https://') || filePath.startsWith('data:') || filePath.startsWith('blob:')) {
+    return filePath;
+  }
+  const cleanPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+  const base = API_HOST || '';
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (token) {
+    const separator = cleanPath.includes('?') ? '&' : '?';
+    return `${base}${cleanPath}${separator}token=${encodeURIComponent(token)}`;
+  }
+  return `${base}${cleanPath}`;
+};
+
 export const api = {
   // Auth
   async loginStudent(registerNo, password) {
@@ -53,7 +85,11 @@ export const api = {
       credentials: 'include',
       body: JSON.stringify({ registerNo, password })
     });
-    return handleResponse(res);
+    const data = await handleResponse(res);
+    if (data?.token && typeof window !== 'undefined') {
+      localStorage.setItem('token', data.token);
+    }
+    return data;
   },
 
   async loginAdmin(username, password) {
@@ -63,22 +99,39 @@ export const api = {
       credentials: 'include',
       body: JSON.stringify({ username, password })
     });
-    return handleResponse(res);
+    const data = await handleResponse(res);
+    if (data?.token && typeof window !== 'undefined') {
+      localStorage.setItem('token', data.token);
+    }
+    return data;
   },
 
   async logout() {
-    const res = await apiFetch(`${BASE_URL}/auth/logout`, {
-      method: 'POST',
-      credentials: 'include'
-    });
-    return handleResponse(res);
+    try {
+      const res = await apiFetch(`${BASE_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      return await handleResponse(res);
+    } finally {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+      }
+    }
   },
 
   async getCurrentUser() {
-    const res = await apiFetch(`${BASE_URL}/auth/me`, {
-      credentials: 'include'
-    });
-    return handleResponse(res);
+    try {
+      const res = await apiFetch(`${BASE_URL}/auth/me`, {
+        credentials: 'include'
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      if (err.status === 401 && typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+      }
+      throw err;
+    }
   },
 
   // Student Profile
@@ -256,11 +309,15 @@ export const api = {
   // Export URLs (legacy string references)
   getExcelExportUrl(filters = {}) {
     const query = new URLSearchParams(filters).toString();
-    return `${BASE_URL}/export/excel?${query}`;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
+    return `${BASE_URL}/export/excel?${query}${tokenParam}`;
   },
 
   getPdfExportUrl(filters = {}) {
     const query = new URLSearchParams(filters).toString();
-    return `${BASE_URL}/export/pdf?${query}`;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
+    return `${BASE_URL}/export/pdf?${query}${tokenParam}`;
   }
 };

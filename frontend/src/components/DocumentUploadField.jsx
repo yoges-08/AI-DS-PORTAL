@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, CheckCircle2, AlertCircle, FileText, Trash2, ExternalLink } from 'lucide-react';
-import { api } from '../services/api';
+import { api, getFileUrl } from '../services/api';
 
 export const DocumentUploadField = ({
   label,
@@ -110,7 +110,7 @@ export const DocumentUploadField = ({
 
           <div className="flex items-center space-x-2 shrink-0 ml-2">
             <a
-              href={currentDoc.filePath || currentDoc.file_path}
+              href={getFileUrl(currentDoc.filePath || currentDoc.file_path)}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center px-2 py-1 text-xs text-gov-navy hover:underline bg-white border border-gray-300 rounded"

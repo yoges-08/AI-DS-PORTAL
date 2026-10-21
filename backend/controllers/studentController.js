@@ -214,10 +214,10 @@ const updateStudentDetails = async (req, res) => {
 
     // Invalidate status if student edits a VERIFIED or REJECTED record
     let updatedStatus = existing[0].status;
-    let updatedRejectionReason = null;
+    let updatedRejectionReason = existing[0].rejection_reason;
     if (req.user.role !== 'ADMIN' && (existing[0].status === 'VERIFIED' || existing[0].status === 'REJECTED')) {
       updatedStatus = 'DRAFT';
-      updatedRejectionReason = null;
+      // Keep existing rejection_reason so student still sees why it was rejected while making corrections
     }
 
     // Helper to safely parse boolean values from string/number/boolean
@@ -418,6 +418,7 @@ const submitStudentDetails = async (req, res) => {
     await pool.query(
       `UPDATE students SET 
          status = 'SUBMITTED', 
+         rejection_reason = NULL,
          declaration_accepted = 1, 
          submission_date = NOW(),
          is_locked = 1,
@@ -510,11 +511,11 @@ const uploadDocument = async (req, res) => {
       }
     }
 
-    // If uploading photo, update photo_path in students table
+    // If uploading photo, update photo_path and photo_data in students table
     if (docType === 'photo') {
       await pool.query(
-        'UPDATE students SET photo_path = ? WHERE id = ?',
-        [filePath, studentId]
+        'UPDATE students SET photo_path = ?, photo_data = ? WHERE id = ?',
+        [filePath, fileBuffer, studentId]
       );
     }
 
@@ -524,7 +525,9 @@ const uploadDocument = async (req, res) => {
       [studentId, docType]
     );
 
+    let docId;
     if (existingDoc.length > 0) {
+      docId = existingDoc[0].id;
       // Delete old file from disk
       const oldDiskPath = path.join(__dirname, '..', existingDoc[0].file_path);
       if (fs.existsSync(oldDiskPath)) {
@@ -535,20 +538,22 @@ const uploadDocument = async (req, res) => {
         `UPDATE student_documents SET 
            file_name = ?, file_path = ?, file_size = ?, mime_type = ?, file_data = ?, uploaded_at = NOW() 
          WHERE id = ?`,
-        [req.file.originalname, filePath, req.file.size, req.file.mimetype, fileBuffer, existingDoc[0].id]
+        [req.file.originalname, filePath, req.file.size, req.file.mimetype, fileBuffer, docId]
       );
     } else {
-      await pool.query(
+      const [insertResult] = await pool.query(
         `INSERT INTO student_documents (student_id, doc_type, file_name, file_path, file_size, mime_type, file_data, uploaded_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
         [studentId, docType, req.file.originalname, filePath, req.file.size, req.file.mimetype, fileBuffer]
       );
+      docId = insertResult.insertId;
     }
 
     return res.json({
       success: true,
       message: `${docType.replace('_', ' ')} uploaded successfully.`,
       document: {
+        id: docId,
         docType,
         fileName: req.file.originalname,
         filePath,
@@ -596,7 +601,7 @@ const deleteDocument = async (req, res) => {
     }
 
     if (doc[0].doc_type === 'photo') {
-      await pool.query('UPDATE students SET photo_path = NULL WHERE id = ?', [studentId]);
+      await pool.query('UPDATE students SET photo_path = NULL, photo_data = NULL WHERE id = ?', [studentId]);
     }
 
     await pool.query('DELETE FROM student_documents WHERE id = ?', [docId]);

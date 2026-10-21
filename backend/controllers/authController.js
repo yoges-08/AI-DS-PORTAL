@@ -4,10 +4,12 @@ const { pool } = require('../config/db');
 const { validateRegisterNo } = require('../utils/validators');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_aids_portal_2026_department_system';
+const isProduction = process.env.NODE_ENV === 'production';
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  secure: isProduction,
+  // 'none' allows cross-domain cookies between Vercel frontend and Render backend
+  sameSite: isProduction ? 'none' : 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
 
@@ -76,6 +78,7 @@ const loginStudent = async (req, res) => {
     return res.json({
       success: true,
       message: 'Login successful.',
+      token, // Expose token for cross-domain Bearer authorization (e.g. Vercel -> Render)
       user: {
         id: student.id,
         role: 'STUDENT',
@@ -161,6 +164,7 @@ const loginAdmin = async (req, res) => {
     return res.json({
       success: true,
       message: 'Admin login successful.',
+      token, // Expose token for cross-domain Bearer authorization (e.g. Vercel -> Render)
       user: {
         id: admin.id,
         role: 'ADMIN',

@@ -6,11 +6,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_aids_portal_2
  * Verify JWT from httpOnly cookie or Authorization header
  */
 const authenticateToken = (req, res, next) => {
-  // Support httpOnly cookie first, then fall back to Bearer header
+  // Support httpOnly cookie first, then Bearer header, then query parameter (for direct <img> & <a> document views)
   let token = req.cookies?.token;
 
   if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
     token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token && req.query?.token) {
+    token = req.query.token;
   }
 
   if (!token) {
