@@ -74,6 +74,7 @@ app.use(cors((req, callback) => {
   callback(null, {
     origin: allowed,
     credentials: true,
+    maxAge: 86400, // Cache preflight OPTIONS response for 24 hours (eliminates duplicate round-trips)
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
   });

@@ -1,4 +1,9 @@
-const bcrypt = require('bcryptjs');
+let bcrypt;
+try {
+  bcrypt = require('bcrypt');
+} catch (e) {
+  bcrypt = require('bcryptjs');
+}
 const xlsx = require('xlsx');
 const fs = require('fs');
 const path = require('path');

@@ -1,4 +1,9 @@
-const bcrypt = require('bcryptjs');
+let bcrypt;
+try {
+  bcrypt = require('bcrypt');
+} catch (e) {
+  bcrypt = require('bcryptjs');
+}
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/db');
 const { validateRegisterNo } = require('../utils/validators');

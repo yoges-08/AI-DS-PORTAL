@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
   ShieldCheck, 
@@ -32,6 +32,12 @@ export const LoginPage = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Pre-warm the backend while the user enters credentials to eliminate cold-start delay
+  useEffect(() => {
+    const base = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).replace(/\/$/, '') : '';
+    fetch(`${base}/api/health`).catch(() => {});
+  }, []);
 
   const handleStudentSubmit = async (e) => {
     e.preventDefault();

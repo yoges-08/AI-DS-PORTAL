@@ -2,7 +2,12 @@ const mysql = require('mysql2/promise');
 const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
-const bcrypt = require('bcryptjs');
+let bcrypt;
+try {
+  bcrypt = require('bcrypt');
+} catch (e) {
+  bcrypt = require('bcryptjs');
+}
 
 dotenv.config();
 
@@ -23,7 +28,8 @@ try {
     queueLimit: 0,
     decimalNumbers: true,
     dateStrings: true,
-    maxAllowedPacket: 67108864
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0
   };
 
   // Enable SSL/TLS for cloud MySQL (TiDB Cloud, Aiven, Clever Cloud)

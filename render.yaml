@@ -3,7 +3,7 @@ services:
     name: ai-sa-portal
     env: node
     plan: free
-    buildCommand: npm run build
+    buildCommand: npm run build:backend
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -17,7 +17,7 @@ services:
       - key: DEFAULT_ADMIN_USERNAME
         value: admin
       - key: DEFAULT_ADMIN_PASSWORD
-        value: Admin@123
+        sync: false
       - key: DEFAULT_ADMIN_EMAIL
         value: admin.aids@college.edu
       - key: STORAGE_PROVIDER
