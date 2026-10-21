@@ -12,9 +12,9 @@ export const LoginHeroArt = () => {
       {/* Top Branding Bar */}
       <div className="relative z-10 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="flex items-center space-x-2 bg-white/10 p-2 rounded-2xl border border-white/20 backdrop-blur-md shadow-sm">
-            <img src="/college-logo.webp" alt="AAMEC College Crest" className="w-9 h-9 object-contain drop-shadow-sm" />
-            <img src="/aids-logo.jpg" alt="AI & DS Emblem" className="w-9 h-9 rounded-full border border-white/80 object-cover shadow-sm" />
+          <div className="flex items-center space-x-2.5 bg-white/10 p-2.5 rounded-2xl border border-white/20 backdrop-blur-md shadow-sm">
+            <img src="/college-logo.webp" alt="AAMEC College Crest" className="h-11 w-auto max-w-[52px] object-contain drop-shadow-md" />
+            <img src="/aids-logo.jpg" alt="AI & DS Emblem" className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-white/80 object-cover shadow-sm shrink-0" />
           </div>
           <div>
             <span className="text-[11px] font-semibold text-primary-fixed-dim uppercase tracking-wider block">

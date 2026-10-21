@@ -7,9 +7,9 @@ export const Footer = () => {
   return (
     <footer className="bg-white border-t border-gov-border mt-auto py-3.5 text-xs text-gov-subtle no-print">
       <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-          <img src="/college-logo.webp" alt="AAMEC" className="w-5 h-5 object-contain" />
-          <img src="/aids-logo.jpg" alt="AI&DS" className="w-5 h-5 rounded-full object-cover" />
+        <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
+          <img src="/college-logo.webp" alt="AAMEC" className="h-6 w-auto object-contain" />
+          <img src="/aids-logo.jpg" alt="AI&DS" className="w-5 h-5 rounded-full object-cover shrink-0" />
           <span className="font-semibold text-gray-700 text-center md:text-left">
             Anjalai Ammal Mahalingam Engineering College
           </span>

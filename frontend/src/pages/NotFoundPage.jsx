@@ -21,7 +21,7 @@ export const NotFoundPage = ({ onGoHome }) => {
             <img 
               src="/college-logo.webp" 
               alt="AAMEC Logo" 
-              className="w-9 h-9 object-contain bg-white rounded-full p-0.5" 
+              className="h-10 w-auto object-contain bg-white rounded-xl p-1 shadow-xs shrink-0" 
             />
             <div>
               <div className="text-xs sm:text-sm font-bold uppercase tracking-wider">

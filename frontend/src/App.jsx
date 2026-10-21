@@ -47,7 +47,7 @@ export const App = () => {
     return (
       <div className="min-h-screen bg-gov-bg flex flex-col items-center justify-center p-4">
         <div className="relative mb-4">
-          <img src="/college-logo.webp" alt="AAMEC" className="w-14 h-14 object-contain" />
+          <img src="/college-logo.webp" alt="AAMEC" className="h-16 w-auto object-contain drop-shadow-sm" />
           <div className="absolute -inset-2 border-2 border-gov-navy border-t-transparent rounded-full animate-spin"></div>
         </div>
         <div className="text-sm font-bold text-gov-navy uppercase tracking-wider">

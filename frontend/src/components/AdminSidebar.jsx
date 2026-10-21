@@ -37,9 +37,9 @@ export const AdminSidebar = ({ activeTab, onSelectTab, isOpenMobile, onCloseMobi
       <div>
         {/* Institutional Pill Header */}
         <div className="flex items-center space-x-2.5 p-3 mb-5 bg-white/70 backdrop-blur-md rounded-2xl border border-outline-variant/30 shadow-xs">
-          <div className="flex items-center space-x-1.5 shrink-0">
-            <img src="/college-logo.webp" alt="AAMEC" className="w-7 h-7 object-contain" />
-            <img src="/aids-logo.jpg" alt="AI&DS" className="w-7 h-7 rounded-full border border-primary/20 object-cover shadow-xs" />
+          <div className="flex items-center space-x-2 shrink-0">
+            <img src="/college-logo.webp" alt="AAMEC" className="h-9 w-auto max-w-[44px] object-contain drop-shadow-xs shrink-0" />
+            <img src="/aids-logo.jpg" alt="AI&DS" className="w-7 h-7 rounded-full border border-primary/20 object-cover shadow-xs shrink-0" />
           </div>
           <div className="overflow-hidden">
             <p className="text-[11px] font-black text-primary leading-none uppercase">AAMEC</p>
@@ -109,7 +109,7 @@ export const AdminSidebar = ({ activeTab, onSelectTab, isOpenMobile, onCloseMobi
             {/* Top Close Bar */}
             <div className="px-4 py-3 bg-primary text-white flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <img src="/college-logo.webp" alt="AAMEC" className="w-6 h-6 object-contain" />
+                <img src="/college-logo.webp" alt="AAMEC" className="h-7 w-auto object-contain" />
                 <span className="text-xs font-bold uppercase tracking-wider">Navigation Menu</span>
               </div>
               <button 

@@ -42,16 +42,16 @@ export const Navbar = ({ onToggleMobileMenu, isMobileMenuOpen, onLogoClick }) =>
               title="Return to Portal Dashboard"
             >
               {/* College Logo & Dept Logo */}
-              <div className="flex items-center space-x-1.5 p-1.5 bg-white/80 rounded-xl border border-outline-variant/40 shadow-sm shrink-0">
+              <div className="flex items-center space-x-2 p-1.5 bg-white/90 rounded-xl border border-outline-variant/40 shadow-sm shrink-0">
                 <img 
                   src="/college-logo.webp" 
                   alt="AAMEC College Crest" 
-                  className="h-7 sm:h-10 w-auto max-w-[34px] sm:max-w-[48px] object-contain drop-shadow-sm group-hover:scale-105 transition-transform" 
+                  className="h-9 sm:h-11 w-auto object-contain drop-shadow-sm group-hover:scale-105 transition-transform shrink-0" 
                 />
                 <img 
                   src="/aids-logo.jpg" 
                   alt="AI & DS Emblem" 
-                  className="h-7 w-7 sm:h-10 sm:w-10 rounded-full border border-primary/20 object-cover shadow-sm group-hover:scale-105 transition-transform hidden min-[360px]:block" 
+                  className="h-8 w-8 sm:h-9 sm:w-9 rounded-full border border-primary/20 object-cover shadow-sm group-hover:scale-105 transition-transform hidden min-[360px]:block shrink-0" 
                 />
               </div>
 
