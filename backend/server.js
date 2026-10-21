@@ -10,6 +10,7 @@ const fs = require('fs');
 const { testConnection, pool } = require('./config/db');
 const { authenticateToken } = require('./middleware/authMiddleware');
 const { apiLimiter } = require('./middleware/rateLimiter');
+const { getObjectStream, isR2Configured } = require('./config/r2');
 
 // Check critical production secrets
 if (process.env.NODE_ENV === 'production') {
@@ -145,14 +146,42 @@ app.get('/uploads/:filename', authenticateToken, async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'");
 
-    // 2. Serve from database LONGBLOB (TiDB Cloud)
+    // 1. Primary: Serve stream from Cloudflare R2
+    if (isR2Configured()) {
+      try {
+        const { stream, contentType, contentLength } = await getObjectStream(filename);
+        res.setHeader('Content-Type', docRow?.mime_type || contentType || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(docRow?.file_name || filename)}"`);
+        if (contentLength) {
+          res.setHeader('Content-Length', contentLength);
+        }
+
+        stream.on('error', (streamErr) => {
+          console.error(`[R2 Stream Error for ${filename}]:`, streamErr.message);
+          if (!res.headersSent) {
+            res.status(500).json({ success: false, message: 'Error streaming document.' });
+          }
+        });
+
+        return stream.pipe(res);
+      } catch (r2Err) {
+        // If object is missing or not yet in R2, fall through to temporary fallback
+        const isNotFound = r2Err.name === 'NoSuchKey' || r2Err.name === 'NotFound' || r2Err.$metadata?.httpStatusCode === 404;
+        if (!isNotFound) {
+          console.warn(`[R2 Fetch Notice for ${filename}]:`, r2Err.message);
+        }
+      }
+    }
+
+    // 2. TEMP FALLBACK: remove after R2 migration is verified
+    // Fallback A: Serve from database LONGBLOB (TiDB Cloud / SQLite)
     if (docRow && docRow.file_data) {
       res.setHeader('Content-Type', docRow.mime_type || 'application/octet-stream');
       res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(docRow.file_name || filename)}"`);
       return res.send(docRow.file_data);
     }
 
-    // 3. Fallback to local server disk if file_data is not in database
+    // Fallback B: Serve from local server disk
     if (fs.existsSync(absoluteDiskPath)) {
       return res.sendFile(absoluteDiskPath);
     }

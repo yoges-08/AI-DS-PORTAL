@@ -404,37 +404,6 @@ const testConnection = async () => {
       // Ignore if column exists
     }
 
-    // TiDB LONGBLOB Auto-Sync: Ensure all local files are backed up permanently in TiDB Cloud
-    try {
-      const uploadsDir = path.join(__dirname, '..', 'uploads');
-      if (fs.existsSync(uploadsDir)) {
-        const [pendingDocs] = await conn.query('SELECT id, file_path FROM student_documents WHERE file_data IS NULL');
-        for (const doc of pendingDocs) {
-          if (doc.file_path) {
-            const diskFile = path.join(uploadsDir, path.basename(doc.file_path));
-            if (fs.existsSync(diskFile)) {
-              const fileBuf = fs.readFileSync(diskFile);
-              await conn.query('UPDATE student_documents SET file_data = ? WHERE id = ?', [fileBuf, doc.id]);
-              console.log(`[TiDB Storage] Migrated local document ${doc.file_path} to TiDB LONGBLOB`);
-            }
-          }
-        }
-
-        const [pendingPhotos] = await conn.query('SELECT id, photo_path FROM students WHERE photo_path IS NOT NULL AND photo_data IS NULL');
-        for (const p of pendingPhotos) {
-          if (p.photo_path) {
-            const diskFile = path.join(uploadsDir, path.basename(p.photo_path));
-            if (fs.existsSync(diskFile)) {
-              const fileBuf = fs.readFileSync(diskFile);
-              await conn.query('UPDATE students SET photo_data = ? WHERE id = ?', [fileBuf, p.id]);
-              console.log(`[TiDB Storage] Migrated local student photo ${p.photo_path} to TiDB LONGBLOB`);
-            }
-          }
-        }
-      }
-    } catch (backfillErr) {
-      console.warn('[TiDB Storage Sync Notice]:', backfillErr.message);
-    }
     conn.release();
     dbMode = 'mysql';
     return true;

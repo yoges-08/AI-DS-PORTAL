@@ -20,3 +20,11 @@ services:
         value: Admin@123
       - key: DEFAULT_ADMIN_EMAIL
         value: admin.aids@college.edu
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false

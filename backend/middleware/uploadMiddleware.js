@@ -73,9 +73,38 @@ const upload = multer({
   fileFilter
 });
 
+// Memory storage configuration for student documents (Cloudflare R2)
+const documentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024
+  },
+  fileFilter
+});
+
+/**
+ * Generate a safe unique key for Cloudflare R2 object storage
+ */
+const generateDocumentKey = (registerNo, docType, originalname) => {
+  const ext = path.extname(originalname || '').toLowerCase();
+  const rawDocType = typeof docType === 'string' ? docType.trim() : '';
+  const safeDocType = ALLOWED_DOC_TYPES.includes(rawDocType) ? rawDocType : 'doc';
+  const safeRegNo = String(registerNo || 'student').replace(/[^a-zA-Z0-9]/g, '');
+  const randomHex = crypto.randomBytes(8).toString('hex');
+  return `${safeRegNo}-${safeDocType}-${Date.now()}-${randomHex}${ext}`;
+};
+
 upload.ALLOWED_DOC_TYPES = ALLOWED_DOC_TYPES;
 upload.ALLOWED_EXTS = ALLOWED_EXTS;
 upload.ALLOWED_MIME_TYPES = ALLOWED_MIME_TYPES;
 upload.upload = upload;
+upload.documentUpload = documentUpload;
+upload.generateDocumentKey = generateDocumentKey;
 
 module.exports = upload;
+module.exports.upload = upload;
+module.exports.documentUpload = documentUpload;
+module.exports.generateDocumentKey = generateDocumentKey;
+module.exports.ALLOWED_DOC_TYPES = ALLOWED_DOC_TYPES;
+module.exports.ALLOWED_EXTS = ALLOWED_EXTS;
+module.exports.ALLOWED_MIME_TYPES = ALLOWED_MIME_TYPES;

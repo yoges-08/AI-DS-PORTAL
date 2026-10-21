@@ -3,6 +3,7 @@ const xlsx = require('xlsx');
 const fs = require('fs');
 const path = require('path');
 const { pool } = require('../config/db');
+const { deleteObject } = require('../config/r2');
 const {
   cleanRegisterNo,
   validateRegisterNo,
@@ -781,7 +782,7 @@ const deleteStudent = async (req, res) => {
 
     const student = rows[0];
 
-    // Find and delete all uploaded documents from disk
+    // Find and delete all uploaded documents from Cloudflare R2 and disk
     const [docs] = await pool.query(
       'SELECT file_path FROM student_documents WHERE student_id = ?',
       [studentId]
@@ -792,6 +793,7 @@ const deleteStudent = async (req, res) => {
     for (const doc of docs) {
       if (doc.file_path) {
         const filename = path.basename(doc.file_path);
+        await deleteObject(filename);
         const absPath = path.join(uploadsDir, filename);
         if (fs.existsSync(absPath)) {
           try {
@@ -803,9 +805,10 @@ const deleteStudent = async (req, res) => {
       }
     }
 
-    // Delete photo from disk if present
+    // Delete photo from Cloudflare R2 and disk if present
     if (student.photo_path) {
       const photoName = path.basename(student.photo_path);
+      await deleteObject(photoName);
       const photoAbsPath = path.join(uploadsDir, photoName);
       if (fs.existsSync(photoAbsPath)) {
         try {

@@ -75,6 +75,54 @@ If your backend is already deployed on Render:
 
 ---
 
+### Step 3: Setup Cloudflare R2 Object Storage (10 GB Lifetime Free)
+
+To store student passport photos, Aadhaar cards, marksheets, and bank passbooks permanently without losing them on Render redeploys:
+
+1. **Sign in to Cloudflare:**
+   - Log in to your [Cloudflare Dashboard](https://dash.cloudflare.com/).
+   - Click on **R2 Object Storage** in the left sidebar.
+
+2. **Create a Private Bucket:**
+   - Click **Create bucket**.
+   - **Bucket Name:** `aids-portal-files` (or your preferred name).
+   - Leave bucket access as **Private** (Do NOT enable public R2.dev access).
+   - Click **Create Bucket**.
+
+3. **Generate API Token:**
+   - On the R2 overview page, click **Manage R2 API Tokens** on the right side.
+   - Click **Create API Token**.
+   - Set Permissions to: **Object Read & Write**.
+   - Under *Specify bucket(s)*, select your bucket `aids-portal-files`.
+   - Click **Create API Token**.
+   - Copy the generated:
+     - **Access Key ID**
+     - **Secret Access Key**
+
+4. **Copy Your Account ID:**
+   - On the R2 overview page, copy your **Account ID** (found in the URL or right sidebar).
+
+5. **Add Environment Variables to Render Dashboard:**
+   - Open your Render Web Service -> **Environment Variables**.
+   - Add the following keys:
+     - `R2_ACCOUNT_ID` = `(your Cloudflare Account ID)`
+     - `R2_ACCESS_KEY_ID` = `(your R2 Access Key ID)`
+     - `R2_SECRET_ACCESS_KEY` = `(your R2 Secret Access Key)`
+     - `R2_BUCKET` = `aids-portal-files`
+
+6. **Run Existing File Migration (One-Time):**
+   - If you have existing files in your database or disk:
+     ```bash
+     cd backend
+     node scripts/migrate-to-r2.js
+     ```
+   - To also null existing database binary blobs after confirming R2 upload:
+     ```bash
+     node scripts/migrate-to-r2.js --null-blobs
+     ```
+
+---
+
 ## Method 2: Deploy All-in-One on Render.com (Single Service)
 
 Render allows you to deploy Node.js web services directly from your GitHub repository for free.

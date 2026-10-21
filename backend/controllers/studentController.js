@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { pool } = require('../config/db');
+const { uploadObject, deleteObject, isR2Configured } = require('../config/r2');
+const { generateDocumentKey } = require('../middleware/uploadMiddleware');
 const {
   validateMobile,
   validateAadhaar,
@@ -440,29 +442,27 @@ const submitStudentDetails = async (req, res) => {
 
 /**
  * Upload Document (Photo, Aadhaar, Certs, etc.)
+ * Streams buffer to Cloudflare R2 object storage.
  */
 const uploadDocument = async (req, res) => {
   try {
     const studentId = req.params.id ? parseInt(req.params.id, 10) : req.user.id;
 
     if (req.user.role === 'STUDENT' && req.user.id !== studentId) {
-      discardUpload(req.file);
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Check lock
+    // Check lock and retrieve register number
     const [existing] = await pool.query(
-      'SELECT is_locked FROM students WHERE id = ?',
+      'SELECT register_no, is_locked FROM students WHERE id = ?',
       [studentId]
     );
 
     if (existing.length === 0) {
-      discardUpload(req.file);
       return res.status(404).json({ success: false, message: 'Student record not found.' });
     }
 
     if (existing[0].is_locked && req.user.role !== 'ADMIN') {
-      discardUpload(req.file);
       return res.status(403).json({
         success: false,
         message: 'Record is locked. Cannot upload new documents.'
@@ -470,11 +470,10 @@ const uploadDocument = async (req, res) => {
     }
 
     if (req.fileValidationError) {
-      discardUpload(req.file);
       return res.status(400).json({ success: false, message: req.fileValidationError });
     }
 
-    if (!req.file) {
+    if (!req.file || !req.file.buffer) {
       return res.status(400).json({
         success: false,
         message: 'No file was uploaded or file type is not supported. Please select a JPG, PNG, or PDF file.'
@@ -483,7 +482,6 @@ const uploadDocument = async (req, res) => {
 
     // Enforce 2MB maximum limit
     if (req.file.size > 2 * 1024 * 1024) {
-      discardUpload(req.file);
       return res.status(400).json({
         success: false,
         message: `File size (${(req.file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the 2 MB limit. Please upload a smaller file.`
@@ -492,30 +490,44 @@ const uploadDocument = async (req, res) => {
 
     const docType = req.body.docType || 'other';
     if (!ALLOWED_DOC_TYPES.includes(docType)) {
-      discardUpload(req.file);
       return res.status(400).json({
         success: false,
         message: `Invalid document type "${docType}". Allowed types: ${ALLOWED_DOC_TYPES.join(', ')}`
       });
     }
 
-    const filePath = `/uploads/${req.file.filename}`;
+    // Build unique R2 key and path
+    const key = generateDocumentKey(
+      existing[0]?.register_no || req.user.registerNo,
+      docType,
+      req.file.originalname
+    );
+    const filePath = `/uploads/${key}`;
 
-    // Read file buffer for permanent storage in TiDB / database
-    let fileBuffer = null;
-    if (req.file.path && fs.existsSync(req.file.path)) {
+    // Upload to Cloudflare R2
+    if (isR2Configured()) {
       try {
-        fileBuffer = fs.readFileSync(req.file.path);
-      } catch (readErr) {
-        console.warn('[uploadDocument] Could not read file buffer:', readErr.message);
+        await uploadObject({
+          key,
+          body: req.file.buffer,
+          contentType: req.file.mimetype
+        });
+      } catch (r2Err) {
+        console.error('[uploadDocument R2 Error]:', r2Err);
+        return res.status(500).json({ success: false, message: 'Failed to upload document to cloud storage.' });
       }
+    } else {
+      // Local development fallback when R2 is not configured
+      const localUploadsDir = path.join(__dirname, '..', 'uploads');
+      if (!fs.existsSync(localUploadsDir)) fs.mkdirSync(localUploadsDir, { recursive: true });
+      fs.writeFileSync(path.join(localUploadsDir, key), req.file.buffer);
     }
 
-    // If uploading photo, update photo_path and photo_data in students table
+    // If uploading photo, update photo_path in students table
     if (docType === 'photo') {
       await pool.query(
-        'UPDATE students SET photo_path = ?, photo_data = ? WHERE id = ?',
-        [filePath, fileBuffer, studentId]
+        'UPDATE students SET photo_path = ? WHERE id = ?',
+        [filePath, studentId]
       );
     }
 
@@ -526,27 +538,34 @@ const uploadDocument = async (req, res) => {
     );
 
     let docId;
+    let oldKey = null;
+
     if (existingDoc.length > 0) {
       docId = existingDoc[0].id;
-      // Delete old file from disk
-      const oldDiskPath = path.join(__dirname, '..', existingDoc[0].file_path);
-      if (fs.existsSync(oldDiskPath)) {
-        try { fs.unlinkSync(oldDiskPath); } catch (e) { /* ignore */ }
-      }
+      oldKey = path.basename(existingDoc[0].file_path);
 
       await pool.query(
         `UPDATE student_documents SET 
-           file_name = ?, file_path = ?, file_size = ?, mime_type = ?, file_data = ?, uploaded_at = NOW() 
+           file_name = ?, file_path = ?, file_size = ?, mime_type = ?, uploaded_at = NOW() 
          WHERE id = ?`,
-        [req.file.originalname, filePath, req.file.size, req.file.mimetype, fileBuffer, docId]
+        [req.file.originalname, filePath, req.file.size, req.file.mimetype, docId]
       );
     } else {
       const [insertResult] = await pool.query(
-        `INSERT INTO student_documents (student_id, doc_type, file_name, file_path, file_size, mime_type, file_data, uploaded_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
-        [studentId, docType, req.file.originalname, filePath, req.file.size, req.file.mimetype, fileBuffer]
+        `INSERT INTO student_documents (student_id, doc_type, file_name, file_path, file_size, mime_type, uploaded_at)
+         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+        [studentId, docType, req.file.originalname, filePath, req.file.size, req.file.mimetype]
       );
       docId = insertResult.insertId;
+    }
+
+    // Clean up replaced old object after new upload and DB update succeed
+    if (oldKey && oldKey !== key) {
+      await deleteObject(oldKey);
+      const oldDiskPath = path.join(__dirname, '..', 'uploads', oldKey);
+      if (fs.existsSync(oldDiskPath)) {
+        try { fs.unlinkSync(oldDiskPath); } catch (e) { /* ignore */ }
+      }
     }
 
     return res.json({
@@ -562,7 +581,6 @@ const uploadDocument = async (req, res) => {
       }
     });
   } catch (error) {
-    discardUpload(req.file);
     console.error('[uploadDocument Error]:', error);
     return res.status(500).json({ success: false, message: 'Failed to upload document.' });
   }
@@ -594,14 +612,18 @@ const deleteDocument = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Document not found.' });
     }
 
-    // Delete file from disk
-    const diskPath = path.join(__dirname, '..', doc[0].file_path);
+    // Delete object from Cloudflare R2
+    const key = path.basename(doc[0].file_path);
+    await deleteObject(key);
+
+    // Delete fallback from disk if present
+    const diskPath = path.join(__dirname, '..', 'uploads', key);
     if (fs.existsSync(diskPath)) {
       try { fs.unlinkSync(diskPath); } catch (e) { /* ignore */ }
     }
 
     if (doc[0].doc_type === 'photo') {
-      await pool.query('UPDATE students SET photo_path = NULL, photo_data = NULL WHERE id = ?', [studentId]);
+      await pool.query('UPDATE students SET photo_path = NULL WHERE id = ?', [studentId]);
     }
 
     await pool.query('DELETE FROM student_documents WHERE id = ?', [docId]);

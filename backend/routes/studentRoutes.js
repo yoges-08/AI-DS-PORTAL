@@ -8,7 +8,7 @@ const {
   deleteDocument
 } = require('../controllers/studentController');
 const { authenticateToken, requireSelfOrAdmin } = require('../middleware/authMiddleware');
-const upload = require('../middleware/uploadMiddleware');
+const { documentUpload } = require('../middleware/uploadMiddleware');
 
 // Student profile management
 router.get('/profile', authenticateToken, requireSelfOrAdmin, getStudentProfile);
@@ -18,9 +18,9 @@ router.put('/update/:id', authenticateToken, requireSelfOrAdmin, updateStudentDe
 router.post('/submit', authenticateToken, requireSelfOrAdmin, submitStudentDetails);
 router.post('/submit/:id', authenticateToken, requireSelfOrAdmin, submitStudentDetails);
 
-// Document uploads
-router.post('/documents/upload', authenticateToken, requireSelfOrAdmin, upload.single('document'), uploadDocument);
-router.post('/documents/upload/:id', authenticateToken, requireSelfOrAdmin, upload.single('document'), uploadDocument);
+// Document uploads (memory storage for Cloudflare R2 streaming)
+router.post('/documents/upload', authenticateToken, requireSelfOrAdmin, documentUpload.single('document'), uploadDocument);
+router.post('/documents/upload/:id', authenticateToken, requireSelfOrAdmin, documentUpload.single('document'), uploadDocument);
 router.delete('/documents/:docId', authenticateToken, requireSelfOrAdmin, deleteDocument);
 router.delete('/documents/:docId/:id', authenticateToken, requireSelfOrAdmin, deleteDocument);
 
