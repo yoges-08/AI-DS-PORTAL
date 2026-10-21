@@ -1,325 +1,441 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 /**
- * RobertMascot Component (Compact 34px Free-Flight Edition)
- * - Ultra-compact 34px size (refined, elegant, never obstructive).
- * - Fixed/viewport-level flight: flies anywhere across the entire webpage (left hero, bento boxes, logos, header).
- * - Away-from-field engine: when any field is clicked, Robert flies to an unpredictable spot FAR AWAY from that field.
- * - Dynamic facial expressions (blinking, happy, winking, surprised, worried).
- * - Reactive Error State: Shakes head (no-no tilt), shows worried eyes, glowing coral alert orb, and gives helpful, encouraging feedback.
- * - Adaptive speech bubble that automatically flips to stay on-screen.
+ * RobertMascot Component
+ * - Rest in Motion: Robert hovers gently in place when idle. NEVER moves across the screen unintentionally.
+ * - Field-Click Triggered: Moves ONLY when a typing field is clicked / focused.
+ * - Forbidden Typing Area: Avoids the entire login form / typing field area with a safety buffer.
+ * - Message Flight & Typewriter: Speech bubble hides during flight and types out with a typewriter animation after landing!
+ * - Redesigned Face with Mouth & Expressions:
+ *     - Retains the exact sleek 35px glossy futuristic orb design.
+ *     - Expressive SVG Mouth (Smile, Talking Chatter, Surprised 'o', Worried frown, Playful smirk).
+ *     - Lively Eyes (Natural blinking, idle eye glance tracking, happy smile arcs, wink, surprised, worried).
+ *     - Soft glowing cheek blush dots.
  */
 export const RobertMascot = ({ activeField = 'idle', role = 'STUDENT', errorMessage = '' }) => {
-  const [position, setPosition] = useState({ top: '80px', left: '80px' });
-  const [speech, setSpeech] = useState("Hi! I'm Robert 👋 Click a field to sign in!");
-  const [expression, setExpression] = useState('normal');
-  const [tilt, setTilt] = useState(0);
+  // Flight & Position state
+  const [position, setPosition] = useState({ top: '75px', left: '75px' });
+  const [isMoving, setIsMoving] = useState(false);
+  const [flightTilt, setFlightTilt] = useState(0);
   const [bubbleDir, setBubbleDir] = useState('right');
 
-  // Calculates a random coordinate across the whole webpage, guaranteed away from the active form
-  const getRandomAnywherePos = (favorLeft = false) => {
-    if (typeof window === 'undefined') return { top: '80px', left: '80px' };
-    const winW = Math.max(window.innerWidth, 800);
-    const winH = Math.max(window.innerHeight, 600);
+  // Speech & Typewriter state
+  const [targetSpeech, setTargetSpeech] = useState("Hi! I'm Robert 👋 Click a field to sign in!");
+  const [typedSpeech, setTypedSpeech] = useState("Hi! I'm Robert 👋 Click a field to sign in!");
+  const [isTyping, setIsTyping] = useState(false);
 
-    const minX = 35;
-    const maxX = winW - 95;
-    const minY = 35;
-    const maxY = winH - 95;
+  // Facial Expression & Eye Tracking
+  const [expression, setExpression] = useState('normal'); // 'normal' | 'happy' | 'talking' | 'wink' | 'surprised' | 'worried'
+  const [eyeGlance, setEyeGlance] = useState({ x: 0, y: 0 });
+  const [isWobbling, setIsWobbling] = useState(false);
 
-    let targetX = 0;
-    let targetY = Math.floor(Math.random() * (maxY - minY)) + minY;
+  // Refs for tracking active intervals and animations
+  const typingTimerRef = useRef(null);
+  const flightTimerRef = useRef(null);
+  const wobbleTimerRef = useRef(null);
+  const prevFieldRef = useRef(activeField);
 
-    if (favorLeft) {
-      // Actively fly to the left side (over AAMEC crest, bento boxes, etc.)
-      targetX = Math.floor(Math.random() * (winW * 0.42 - minX)) + minX;
-    } else {
-      targetX = Math.floor(Math.random() * (maxX - minX)) + minX;
+  // ============================================================
+  // SAFE COORDINATE ENGINE (Strictly Avoids Typing Fields Area)
+  // ============================================================
+  const getSafeCoordinate = () => {
+    if (typeof window === 'undefined') return { top: '75px', left: '75px', x: 75, y: 75 };
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+
+    // Detect the typing field container (Login Auth Panel / Form)
+    const authPanel = document.getElementById('loginAuthPanel') || document.querySelector('form');
+    const authRect = authPanel ? authPanel.getBoundingClientRect() : null;
+
+    // Detect Left Hero Panel (desktop bento area - prime safe spot)
+    const heroPanel = document.getElementById('loginHeroPanel');
+    const heroRect = (heroPanel && heroPanel.offsetWidth > 0 && winW >= 1024)
+      ? heroPanel.getBoundingClientRect()
+      : null;
+
+    // Strategy 1: Desktop Left Hero area (completely clear of typing fields)
+    if (heroRect && heroRect.width > 120) {
+      const minX = Math.max(35, Math.round(heroRect.left + 30));
+      // Auth panel is to the right. A speech bubble extends up to 210px to the right.
+      // Robert's x + 210px must be strictly less than authRect.left to never touch typing fields!
+      const maxBubbleWidth = 210;
+      const boundaryRight = authRect ? authRect.left : heroRect.right;
+      const safeMaxX = Math.max(minX + 25, Math.round(boundaryRight - maxBubbleWidth - 30));
+      const maxX = Math.min(safeMaxX, Math.round(heroRect.right - 90));
+
+      const minY = Math.max(45, Math.round(heroRect.top + 35));
+      const maxY = Math.max(minY + 30, Math.round(heroRect.bottom - 60));
+
+      const targetX = Math.floor(Math.random() * (Math.max(minX, maxX) - minX + 1)) + minX;
+      const targetY = Math.floor(Math.random() * (maxY - minY + 1)) + minY;
+      return { top: `${targetY}px`, left: `${targetX}px`, x: targetX, y: targetY };
     }
 
-    return { top: `${targetY}px`, left: `${targetX}px`, x: targetX, y: targetY };
+    // Strategy 2: Test random viewport coordinates, strictly rejecting the typing area
+    const minScreenX = 30;
+    const maxScreenX = winW - 65;
+    const minScreenY = 30;
+    const maxScreenY = winH - 65;
+
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const candX = Math.floor(Math.random() * (maxScreenX - minScreenX)) + minScreenX;
+      const candY = Math.floor(Math.random() * (maxScreenY - minScreenY)) + minScreenY;
+
+      if (authRect) {
+        // Enforce 50px safety buffer around all sides of typing field area
+        const buffer = 50;
+        const insideForbidden =
+          candX >= (authRect.left - buffer) &&
+          candX <= (authRect.right + buffer) &&
+          candY >= (authRect.top - buffer) &&
+          candY <= (authRect.bottom + buffer);
+
+        if (insideForbidden) continue;
+      }
+
+      return { top: `${candY}px`, left: `${candX}px`, x: candX, y: candY };
+    }
+
+    // Reliable fallback (safe top-left margin)
+    return { top: '55px', left: '45px', x: 45, y: 55 };
   };
 
-  const flyTo = (newPos, text, expr = 'happy') => {
-    const curX = parseInt(position.left, 10) || 80;
-    const nextX = parseInt(newPos.left, 10) || 80;
+  // ============================================================
+  // TYPEWRITER ENGINE (Types out message character by character)
+  // ============================================================
+  const triggerTypewriter = (text, finalExpression = 'happy') => {
+    if (typingTimerRef.current) clearInterval(typingTimerRef.current);
 
-    // Organic flight tilt into wind
-    const deltaX = nextX - curX;
-    if (deltaX > 25) setTilt(9);
-    else if (deltaX < -25) setTilt(-9);
+    setTargetSpeech(text);
+    setTypedSpeech('');
+    setIsTyping(true);
+    setExpression('talking');
 
-    // Auto-flip speech bubble so it never clips off-screen
-    if (typeof window !== 'undefined' && nextX > window.innerWidth - 250) {
+    let charIdx = 0;
+    typingTimerRef.current = setInterval(() => {
+      charIdx++;
+      setTypedSpeech(text.slice(0, charIdx));
+
+      if (charIdx >= text.length) {
+        clearInterval(typingTimerRef.current);
+        setIsTyping(false);
+        setExpression(finalExpression);
+      }
+    }, 28);
+  };
+
+  // ============================================================
+  // FLIGHT CONTROLLER (Moves ONLY when triggered, then types)
+  // ============================================================
+  const flyToSafeSpot = (text, nextExpr = 'happy') => {
+    const curX = parseInt(position.left, 10) || 75;
+    const newPos = getSafeCoordinate();
+
+    // Natural tilt into the wind of motion
+    const deltaX = newPos.x - curX;
+    setFlightTilt(deltaX > 20 ? 12 : deltaX < -20 ? -12 : 0);
+
+    // Auto-adjust speech bubble direction so it stays on-screen
+    if (typeof window !== 'undefined' && newPos.x > window.innerWidth - 240) {
       setBubbleDir('left');
     } else {
       setBubbleDir('right');
     }
 
+    // Hide speech bubble during flight
+    setIsMoving(true);
     setPosition({ top: newPos.top, left: newPos.left });
-    setSpeech(text);
-    setExpression(expr);
 
-    setTimeout(() => {
-      setTilt(0);
-    }, 950);
+    // Flight takes 850ms (matches CSS transition)
+    if (flightTimerRef.current) clearTimeout(flightTimerRef.current);
+    flightTimerRef.current = setTimeout(() => {
+      setIsMoving(false);
+      setFlightTilt(0);
+      triggerTypewriter(text, nextExpr);
+    }, 850);
   };
 
-  // Continuous background random wander across webpage every 4.8 seconds when idle
+  // ============================================================
+  // REST IN MOTION: Subtle eye glance shifts while idling in place
+  // ============================================================
   useEffect(() => {
-    if (activeField !== 'idle') return;
+    if (activeField !== 'idle' || isMoving) return;
 
-    const timer = setInterval(() => {
-      const pos = getRandomAnywherePos(false);
-      flyTo(pos, speech, 'normal');
-    }, 4800);
+    const glanceDirections = [
+      { x: 0, y: 0 },
+      { x: -1.5, y: 0 },
+      { x: 1.5, y: 0 },
+      { x: 0, y: 1 },
+      { x: 0, y: 0 }
+    ];
+    let step = 0;
 
-    return () => clearInterval(timer);
-  }, [activeField, speech]);
+    const eyeInterval = setInterval(() => {
+      step = (step + 1) % glanceDirections.length;
+      setEyeGlance(glanceDirections[step]);
+    }, 3800);
 
-  // Target specific field when focused -> flies across the webpage away from inputs
+    return () => clearInterval(eyeInterval);
+  }, [activeField, isMoving]);
+
+  // ============================================================
+  // REACTIVE FIELD CLICK HANDLER: Moves ONLY on field focus/events
+  // ============================================================
   useEffect(() => {
+    const prevField = prevFieldRef.current;
+    prevFieldRef.current = activeField;
+
+    // When returning to idle: Robert stays at rest, no extra flight!
+    if (activeField === 'idle') {
+      if (prevField !== 'idle') {
+        setExpression('normal');
+      }
+      return;
+    }
+
+    // User clicked a typing field -> Initiate flight away from typing area!
     switch (activeField) {
       case 'reg': {
-        const pos = getRandomAnywherePos(true);
-        flyTo(pos, 'Enter register number 🎓', 'happy');
+        flyToSafeSpot('Enter register number 🎓', 'happy');
         break;
       }
       case 'dob': {
-        const pos = getRandomAnywherePos(true);
-        flyTo(pos, 'Enter DOB (DDMMYYYY) 🎂', 'happy');
+        flyToSafeSpot('Enter DOB (DDMMYYYY) 🎂', 'happy');
         break;
       }
       case 'adminUser': {
-        const pos = getRandomAnywherePos(true);
-        flyTo(pos, 'Enter faculty username 👤', 'happy');
+        flyToSafeSpot('Enter faculty username 👤', 'happy');
         break;
       }
       case 'adminPass': {
-        const pos = getRandomAnywherePos(true);
-        flyTo(pos, 'Enter admin password 🔒', 'happy');
+        flyToSafeSpot('Enter admin password 🔒', 'happy');
         break;
       }
       case 'loading': {
-        const pos = getRandomAnywherePos(false);
-        flyTo(pos, 'Checking credentials... ⚡', 'surprised');
+        flyToSafeSpot('Checking credentials... ⚡', 'surprised');
         break;
       }
       case 'success': {
-        flyTo({ top: '80px', left: '42%' }, 'Access Granted! Welcome! 🎉', 'happy');
+        flyToSafeSpot('Access Granted! Welcome! 🎉', 'happy');
         break;
       }
       case 'error': {
-        // Head shake tilt sequence (gentle no-no wobble)
-        setTilt(-14);
-        const t1 = setTimeout(() => setTilt(14), 100);
-        const t2 = setTimeout(() => setTilt(-10), 200);
-        const t3 = setTimeout(() => setTilt(8), 300);
-        const t4 = setTimeout(() => setTilt(-4), 400);
-        const t5 = setTimeout(() => setTilt(0), 500);
+        // Trigger worried head-shake tilt wobble
+        setIsWobbling(true);
+        if (wobbleTimerRef.current) clearTimeout(wobbleTimerRef.current);
+        wobbleTimerRef.current = setTimeout(() => setIsWobbling(false), 600);
 
-        // Pick context-aware encouraging error message
-        let errMsg = "Oops! Something's not right 🤔";
+        let errMsg = "Oops! Check your details 🧐";
         if (errorMessage && typeof errorMessage === 'string') {
           const lower = errorMessage.toLowerCase();
           if (lower.includes('date of birth') || lower.includes('dob')) {
             errMsg = 'Check DOB: DDMMYYYY format (e.g. 14052003) 🎂';
           } else if (lower.includes('register') || lower.includes('student')) {
             errMsg = 'Oops! Check your Reg No & DOB 🧐';
-          } else if (lower.includes('username') || lower.includes('password') || lower.includes('faculty') || lower.includes('admin')) {
-            errMsg = 'Uh-oh! Incorrect username or password 🔑';
+          } else if (lower.includes('username') || lower.includes('password') || lower.includes('admin')) {
+            errMsg = 'Uh-oh! Check username & password 🔑';
           } else if (errorMessage.length <= 48) {
             errMsg = errorMessage;
-          } else {
-            errMsg = 'Oops! Check your details and try again 🧐';
           }
         } else if (role === 'STUDENT') {
           errMsg = 'Oops! Check your Reg No & DOB (DDMMYYYY) 🧐';
         } else {
-          errMsg = 'Uh-oh! Check your faculty username & password 🔑';
+          errMsg = 'Uh-oh! Check faculty username & password 🔑';
         }
 
-        const targetPos = typeof window !== 'undefined' && window.innerWidth > 768
-          ? { top: '85px', left: '70px' }
-          : { top: '45px', left: '25px' };
-
-        flyTo(targetPos, errMsg, 'worried');
-
-        return () => {
-          clearTimeout(t1);
-          clearTimeout(t2);
-          clearTimeout(t3);
-          clearTimeout(t4);
-          clearTimeout(t5);
-        };
+        flyToSafeSpot(errMsg, 'worried');
+        break;
       }
       default:
-        setSpeech(role === 'STUDENT' ? "Hi! I'm Robert 👋 Watching over your portal!" : "Admin Portal Ready 🛡️");
-        setExpression('normal');
         break;
     }
   }, [activeField, role, errorMessage]);
 
-  const handleClick = () => {
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimerRef.current) clearInterval(typingTimerRef.current);
+      if (flightTimerRef.current) clearTimeout(flightTimerRef.current);
+      if (wobbleTimerRef.current) clearTimeout(wobbleTimerRef.current);
+    };
+  }, []);
+
+  // Playful interaction when user clicks Robert directly
+  const handleRobertClick = () => {
     if (expression === 'worried') {
       setExpression('happy');
-      setSpeech("Don't worry! Double-check & try again! 💪");
-      setTilt(14);
-      setTimeout(() => setTilt(-14), 160);
-      setTimeout(() => {
-        setTilt(0);
-        setExpression('worried');
-      }, 1600);
+      triggerTypewriter("Don't worry! Double-check & try again! 💪", 'happy');
       return;
     }
+
     setExpression('wink');
-    setSpeech("Swoosh! Catch me! 🚀");
-    setTilt(360);
+    setFlightTilt(360);
     setTimeout(() => {
-      setTilt(0);
-      const pos = getRandomAnywherePos(false);
-      flyTo(pos, "Hehe! I'm Robert! 🚀", 'happy');
-    }, 500);
+      setFlightTilt(0);
+      flyToSafeSpot("Catch me if you can! 🚀", 'happy');
+    }, 400);
   };
+
+  const isWorried = expression === 'worried';
 
   return (
     <div
       id="robertContainer"
-      className="fixed z-[9999] pointer-events-auto transition-all duration-1000 ease-out"
       style={{
         top: position.top,
         left: position.left,
-        transform: `rotate(${tilt}deg)`,
-        transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)'
+        transform: `rotate(${flightTilt}deg) ${isWobbling ? 'scale(1.08)' : 'scale(1)'}`,
+        transition: 'top 0.85s cubic-bezier(0.22, 1, 0.36, 1), left 0.85s cubic-bezier(0.22, 1, 0.36, 1), transform 0.4s ease'
       }}
     >
-      {/* Continuous Multi-Axis Organic Float Wrapper */}
-      <div className="relative robert-hover-bob">
+      {/* Rest in Motion: Gentle vertical hover bobbing in place */}
+      <div className={`relative ${!isMoving ? 'robert-hover-bob' : ''}`}>
         
-        {/* Adaptive Speech Bubble */}
+        {/* Adaptive Speech Bubble with Typewriter Text */}
         <div 
-          key={speech}
-          className={`robert-bubble absolute top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-[11px] text-[10.5px] font-bold whitespace-nowrap shadow-xl backdrop-blur-md pointer-events-none transition-all duration-300 ${
-            bubbleDir === 'left' ? 'right-[44px]' : 'left-[44px]'
+          className={`robert-bubble ${
+            bubbleDir === 'left' ? 'right-[45px]' : 'left-[45px]'
           } ${
-            expression === 'worried'
-              ? 'bg-[#2b0b14]/96 border border-rose-400/90 text-rose-100 shadow-[0_8px_20px_rgba(225,29,72,0.4)]'
-              : 'bg-[#012357]/96 border border-cyan-400/75 text-white shadow-[0_8px_20px_rgba(0,15,50,0.45)]'
+            isMoving ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'
+          } ${
+            isWorried
+              ? 'bg-[#2b0b14]/96 border-rose-400/90 text-rose-100 shadow-[0_8px_20px_rgba(225,29,72,0.4)]'
+              : 'bg-[#012357]/96 border-cyan-400/75 text-white shadow-[0_8px_20px_rgba(0,15,50,0.45)]'
           }`}
         >
-          {speech}
+          <span>{typedSpeech}</span>
+          {/* Animated typing cursor */}
+          {isTyping && <span className="robert-cursor" />}
+
+          {/* Speech Bubble Pointer Arrow */}
           <div 
             className={`absolute top-1/2 -translate-y-1/2 border-4 border-transparent ${
               bubbleDir === 'left' 
-                ? (expression === 'worried' ? 'left-full border-l-[#2b0b14]' : 'left-full border-l-[#012357]')
-                : (expression === 'worried' ? 'right-full border-r-[#2b0b14]' : 'right-full border-r-[#012357]')
+                ? (isWorried ? 'left-full border-l-[#2b0b14]' : 'left-full border-l-[#012357]')
+                : (isWorried ? 'right-full border-r-[#2b0b14]' : 'right-full border-r-[#012357]')
             }`} 
           />
         </div>
 
-        {/* Compact 34px Exact Orb */}
+        {/* Robert Orb (Refined 35px Futuristic Sphere) */}
         <div 
-          className="robert-orb w-[34px] h-[34px] rounded-full relative cursor-pointer flex items-center justify-center transition-all duration-300 hover:scale-115 active:scale-95"
-          onClick={handleClick}
+          className="robert-orb"
+          onClick={handleRobertClick}
           onMouseEnter={() => {
-            if (expression !== 'worried') setExpression('happy');
+            if (!isWorried && !isTyping) setExpression('happy');
           }}
           onMouseLeave={() => {
-            if (expression !== 'worried') setExpression(activeField === 'idle' ? 'normal' : 'happy');
+            if (!isWorried && !isTyping) setExpression(activeField === 'idle' ? 'normal' : 'happy');
           }}
-          title={expression === 'worried' ? "Click Robert for encouragement!" : "Click to play with Robert!"}
+          title={isWorried ? "Click Robert for encouragement!" : "Click to play with Robert!"}
           style={{
-            background: expression === 'worried'
+            background: isWorried
               ? 'radial-gradient(circle at 36% 30%, #FDA4AF 0%, #E11D48 36%, #9F1239 72%, #4C0519 100%)'
               : 'radial-gradient(circle at 36% 30%, #93C5FD 0%, #3B82F6 36%, #1D4ED8 72%, #0F172A 100%)',
-            boxShadow: expression === 'worried'
+            boxShadow: isWorried
               ? '0 6px 18px -2px rgba(225, 29, 72, 0.7), 0 0 16px rgba(244, 63, 94, 0.65), inset 0 -2.5px 5px rgba(15, 23, 42, 0.5), inset 0 2px 3.5px rgba(255, 255, 255, 0.9)'
               : '0 6px 16px -2px rgba(37, 99, 235, 0.6), 0 0 14px rgba(59, 130, 246, 0.5), inset 0 -2.5px 5px rgba(15, 23, 42, 0.5), inset 0 2px 3.5px rgba(255, 255, 255, 0.9)',
-            border: expression === 'worried'
+            border: isWorried
               ? '1.5px solid rgba(253, 164, 175, 0.85)'
               : '1.5px solid rgba(147, 197, 253, 0.55)'
           }}
         >
-          {/* Subtle glowing halo */}
+          {/* Glowing Halo */}
           <div 
-            className={`robert-halo absolute -inset-1 rounded-full blur-sm pointer-events-none transition-colors duration-300 ${
-              expression === 'worried' ? 'bg-rose-500/50' : 'bg-cyan-400/40'
-            }`} 
+            className={`robert-halo ${isWorried ? 'bg-rose-500/50' : 'bg-cyan-400/40'}`} 
           />
 
-          {/* Expressive Face */}
-          <div 
-            className="robert-face flex flex-col items-center justify-center transition-transform duration-250"
-            style={{
-              transform: expression === 'worried'
-                ? 'translate(0.5px, 2px)'
-                : expression === 'look-down-right'
-                  ? 'translate(2.5px, 2.5px)'
-                  : 'translate(1px, -1.5px)'
-            }}
-          >
-            <div className="flex items-center gap-[4px]">
+          {/* Expressive Face (Eyes + Mouth + Cheek Blushes) */}
+          <div className="robert-face">
+            
+            {/* Eyes Row with Natural Glance Tracking */}
+            <div 
+              className="robert-eyes-row"
+              style={{
+                transform: `translate(${eyeGlance.x}px, ${eyeGlance.y}px)`
+              }}
+            >
+              {/* Soft Left Blush */}
+              <div className={`robert-blush ${isWorried ? 'robert-blush-worried' : ''}`} />
+
               {/* Left Eye */}
-              <div 
-                className="robert-eye w-[4.5px] rounded-full transition-all duration-200"
-                style={{
-                  height: expression === 'worried' 
-                    ? '8px' 
-                    : expression === 'happy' 
-                      ? '7.5px' 
-                      : expression === 'surprised' 
-                        ? '12px' 
-                        : '9.5px',
-                  borderRadius: expression === 'worried'
-                    ? '3px'
-                    : expression === 'happy' 
-                      ? '5px 5px 0 0' 
-                      : '999px',
-                  backgroundColor: expression === 'worried' ? '#FFE4E6' : '#FFFFFF',
-                  transform: expression === 'worried'
-                    ? 'rotate(-22deg) scaleY(0.8)'
-                    : expression === 'wink' 
-                      ? 'scaleY(0.1)' 
-                      : 'none',
-                  boxShadow: expression === 'worried'
-                    ? '0 0 4px #FDA4AF, 0 0 7px rgba(244, 63, 94, 0.85)'
-                    : '0 0 4px #FFFFFF, 0 0 7px rgba(255, 255, 255, 0.85)',
-                  animation: expression === 'worried' ? 'none' : 'robertEyeBlink 4s infinite'
-                }}
-              />
+              {expression === 'happy' ? (
+                // Happy curved smile eye (^)
+                <svg width="5.5" height="5.5" viewBox="0 0 6 6" fill="none">
+                  <path d="M 1 4.5 Q 3 1.5 5 4.5" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              ) : expression === 'wink' ? (
+                // Playful wink slit
+                <div className="w-[5px] h-[1.5px] bg-white rounded-full shadow-[0_0_4px_#fff]" />
+              ) : expression === 'worried' ? (
+                // Worried angled eye (\)
+                <div 
+                  className="w-[4.5px] h-[8px] bg-[#FFE4E6] rounded-full shadow-[0_0_5px_#FDA4AF]"
+                  style={{ transform: 'rotate(-22deg) scaleY(0.85)' }}
+                />
+              ) : expression === 'surprised' ? (
+                // Surprised large open eye
+                <div className="w-[5px] h-[8.5px] bg-white rounded-full shadow-[0_0_6px_#fff]" />
+              ) : (
+                // Normal / Talking sleek pill eye with natural blink
+                <div className="robert-eye" />
+              )}
+
               {/* Right Eye */}
-              <div 
-                className="robert-eye w-[4.5px] rounded-full transition-all duration-200"
-                style={{
-                  height: expression === 'worried' 
-                    ? '8px' 
-                    : expression === 'happy' 
-                      ? '7.5px' 
-                      : expression === 'surprised' 
-                        ? '12px' 
-                        : '9.5px',
-                  borderRadius: expression === 'worried'
-                    ? '3px'
-                    : expression === 'happy' 
-                      ? '5px 5px 0 0' 
-                      : '999px',
-                  backgroundColor: expression === 'worried' ? '#FFE4E6' : '#FFFFFF',
-                  transform: expression === 'worried'
-                    ? 'rotate(22deg) scaleY(0.8)'
-                    : expression === 'wink' 
-                      ? 'scale(1.2)' 
-                      : 'none',
-                  boxShadow: expression === 'worried'
-                    ? '0 0 4px #FDA4AF, 0 0 7px rgba(244, 63, 94, 0.85)'
-                    : '0 0 4px #FFFFFF, 0 0 7px rgba(255, 255, 255, 0.85)',
-                  animation: expression === 'worried' ? 'none' : 'robertEyeBlink 4s infinite'
-                }}
-              />
+              {expression === 'happy' ? (
+                // Happy curved smile eye (^)
+                <svg width="5.5" height="5.5" viewBox="0 0 6 6" fill="none">
+                  <path d="M 1 4.5 Q 3 1.5 5 4.5" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              ) : expression === 'wink' ? (
+                // Open sparkling right eye on wink
+                <div className="w-[4.5px] h-[9px] bg-white rounded-full shadow-[0_0_6px_#fff] scale-110" />
+              ) : expression === 'worried' ? (
+                // Worried angled eye (/)
+                <div 
+                  className="w-[4.5px] h-[8px] bg-[#FFE4E6] rounded-full shadow-[0_0_5px_#FDA4AF]"
+                  style={{ transform: 'rotate(22deg) scaleY(0.85)' }}
+                />
+              ) : expression === 'surprised' ? (
+                // Surprised large open eye
+                <div className="w-[5px] h-[8.5px] bg-white rounded-full shadow-[0_0_6px_#fff]" />
+              ) : (
+                // Normal / Talking sleek pill eye with natural blink
+                <div className="robert-eye" />
+              )}
+
+              {/* Soft Right Blush */}
+              <div className={`robert-blush ${isWorried ? 'robert-blush-worried' : ''}`} />
             </div>
-            {/* Cute worried mouth line when troubled */}
-            {expression === 'worried' && (
-              <div className="w-[5px] h-[1.5px] bg-rose-200/90 rounded-full mt-[2px] transition-all animate-pulse" />
-            )}
+
+            {/* Expressive Mouth */}
+            <div className="robert-mouth mt-[1px]">
+              {isWorried ? (
+                // Worried sad frown (∩)
+                <svg width="9" height="4.5" viewBox="0 0 9 4.5" fill="none">
+                  <path d="M 1.8 3.5 Q 4.5 1.2 7.2 3.5" stroke="#FFE4E6" strokeWidth="1.3" strokeLinecap="round" />
+                </svg>
+              ) : expression === 'surprised' ? (
+                // Surprised cute 'o' mouth
+                <div className="w-[3px] h-[3.5px] rounded-full border-[1.2px] border-white shadow-[0_0_3px_#fff]" />
+              ) : expression === 'talking' || isTyping ? (
+                // Talking chatter mouth (animates while typing out message)
+                <svg width="9" height="4.5" viewBox="0 0 9 4.5" fill="none" className="robert-mouth-chatter">
+                  <path d="M 2 1.5 Q 4.5 4.5 7 1.5 Q 4.5 2.8 2 1.5 Z" fill="#FFFFFF" />
+                </svg>
+              ) : expression === 'wink' ? (
+                // Playful smirk mouth
+                <svg width="9" height="4.5" viewBox="0 0 9 4.5" fill="none">
+                  <path d="M 1.8 2.5 Q 5 4.5 7.5 1.5" stroke="#FFFFFF" strokeWidth="1.3" strokeLinecap="round" />
+                </svg>
+              ) : (
+                // Normal & Happy warm glowing smile (⌒)
+                <svg width="9" height="4.5" viewBox="0 0 9 4.5" fill="none">
+                  <path d="M 1.8 1.5 Q 4.5 4.2 7.2 1.5" stroke="#FFFFFF" strokeWidth="1.3" strokeLinecap="round" />
+                </svg>
+              )}
+            </div>
+
           </div>
         </div>
 

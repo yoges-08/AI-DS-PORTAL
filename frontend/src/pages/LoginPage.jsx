@@ -112,12 +112,12 @@ export const LoginPage = () => {
       <div className="w-full max-w-[1180px] bg-white rounded-[28px] shadow-[0_24px_70px_-20px_rgba(1,35,87,0.2)] p-3 grid lg:grid-cols-12 gap-3 border border-outline-variant/40 relative z-10">
 
         {/* LEFT: AAMEC INSTITUTIONAL HERO WITH BENETO ANIMATION */}
-        <div className="hidden lg:block lg:col-span-7">
+        <div id="loginHeroPanel" className="hidden lg:block lg:col-span-7">
           <LoginHeroArt />
         </div>
 
         {/* RIGHT: AUTHENTICATION PANEL */}
-        <div className="lg:col-span-5 relative rounded-[22px] bg-white overflow-hidden flex items-center justify-center p-6 sm:p-10 min-h-[660px]">
+        <div id="loginAuthPanel" className="lg:col-span-5 relative rounded-[22px] bg-white overflow-hidden flex items-center justify-center p-6 sm:p-10 min-h-[660px]">
           <LoginParticles color="rgba(0, 90, 179, 0.35)" dotColor="rgba(56, 189, 248, 0.6)" />
 
           {/* Welcome Overlay (shown after login) */}
