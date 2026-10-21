@@ -63,6 +63,7 @@ export const LoginPage = () => {
     setError('');
     if (!studentRegNo.trim() || !studentPassword.trim()) {
       setError('Please provide your Register Number and Date of Birth password.');
+      setActiveField('error');
       return;
     }
     try {
@@ -74,7 +75,7 @@ export const LoginPage = () => {
       }
     } catch (err) {
       setError(err.message || 'Student login failed. Check credentials.');
-      setActiveField('idle');
+      setActiveField('error');
     } finally {
       setLoading(false);
     }
@@ -85,6 +86,7 @@ export const LoginPage = () => {
     setError('');
     if (!adminUsername.trim() || !adminPassword.trim()) {
       setError('Please provide your faculty/administrator username and password.');
+      setActiveField('error');
       return;
     }
     try {
@@ -96,7 +98,7 @@ export const LoginPage = () => {
       }
     } catch (err) {
       setError(err.message || 'Admin login failed. Invalid username or password.');
-      setActiveField('idle');
+      setActiveField('error');
     } finally {
       setLoading(false);
     }
@@ -105,7 +107,7 @@ export const LoginPage = () => {
   return (
     <div className="min-h-screen w-full bg-[#FAF9FE] flex items-center justify-center p-3 sm:p-6 font-sans antialiased text-[#1A1B1F] relative overflow-hidden">
       {/* Flying Robert Mascot - Freely flies anywhere across the entire webpage! */}
-      <RobertMascot activeField={activeField} role={role} />
+      <RobertMascot activeField={activeField} role={role} errorMessage={error} />
 
       <div className="w-full max-w-[1180px] bg-white rounded-[28px] shadow-[0_24px_70px_-20px_rgba(1,35,87,0.2)] p-3 grid lg:grid-cols-12 gap-3 border border-outline-variant/40 relative z-10">
 
@@ -182,9 +184,13 @@ export const LoginPage = () => {
                     type="text"
                     id="studentRegNo"
                     value={studentRegNo}
-                    onChange={(e) => setStudentRegNo(e.target.value)}
+                    onChange={(e) => {
+                      setStudentRegNo(e.target.value);
+                      if (error) setError('');
+                      if (activeField === 'error') setActiveField('reg');
+                    }}
                     onFocus={() => setActiveField('reg')}
-                    onBlur={() => setActiveField('idle')}
+                    onBlur={() => setActiveField((prev) => (prev === 'error' || prev === 'loading' || prev === 'success' ? prev : 'idle'))}
                     placeholder=" "
                     className="login-input font-mono font-medium"
                     required
@@ -201,9 +207,13 @@ export const LoginPage = () => {
                     type={showStudentPassword ? 'text' : 'password'}
                     id="studentPassword"
                     value={studentPassword}
-                    onChange={(e) => setStudentPassword(e.target.value)}
+                    onChange={(e) => {
+                      setStudentPassword(e.target.value);
+                      if (error) setError('');
+                      if (activeField === 'error') setActiveField('dob');
+                    }}
                     onFocus={() => setActiveField('dob')}
-                    onBlur={() => setActiveField('idle')}
+                    onBlur={() => setActiveField((prev) => (prev === 'error' || prev === 'loading' || prev === 'success' ? prev : 'idle'))}
                     placeholder=" "
                     className="login-input font-mono font-medium"
                     required
@@ -245,9 +255,13 @@ export const LoginPage = () => {
                     type="text"
                     id="adminUsername"
                     value={adminUsername}
-                    onChange={(e) => setAdminUsername(e.target.value)}
+                    onChange={(e) => {
+                      setAdminUsername(e.target.value);
+                      if (error) setError('');
+                      if (activeField === 'error') setActiveField('adminUser');
+                    }}
                     onFocus={() => setActiveField('adminUser')}
-                    onBlur={() => setActiveField('idle')}
+                    onBlur={() => setActiveField((prev) => (prev === 'error' || prev === 'loading' || prev === 'success' ? prev : 'idle'))}
                     placeholder=" "
                     className="login-input font-medium"
                     required
@@ -261,9 +275,13 @@ export const LoginPage = () => {
                     type={showAdminPassword ? 'text' : 'password'}
                     id="adminPassword"
                     value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
+                    onChange={(e) => {
+                      setAdminPassword(e.target.value);
+                      if (error) setError('');
+                      if (activeField === 'error') setActiveField('adminPass');
+                    }}
                     onFocus={() => setActiveField('adminPass')}
-                    onBlur={() => setActiveField('idle')}
+                    onBlur={() => setActiveField((prev) => (prev === 'error' || prev === 'loading' || prev === 'success' ? prev : 'idle'))}
                     placeholder=" "
                     className="login-input font-medium"
                     required
