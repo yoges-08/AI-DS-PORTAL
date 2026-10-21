@@ -49,6 +49,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [year, setYear] = useState('');
+  const [semester, setSemester] = useState('');
   const [section, setSection] = useState('');
   const [firstGraduate, setFirstGraduate] = useState('');
   const [pms, setPms] = useState('');
@@ -86,10 +87,20 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Handle page change without automatic scroll up (preserves user scroll position)
+  const handlePageChange = (newPage) => {
+    if (newPage === currentPage) return;
+    const currentScrollY = window.scrollY;
+    setCurrentPage(newPage);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: currentScrollY, behavior: 'instant' });
+    });
+  };
+
   // Reset page to 1 when any filter or search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, year, section, firstGraduate, pms, status]);
+  }, [debouncedSearch, year, semester, section, firstGraduate, pms, status]);
 
   // Load students table
   useEffect(() => {
@@ -103,6 +114,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
           limit: 10,
           search: debouncedSearch,
           year,
+          semester,
           section,
           firstGraduate,
           pms,
@@ -127,7 +139,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
     return () => {
       isCurrent = false;
     };
-  }, [currentPage, debouncedSearch, year, section, firstGraduate, pms, status, sortBy, sortOrder, refreshTrigger]);
+  }, [currentPage, debouncedSearch, year, semester, section, firstGraduate, pms, status, sortBy, sortOrder, refreshTrigger]);
 
   const handleSort = (column) => {
     if (sortBy === column) {
@@ -146,7 +158,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
   const handleExportExcel = async () => {
     try {
       setExporting(true);
-      await api.downloadExcel({ year, section, status });
+      await api.downloadExcel({ year, semester, section, status });
     } catch (err) {
       alert(`Excel export failed: ${err.message || 'Unable to download file.'}`);
     } finally {
@@ -157,7 +169,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
   const handleExportPdf = async () => {
     try {
       setExporting(true);
-      await api.downloadPdf({ year, section, status });
+      await api.downloadPdf({ year, semester, section, status });
     } catch (err) {
       alert(`PDF export failed: ${err.message || 'Unable to download file.'}`);
     } finally {
@@ -168,6 +180,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
   const clearFilters = () => {
     setSearch('');
     setYear('');
+    setSemester('');
     setSection('');
     setFirstGraduate('');
     setPms('');
@@ -348,7 +361,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
           <span className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
             <Filter className="w-3.5 h-3.5 text-secondary" /> Filter Cohort Register
           </span>
-          {(search || year || section || firstGraduate !== '' || pms !== '' || status) && (
+          {(search || year || semester || section || firstGraduate !== '' || pms !== '' || status) && (
             <button
               onClick={clearFilters}
               className="text-xs text-secondary hover:text-primary font-semibold transition-colors"
@@ -358,9 +371,9 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2.5 text-xs">
           {/* Search box */}
-          <div className="lg:col-span-2 relative">
+          <div className="sm:col-span-2 lg:col-span-2 relative">
             <Search className="w-4 h-4 text-outline absolute left-3 top-2.5 pointer-events-none" />
             <input
               type="text"
@@ -376,7 +389,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
             <select
               value={year}
               onChange={(e) => setYear(e.target.value)}
-              className="w-full px-3 py-2 bg-white/80 border border-outline-variant/60 rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all"
+              className="w-full px-3 py-2 bg-white/80 border border-outline-variant/60 rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all font-medium"
             >
               <option value="">All Academic Years</option>
               <option value="1">1st Year</option>
@@ -386,12 +399,31 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
             </select>
           </div>
 
+          {/* Semester Filter (1 to 8) */}
+          <div>
+            <select
+              value={semester}
+              onChange={(e) => setSemester(e.target.value)}
+              className="w-full px-3 py-2 bg-white/80 border border-outline-variant/60 rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all font-medium"
+            >
+              <option value="">All Semesters (1-8)</option>
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+              <option value="3">Semester 3</option>
+              <option value="4">Semester 4</option>
+              <option value="5">Semester 5</option>
+              <option value="6">Semester 6</option>
+              <option value="7">Semester 7</option>
+              <option value="8">Semester 8</option>
+            </select>
+          </div>
+
           {/* Section Filter */}
           <div>
             <select
               value={section}
               onChange={(e) => setSection(e.target.value)}
-              className="w-full px-3 py-2 bg-white/80 border border-outline-variant/60 rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all"
+              className="w-full px-3 py-2 bg-white/80 border border-outline-variant/60 rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all font-medium"
             >
               <option value="">All Sections</option>
               <option value="A">Section A</option>
@@ -451,15 +483,15 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
       <div className="glass-card-l2 rounded-2xl border border-white/80 shadow-sm overflow-hidden">
         
         {/* Mobile Stacked Card View */}
-        <div className="md:hidden divide-y divide-outline-variant/20">
-          {loading ? (
-            <div className="py-10 text-center text-outline text-xs">
+        <div className={`md:hidden divide-y divide-outline-variant/20 min-h-[300px] transition-opacity duration-200 ${loading && students.length > 0 ? 'opacity-50 pointer-events-none' : ''}`}>
+          {loading && students.length === 0 ? (
+            <div className="py-16 text-center text-outline text-xs">
               Loading student dossier records...
             </div>
           ) : students.length === 0 ? (
-            <div className="py-10 px-4 text-center text-outline text-xs">
+            <div className="py-16 px-4 text-center text-outline text-xs">
               <p className="font-medium">No student records found matching current criteria.</p>
-              {(search || year || section || status || firstGraduate || pms) && (
+              {(search || year || semester || section || status || firstGraduate || pms) && (
                 <button
                   onClick={clearFilters}
                   className="mt-2.5 inline-flex items-center text-xs text-secondary font-semibold hover:underline"
@@ -490,9 +522,10 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
 
                 <div className="grid grid-cols-2 gap-2 text-xs text-on-surface-variant bg-surface-container/50 p-2.5 rounded-xl border border-outline-variant/30">
                   <div>
-                    <span className="text-[10px] text-outline block uppercase font-medium">Cohort</span>
+                    <span className="text-[10px] text-outline block uppercase font-medium">Cohort & Sem</span>
                     <span className="font-semibold text-on-surface">
                       {student.year ? `Year ${student.year}` : '-'}{student.section ? ` (${student.section})` : ''}
+                      {student.current_semester ? ` • Sem ${student.current_semester}` : ''}
                     </span>
                   </div>
                   <div>
@@ -543,7 +576,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto min-h-[480px]">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-surface-container/60 border-b border-outline-variant/30 text-primary font-bold uppercase tracking-wider text-[11px]">
               <tr>
@@ -566,7 +599,15 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
                     <ArrowUpDown className="w-3 h-3 text-outline" />
                   </div>
                 </th>
-                <th className="py-3 px-4">Cohort</th>
+                <th 
+                  onClick={() => handleSort('current_semester')}
+                  className="py-3 px-4 cursor-pointer hover:bg-surface-container transition-colors"
+                >
+                  <div className="flex items-center space-x-1">
+                    <span>Cohort & Sem</span>
+                    <ArrowUpDown className="w-3 h-3 text-outline" />
+                  </div>
+                </th>
                 <th className="py-3 px-4">Mobile</th>
                 <th className="py-3 px-4">First Grad</th>
                 <th className="py-3 px-4">PMS</th>
@@ -582,18 +623,18 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-outline-variant/20">
-              {loading ? (
+            <tbody className={`divide-y divide-outline-variant/20 transition-opacity duration-200 ${loading && students.length > 0 ? 'opacity-50 pointer-events-none' : ''}`}>
+              {loading && students.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-outline">
+                  <td colSpan={9} className="py-20 text-center text-outline">
                     Loading student cohort records...
                   </td>
                 </tr>
               ) : students.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-outline">
+                  <td colSpan={9} className="py-20 text-center text-outline">
                     <p className="font-medium">No student records matching current filters.</p>
-                    {(search || year || section || status || firstGraduate || pms) && (
+                    {(search || year || semester || section || status || firstGraduate || pms) && (
                       <button
                         onClick={clearFilters}
                         className="mt-2.5 inline-flex items-center text-xs text-secondary font-semibold hover:underline"
@@ -620,7 +661,12 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
                       {student.name}
                     </td>
                     <td className="py-3 px-4 text-on-surface-variant">
-                      {student.year ? `Year ${student.year}` : '-'}{student.section ? ` - ${student.section}` : ''}
+                      <div className="font-semibold text-on-surface">
+                        {student.year ? `Year ${student.year}` : '-'}{student.section ? ` - ${student.section}` : ''}
+                      </div>
+                      {student.current_semester ? (
+                        <div className="text-[11px] text-outline font-medium">Sem {student.current_semester}</div>
+                      ) : null}
                     </td>
                     <td className="py-3 px-4 text-on-surface-variant font-mono">
                       {student.mobile || '-'}
@@ -677,15 +723,27 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
 
         {/* Table Footer with Pagination */}
         <div className="bg-surface-container/50 border-t border-outline-variant/30 px-5 py-3 flex flex-col sm:flex-row items-center justify-between text-xs text-on-surface-variant gap-3">
-          <div>
-            Showing <strong className="text-primary">{students.length}</strong> of <strong className="text-primary">{pagination.total}</strong> scholars
+          <div className="flex items-center gap-2">
+            <span>
+              Showing <strong className="text-primary">{students.length}</strong> of <strong className="text-primary">{pagination.total}</strong> scholars
+            </span>
+            {loading && students.length > 0 && (
+              <span className="inline-flex items-center gap-1.5 text-secondary font-medium px-2 py-0.5 rounded-full bg-secondary/10">
+                <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
+                Loading page...
+              </span>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                handlePageChange(Math.max(1, currentPage - 1));
+              }}
               disabled={currentPage <= 1 || loading}
-              className="inline-flex items-center px-3 py-1.5 border border-outline-variant/50 rounded-xl bg-white text-on-surface disabled:opacity-40 hover:bg-surface-container transition-all shadow-2xs font-semibold"
+              className="inline-flex items-center px-3 py-1.5 border border-outline-variant/50 rounded-xl bg-white text-on-surface disabled:opacity-40 hover:bg-surface-container transition-all shadow-2xs font-semibold cursor-pointer disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-4 h-4 mr-1" /> Prev
             </button>
@@ -693,9 +751,13 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
               Page <strong className="text-primary">{pagination.page || currentPage}</strong> of <strong className="text-primary">{pagination.totalPages || 1}</strong>
             </span>
             <button
-              onClick={() => setCurrentPage((prev) => Math.min(pagination.totalPages || 1, prev + 1))}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                handlePageChange(Math.min(pagination.totalPages || 1, currentPage + 1));
+              }}
               disabled={currentPage >= (pagination.totalPages || 1) || loading}
-              className="inline-flex items-center px-3 py-1.5 border border-outline-variant/50 rounded-xl bg-white text-on-surface disabled:opacity-40 hover:bg-surface-container transition-all shadow-2xs font-semibold"
+              className="inline-flex items-center px-3 py-1.5 border border-outline-variant/50 rounded-xl bg-white text-on-surface disabled:opacity-40 hover:bg-surface-container transition-all shadow-2xs font-semibold cursor-pointer disabled:cursor-not-allowed"
             >
               Next <ChevronRight className="w-4 h-4 ml-1" />
             </button>

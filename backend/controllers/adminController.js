@@ -132,6 +132,14 @@ const getStudents = async (req, res) => {
       }
     }
 
+    if (req.query.semester !== undefined && req.query.semester !== '') {
+      const semNum = parseInt(Array.isArray(req.query.semester) ? req.query.semester[0] : req.query.semester, 10);
+      if (Number.isFinite(semNum) && semNum >= 1 && semNum <= 8) {
+        conditions.push('current_semester = ?');
+        params.push(semNum);
+      }
+    }
+
     if (section) {
       conditions.push('section = ?');
       params.push(section);
@@ -159,6 +167,8 @@ const getStudents = async (req, res) => {
       'register_no': 'register_no',
       'name': 'name',
       'year': 'year',
+      'current_semester': 'current_semester',
+      'semester': 'current_semester',
       'section': 'section',
       'status': 'status',
       'created_at': 'created_at',
@@ -176,7 +186,7 @@ const getStudents = async (req, res) => {
 
     // Fetch records
     const selectQuery = `
-      SELECT id, register_no, name, dob, year, section, mobile, email,
+      SELECT id, register_no, name, dob, year, current_semester, section, mobile, email,
              aadhaar_no, bank_acc_no, is_first_graduate, is_pms, pms_status,
              status, is_locked, submission_date, created_at
       FROM students

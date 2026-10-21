@@ -15,6 +15,7 @@ import { api } from '../../services/api';
 
 export const ReportsPage = () => {
   const [year, setYear] = useState('');
+  const [semester, setSemester] = useState('');
   const [section, setSection] = useState('');
   const [status, setStatus] = useState('');
   const [downloading, setDownloading] = useState(false);
@@ -24,7 +25,7 @@ export const ReportsPage = () => {
     try {
       setDownloading(true);
       setActiveDownloadType('excel');
-      await api.downloadExcel({ year, section, status });
+      await api.downloadExcel({ year, semester, section, status });
     } catch (err) {
       alert(`Excel export failed: ${err.message || 'Unable to download register.'}`);
     } finally {
@@ -37,7 +38,7 @@ export const ReportsPage = () => {
     try {
       setDownloading(true);
       setActiveDownloadType('pdf');
-      await api.downloadPdf({ year, section, status });
+      await api.downloadPdf({ year, semester, section, status });
     } catch (err) {
       alert(`PDF export failed: ${err.message || 'Unable to download report.'}`);
     } finally {
@@ -73,13 +74,13 @@ export const ReportsPage = () => {
           <span className="text-caption text-outline font-medium">Live Query Engine</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
           <div>
             <label className="block font-semibold text-on-surface mb-1.5">Academic Cohort / Year</label>
             <select
               value={year}
               onChange={(e) => setYear(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm text-on-surface focus:outline-none transition-all"
+              className="w-full px-3.5 py-2.5 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm text-on-surface focus:outline-none transition-all font-medium"
             >
               <option value="">All Academic Years (1 to 4)</option>
               <option value="1">1st Year (AI & DS)</option>
@@ -90,11 +91,30 @@ export const ReportsPage = () => {
           </div>
 
           <div>
+            <label className="block font-semibold text-on-surface mb-1.5">Current Semester</label>
+            <select
+              value={semester}
+              onChange={(e) => setSemester(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm text-on-surface focus:outline-none transition-all font-medium"
+            >
+              <option value="">All Semesters (1 to 8)</option>
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+              <option value="3">Semester 3</option>
+              <option value="4">Semester 4</option>
+              <option value="5">Semester 5</option>
+              <option value="6">Semester 6</option>
+              <option value="7">Semester 7</option>
+              <option value="8">Semester 8</option>
+            </select>
+          </div>
+
+          <div>
             <label className="block font-semibold text-on-surface mb-1.5">Section</label>
             <select
               value={section}
               onChange={(e) => setSection(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm text-on-surface focus:outline-none transition-all"
+              className="w-full px-3.5 py-2.5 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm text-on-surface focus:outline-none transition-all font-medium"
             >
               <option value="">All Sections (A, B, C, D)</option>
               <option value="A">Section A</option>

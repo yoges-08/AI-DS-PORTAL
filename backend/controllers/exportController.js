@@ -37,6 +37,14 @@ const exportExcel = async (req, res) => {
         params.push(yearNum);
       }
     }
+    const rawSemester = req.query.semester;
+    if (rawSemester !== undefined && rawSemester !== '') {
+      const semNum = parseInt(Array.isArray(rawSemester) ? rawSemester[0] : rawSemester, 10);
+      if (Number.isFinite(semNum) && semNum >= 1 && semNum <= 8) {
+        conditions.push('current_semester = ?');
+        params.push(semNum);
+      }
+    }
     if (section) {
       conditions.push('section = ?');
       params.push(section);
@@ -57,6 +65,7 @@ const exportExcel = async (req, res) => {
         community AS 'Community',
         caste AS 'Caste',
         year AS 'Year',
+        current_semester AS 'Semester',
         section AS 'Section',
         mobile AS 'Mobile Number',
         email AS 'Email Address',
@@ -140,6 +149,14 @@ const exportPdf = async (req, res) => {
       if (Number.isFinite(yearNum) && [1, 2, 3, 4].includes(yearNum)) {
         conditions.push('year = ?');
         params.push(yearNum);
+      }
+    }
+    const rawSemester = req.query.semester;
+    if (rawSemester !== undefined && rawSemester !== '') {
+      const semNum = parseInt(Array.isArray(rawSemester) ? rawSemester[0] : rawSemester, 10);
+      if (Number.isFinite(semNum) && semNum >= 1 && semNum <= 8) {
+        conditions.push('current_semester = ?');
+        params.push(semNum);
       }
     }
     if (section) {
