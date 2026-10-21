@@ -20,76 +20,69 @@ export const DocumentUploadField = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Reset error
     setError('');
 
-    // Check size (2MB max)
+    // Size validation (2MB)
     if (file.size > 2 * 1024 * 1024) {
       setError(`File size (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the 2 MB limit.`);
+      e.target.value = '';
       return;
     }
 
-    // Check file type and extension
-    const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
-    const allowedExts = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
-    const allowedTypes = [
-      'image/jpeg', 'image/png', 'image/jpg', 'image/pjpeg', 'image/x-png',
-      'image/webp', 'application/pdf'
-    ];
-
-    if (!allowedExts.includes(ext) || (!allowedTypes.includes(file.type) && file.type !== '')) {
-      setError('Only PDF, JPG, PNG, and WebP formats are permitted.');
+    // Type validation
+    const allowed = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'application/pdf'];
+    if (!allowed.includes(file.type.toLowerCase())) {
+      setError('Only PDF, JPG, PNG, and WebP files are permitted.');
+      e.target.value = '';
       return;
     }
 
     try {
       setUploading(true);
       const res = await api.uploadDocument(file, docType, studentId);
-      if (res.success) {
+      if (res.success && res.document) {
         onUploadSuccess && onUploadSuccess(docType, res.document);
       }
     } catch (err) {
-      console.error('[Document Upload Error]:', err);
-      setError(err.message || 'Failed to upload document. Please ensure backend server is running.');
+      setError(err.message || 'Upload failed. Please try again.');
     } finally {
       setUploading(false);
-      // Reset input value
       e.target.value = '';
     }
   };
 
   const handleDelete = async () => {
-    if (!currentDoc || disabled) return;
-    if (!window.confirm(`Are you sure you want to remove the uploaded ${label}?`)) return;
+    if (!currentDoc?.id) return;
+    if (!window.confirm(`Are you sure you want to delete this ${label}?`)) return;
 
     try {
       setUploading(true);
-      const res = await api.deleteDocument(currentDoc.id, studentId);
-      if (res.success) {
-        onDeleteSuccess && onDeleteSuccess(docType, currentDoc.id);
-      }
+      await api.deleteDocument(currentDoc.id, studentId);
+      onDeleteSuccess && onDeleteSuccess(docType, currentDoc.id);
     } catch (err) {
-      setError(err.message || 'Failed to delete file.');
+      setError(err.message || 'Failed to delete document.');
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <div className="border border-gov-border rounded p-3.5 bg-white">
-      <div className="flex items-start justify-between">
+    <div className="p-4 bg-white/75 backdrop-blur-md border border-outline-variant/40 rounded-2xl hover:border-outline-variant transition-all shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <label className="text-xs font-semibold text-gray-800 uppercase tracking-wide block">
-            {label} {required && <span className="text-red-600">*</span>}
+          <label className="text-xs font-bold text-on-surface uppercase tracking-wide block">
+            {label} {required && <span className="text-rose-600">*</span>}
           </label>
-          <span className="text-[12px] text-gray-500">{helperText}</span>
+          <span className="text-[11px] text-on-surface-variant">{helperText}</span>
         </div>
 
         {currentDoc ? (
-          <span className="inline-flex items-center text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded font-medium">
-            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Uploaded
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Uploaded
           </span>
         ) : (
-          <span className="inline-flex items-center text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-medium">
+          <span className="inline-flex items-center text-[11px] font-semibold text-amber-700 bg-amber-500/10 border border-amber-500/25 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
             Pending
           </span>
         )}
@@ -97,13 +90,13 @@ export const DocumentUploadField = ({
 
       {/* Uploaded File Row */}
       {currentDoc ? (
-        <div className="mt-3 flex items-center justify-between bg-gray-50 border border-gray-200 rounded p-2 text-xs">
+        <div className="mt-3 flex items-center justify-between bg-surface-container/60 border border-outline-variant/30 rounded-xl p-2.5 text-xs">
           <div className="flex items-center space-x-2 truncate">
-            <FileText className="w-4 h-4 text-gov-navy shrink-0" />
-            <span className="font-medium text-gray-700 truncate" title={currentDoc.fileName || currentDoc.file_name}>
+            <FileText className="w-4 h-4 text-primary shrink-0" />
+            <span className="font-semibold text-on-surface truncate" title={currentDoc.fileName || currentDoc.file_name}>
               {currentDoc.fileName || currentDoc.file_name || 'Document'}
             </span>
-            <span className="text-gray-400 text-[11px] shrink-0">
+            <span className="text-outline text-[11px] shrink-0 font-mono">
               ({currentDoc.fileSize || currentDoc.file_size ? `${Math.round((currentDoc.fileSize || currentDoc.file_size) / 1024)} KB` : ''})
             </span>
           </div>
@@ -113,7 +106,7 @@ export const DocumentUploadField = ({
               href={getFileUrl(currentDoc.filePath || currentDoc.file_path)}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center px-2 py-1 text-xs text-gov-navy hover:underline bg-white border border-gray-300 rounded"
+              className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-primary hover:bg-white bg-white/70 border border-outline-variant/40 rounded-lg shadow-2xs transition-all"
               title="Preview / Open document"
             >
               <ExternalLink className="w-3 h-3 mr-1" /> View
@@ -123,7 +116,7 @@ export const DocumentUploadField = ({
                 type="button"
                 onClick={handleDelete}
                 disabled={uploading}
-                className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                className="p-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
                 title="Delete document"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -133,23 +126,23 @@ export const DocumentUploadField = ({
         </div>
       ) : (
         <div className="mt-3">
-          <label className={`inline-flex items-center px-3 py-1.5 border border-gov-navy text-gov-navy text-xs font-semibold rounded cursor-pointer hover:bg-blue-50 transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          <label className={`inline-flex items-center px-3.5 py-1.5 bg-white border border-outline-variant/60 hover:border-primary text-primary text-xs font-semibold rounded-xl cursor-pointer hover:bg-surface-container transition-all shadow-2xs ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
             <Upload className="w-3.5 h-3.5 mr-1.5" />
             <span>{uploading ? 'Uploading...' : 'Choose File to Upload'}</span>
             <input
               type="file"
-              accept=".pdf,.jpg,.jpeg,.png,.webp"
-              onChange={handleFileChange}
               disabled={disabled || uploading}
-              className="sr-only"
+              onChange={handleFileChange}
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              className="hidden"
             />
           </label>
         </div>
       )}
 
       {error && (
-        <div className="mt-2 text-xs text-red-600 flex items-center">
-          <AlertCircle className="w-3.5 h-3.5 mr-1 shrink-0" />
+        <div className="mt-2 text-xs text-rose-700 bg-rose-50/80 p-2 rounded-lg border border-rose-200/60 flex items-center space-x-1.5">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
           <span>{error}</span>
         </div>
       )}

@@ -4,8 +4,8 @@
 
 @layer base {
   body {
-    background-color: #F5F7FA;
-    color: #1F2937;
+    background-color: #FAF9FE;
+    color: #1A1B1F;
     font-size: 14.5px;
     line-height: 1.5;
   }
@@ -13,6 +13,60 @@
   input, select, textarea {
     font-size: 14px;
   }
+
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1;
+  }
+}
+
+/* Cupertino Academic Glass Utilities */
+.frosted-glass-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 20px 50px -12px rgba(1, 35, 87, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.glass-nav {
+  background: rgba(250, 249, 254, 0.80);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(196, 198, 209, 0.4);
+}
+
+.glass-card-l1 {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8px 32px -4px rgba(1, 35, 87, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.glass-card-l2 {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 10px 30px -4px rgba(1, 35, 87, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+}
+
+.glass-dock {
+  background: rgba(250, 249, 254, 0.88);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border-top: 1px solid rgba(196, 198, 209, 0.4);
+  box-shadow: 0 -4px 24px rgba(1, 35, 87, 0.05);
+}
+
+.frosted-pill-tag {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
 /* Print styling for Student Profile Verification Slip */

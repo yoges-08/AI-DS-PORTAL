@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { History, Shield, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { 
+  History, 
+  Shield, 
+  ChevronLeft, 
+  ChevronRight, 
+  RefreshCw, 
+  Lock, 
+  Unlock, 
+  KeyRound, 
+  CheckCircle, 
+  XCircle, 
+  Upload,
+  Activity,
+  Terminal
+} from 'lucide-react';
 import { api } from '../../services/api';
 
 export const AuditLogsPage = () => {
@@ -29,167 +43,219 @@ export const AuditLogsPage = () => {
   const getActionBadge = (action) => {
     switch (action) {
       case 'LOCK':
-        return 'bg-amber-50 text-amber-900 border-amber-300';
+        return {
+          classes: 'bg-amber-100 text-amber-900 border-amber-300',
+          dot: 'bg-amber-500',
+          icon: Lock
+        };
       case 'UNLOCK':
-        return 'bg-slate-100 text-slate-800 border-slate-300';
+        return {
+          classes: 'bg-slate-100 text-slate-800 border-slate-300',
+          dot: 'bg-slate-500',
+          icon: Unlock
+        };
       case 'RESET_PASSWORD':
-        return 'bg-purple-50 text-purple-900 border-purple-300';
+        return {
+          classes: 'bg-purple-100 text-purple-900 border-purple-300',
+          dot: 'bg-purple-500',
+          icon: KeyRound
+        };
       case 'VERIFY':
-        return 'bg-green-50 text-green-900 border-green-300';
+        return {
+          classes: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+          dot: 'bg-emerald-500',
+          icon: CheckCircle
+        };
       case 'REJECT':
-        return 'bg-red-50 text-red-900 border-red-300';
+        return {
+          classes: 'bg-rose-100 text-rose-900 border-rose-300',
+          dot: 'bg-rose-500',
+          icon: XCircle
+        };
       case 'BULK_IMPORT':
-        return 'bg-blue-50 text-blue-900 border-blue-300';
+        return {
+          classes: 'bg-secondary-fixed text-primary border-secondary/30',
+          dot: 'bg-secondary',
+          icon: Upload
+        };
       default:
-        return 'bg-gray-50 text-gray-800 border-gray-300';
+        return {
+          classes: 'bg-surface-container-high text-on-surface border-outline-variant/40',
+          dot: 'bg-outline',
+          icon: Activity
+        };
     }
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-5">
-      <div className="flex items-center justify-between border-b border-gov-border pb-3">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-6">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-outline-variant/30 pb-4 gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gov-navy flex items-center">
-            <History className="w-5 h-5 mr-2 text-gov-navy" /> Administrative Audit Trail
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2.5 py-0.5 rounded-full text-label-sm font-semibold bg-primary-fixed text-primary">
+              Security Compliance
+            </span>
+            <span className="text-caption text-outline font-medium">Immutable Activity Ledger</span>
+          </div>
+          <h1 className="text-2xl font-bold text-primary tracking-tight flex items-center gap-2">
+            <History className="w-6 h-6 text-secondary" /> Administrative Audit Trail
           </h1>
-          <p className="text-xs text-gray-500">
-            System security audit log: Tracks who locked, unlocked, reset passwords, edited records, or imported data.
+          <p className="text-body-md text-on-surface-variant mt-1">
+            Real-time audit log of credentials resets, status locks, verification approvals, and bulk dataset ingestions.
           </p>
         </div>
 
         <button
           onClick={() => fetchLogs(pagination.page)}
           disabled={loading}
-          className="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded text-xs font-semibold hover:bg-gray-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-white/90 border border-outline-variant/40 rounded-xl text-xs font-semibold text-primary hover:bg-surface-container shadow-sm transition-all active:scale-95 self-start sm:self-auto"
         >
-          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <span>Refresh Ledger</span>
         </button>
       </div>
 
-      <div className="bg-white border border-gov-border rounded shadow-sm overflow-hidden">
+      {/* Audit Log Card Container */}
+      <div className="glass-card-l1 rounded-3xl border border-white/60 shadow-lg backdrop-blur-xl bg-white/95 overflow-hidden">
         
-        {/* Mobile Stacked Card View (Screens < 768px) */}
-        <div className="md:hidden divide-y divide-gray-200">
+        {/* Mobile View */}
+        <div className="md:hidden divide-y divide-outline-variant/20">
           {loading ? (
-            <div className="py-8 text-center text-gray-500 text-xs">
-              Loading audit trail...
+            <div className="py-12 text-center text-outline text-xs">
+              Loading security audit ledger...
             </div>
           ) : logs.length === 0 ? (
-            <div className="py-8 px-4 text-center text-gray-500 text-xs">
+            <div className="py-12 px-4 text-center text-outline text-xs">
               No audit records logged yet.
             </div>
           ) : (
-            logs.map((log) => (
-              <div key={log.id} className="p-3.5 space-y-2 hover:bg-gray-50 text-xs">
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${getActionBadge(log.action)}`}>
-                    {log.action}
-                  </span>
-                  <span className="text-[11px] text-gray-500 font-mono">
-                    {new Date(log.created_at).toLocaleString('en-GB')}
-                  </span>
-                </div>
-                {log.student_reg_no && (
-                  <div className="flex items-center gap-1 font-mono text-gov-navy font-bold">
-                    <span className="text-gray-400 font-normal">Student:</span> {log.student_reg_no}
+            logs.map((log) => {
+              const badge = getActionBadge(log.action);
+              const Icon = badge.icon;
+              return (
+                <div key={log.id} className="p-4 space-y-2.5 hover:bg-surface-container-low/50 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${badge.classes}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}></span>
+                      <Icon className="w-3 h-3" />
+                      {log.action}
+                    </span>
+                    <span className="text-[11px] text-outline font-mono">
+                      {new Date(log.created_at).toLocaleString('en-GB')}
+                    </span>
                   </div>
-                )}
-                <div className="text-gray-700 bg-gray-50 p-2 rounded border border-gray-100">
-                  {log.details || '-'}
+                  {log.student_reg_no && (
+                    <div className="flex items-center gap-1.5 font-mono text-primary font-bold">
+                      <span className="text-outline font-normal">Candidate:</span> {log.student_reg_no}
+                    </div>
+                  )}
+                  <div className="text-on-surface bg-surface-container-low/80 p-2.5 rounded-xl border border-outline-variant/20 font-mono text-[11px]">
+                    {log.details || '-'}
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-outline pt-1">
+                    <span>Admin: <strong className="text-on-surface">{log.admin_username}</strong></span>
+                    <span className="font-mono text-[10px]">{log.ip_address || '127.0.0.1'}</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
-                  <span>Admin: <strong className="text-gray-700">{log.admin_username}</strong></span>
-                  <span className="font-mono text-[10px]">{log.ip_address || '127.0.0.1'}</span>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
-        {/* Desktop Table View (Screens >= 768px) */}
+        {/* Desktop Table */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-[#F5F7FA] border-b border-gov-border text-gray-700 font-bold uppercase tracking-wider text-[11px]">
+            <thead className="bg-surface-container-low/80 border-b border-outline-variant/30 text-outline font-semibold uppercase tracking-wider text-[11px]">
               <tr>
-                <th className="py-2.5 px-3">Date & Time</th>
-                <th className="py-2.5 px-3">Administrator</th>
-                <th className="py-2.5 px-3">Action Type</th>
-                <th className="py-2.5 px-3">Student Reg No</th>
-                <th className="py-2.5 px-3">Audit Particulars</th>
-                <th className="py-2.5 px-3">IP Address</th>
+                <th className="py-3 px-4">Timestamp</th>
+                <th className="py-3 px-4">Administrator</th>
+                <th className="py-3 px-4">Action</th>
+                <th className="py-3 px-4">Student Reg No</th>
+                <th className="py-3 px-4">Event Particulars</th>
+                <th className="py-3 px-4">IP Address</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-outline-variant/20 text-on-surface">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-500">
-                    Loading audit trail...
+                  <td colSpan={6} className="py-12 text-center text-outline">
+                    Loading security audit ledger...
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-500">
+                  <td colSpan={6} className="py-12 text-center text-outline">
                     No audit records logged yet.
                   </td>
                 </tr>
               ) : (
-                logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50">
-                    <td className="py-2 px-3 whitespace-nowrap text-gray-600">
-                      {new Date(log.created_at).toLocaleString('en-GB')}
-                    </td>
-                    <td className="py-2 px-3 font-semibold text-gray-900">
-                      {log.admin_username}
-                    </td>
-                    <td className="py-2 px-3">
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${getActionBadge(log.action)}`}>
-                        {log.action}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 font-mono font-semibold text-gov-navy">
-                      {log.student_reg_no || '-'}
-                    </td>
-                    <td className="py-2 px-3 text-gray-700 max-w-xs truncate" title={log.details}>
-                      {log.details || '-'}
-                    </td>
-                    <td className="py-2 px-3 font-mono text-[11px] text-gray-500">
-                      {log.ip_address || '127.0.0.1'}
-                    </td>
-                  </tr>
-                ))
+                logs.map((log) => {
+                  const badge = getActionBadge(log.action);
+                  const Icon = badge.icon;
+                  return (
+                    <tr key={log.id} className="hover:bg-surface-container-low/50 transition-colors">
+                      <td className="py-3 px-4 whitespace-nowrap text-outline font-mono text-[11px]">
+                        {new Date(log.created_at).toLocaleString('en-GB')}
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-primary">
+                        {log.admin_username}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${badge.classes}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}></span>
+                          <Icon className="w-3 h-3" />
+                          {log.action}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-mono font-semibold text-primary">
+                        {log.student_reg_no || '-'}
+                      </td>
+                      <td className="py-3 px-4 text-on-surface max-w-sm truncate font-mono text-[11px]" title={log.details}>
+                        {log.details || '-'}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-[11px] text-outline">
+                        {log.ip_address || '127.0.0.1'}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="bg-[#F5F7FA] border-t border-gov-border px-4 py-2 flex items-center justify-between text-xs text-gray-600">
+        {/* Pagination Footer */}
+        <div className="bg-surface-container-lowest/90 border-t border-outline-variant/30 px-6 py-3.5 flex items-center justify-between text-xs text-outline backdrop-blur-md">
           <div>
-            Total Audit Entries: <strong>{pagination.total}</strong>
+            Total Audit Entries: <strong className="text-primary">{pagination.total}</strong>
           </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => fetchLogs(pagination.page - 1)}
               disabled={pagination.page <= 1 || loading}
-              className="p-2 min-w-[38px] min-h-[38px] flex items-center justify-center bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 transition-colors"
+              className="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest disabled:opacity-40 transition-all active:scale-95"
               aria-label="Previous page"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4 text-on-surface" />
             </button>
-            <span className="px-1 font-medium">
+            <span className="px-2 font-medium text-on-surface">
               Page {pagination.page} of {pagination.totalPages || 1}
             </span>
             <button
               onClick={() => fetchLogs(pagination.page + 1)}
               disabled={pagination.page >= pagination.totalPages || loading}
-              className="p-2 min-w-[38px] min-h-[38px] flex items-center justify-center bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 transition-colors"
+              className="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest disabled:opacity-40 transition-all active:scale-95"
               aria-label="Next page"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4 text-on-surface" />
             </button>
           </div>
         </div>
+
       </div>
+
     </div>
   );
 };

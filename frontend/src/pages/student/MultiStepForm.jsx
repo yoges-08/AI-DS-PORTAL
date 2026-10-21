@@ -700,42 +700,47 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
 
   // Helper for input border and error state styling
   const getInputClass = (fieldName, extra = '') => {
-    return `w-full px-3 py-1.5 border rounded text-sm focus:outline-none disabled:bg-gray-100 ${
+    return `w-full px-3.5 py-2 bg-surface-container-low/40 hover:bg-surface-container-low focus:bg-white border rounded-xl text-sm transition-all focus:outline-none disabled:bg-surface-container-high/60 disabled:cursor-not-allowed ${
       errors[fieldName]
-        ? 'border-red-500 bg-red-50/20 focus:border-red-600 focus:ring-1 focus:ring-red-500'
-        : 'border-gray-300 focus:border-gov-navy'
+        ? 'border-error bg-error-container/20 focus:border-error focus:ring-2 focus:ring-error/20 text-on-surface'
+        : 'border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 text-on-surface'
     } ${extra}`;
   };
 
   return (
-    <div className="max-w-4xl mx-auto pb-12">
+    <div className="max-w-4xl mx-auto pb-16">
       
       {/* Top Banner & Navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-4 border-b border-gov-border gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-6 border-b border-outline-variant/30 gap-3">
         <div className="flex items-center space-x-3">
           {onBack && (
             <button
               onClick={onBack}
-              className="p-1.5 border border-gray-300 rounded text-gray-600 hover:bg-gray-100"
+              className="p-2 border border-outline-variant/40 rounded-xl bg-surface-container-high/60 hover:bg-surface-container-high text-on-surface-variant transition-all active:scale-95"
               title="Return"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}
           <div>
-            <h1 className="text-xl font-bold text-gov-navy tracking-tight">
-              Student Details Form
-            </h1>
-            <p className="text-xs text-gov-subtle flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span>Register No: <span className="font-semibold text-gray-800">{formData.registerNo}</span></span>
-              <span>| Year: <span className="font-semibold text-gray-800">{formData.year ? `Year ${formData.year}` : 'Not set yet'}</span></span>
-              <span>| Section: <span className="font-semibold text-gray-800">{formData.section ? `Sec ${formData.section}` : 'Not set yet'}</span></span>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-secondary-fixed/80 text-primary">
+                Section 0{currentStep} of 08
+              </span>
+              <h1 className="text-xl font-bold text-primary tracking-tight">
+                Student Details Form
+              </h1>
+            </div>
+            <div className="text-xs text-outline flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+              <span>Register: <span className="font-mono font-semibold text-primary">{formData.registerNo}</span></span>
+              <span>• Year: <span className="font-semibold text-on-surface">{formData.year ? `Year ${formData.year}` : 'Not set'}</span></span>
+              <span>• Section: <span className="font-semibold text-on-surface">{formData.section ? `Sec ${formData.section}` : 'Not set'}</span></span>
               {lastSavedTime && (
-                <span className="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-medium">
-                  <CheckCircle className="w-3 h-3 mr-1" /> Last saved {lastSavedTime}
+                <span className="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-medium text-[11px]">
+                  <CheckCircle className="w-3 h-3 mr-1 text-emerald-600" /> Draft auto-synced ({lastSavedTime})
                 </span>
               )}
-            </p>
+            </div>
           </div>
         </div>
 
@@ -745,7 +750,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center px-2.5 py-1 text-xs border border-gray-300 rounded text-gray-700 bg-white hover:bg-gray-50 font-medium"
+              className="inline-flex items-center px-3 py-1.5 text-xs border border-outline-variant/40 rounded-xl text-primary bg-white hover:bg-surface-container font-medium shadow-sm transition-all active:scale-95"
             >
               <Printer className="w-3.5 h-3.5 mr-1" /> Print Summary
             </button>
@@ -783,7 +788,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
       <ProgressBar currentStep={currentStep} onSelectStep={handleStepSelect} />
 
       {/* Form Container */}
-      <div className="bg-white border border-gov-border rounded p-6 shadow-sm">
+      <div className="glass-card-l1 rounded-3xl p-6 sm:p-8 border border-white/60 shadow-xl backdrop-blur-xl bg-white/95 transition-all">
         
         {/* STEP 1: PERSONAL DETAILS */}
         {currentStep === 1 && (
@@ -2238,7 +2243,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
         )}
 
         {/* Bottom Form Actions (Save draft, Save & Exit, Next, Prev, Submit) */}
-        <div className="mt-4 pt-4 border-t border-gov-border flex flex-col sm:flex-row items-center justify-between gap-3 no-print">
+        <div className="mt-8 pt-4 border-t border-outline-variant/30 flex flex-col sm:flex-row items-center justify-between gap-3 no-print">
           
           <div>
             {currentStep > 1 && (
@@ -2246,14 +2251,14 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                 type="button"
                 onClick={handlePrev}
                 disabled={saving || submitting}
-                className="inline-flex items-center px-3.5 py-1.5 border border-gray-300 rounded text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50"
+                className="inline-flex items-center gap-1 px-4 py-2 border border-outline-variant/50 rounded-xl text-xs font-semibold text-on-surface bg-surface-container-high/60 hover:bg-surface-container-high shadow-sm transition-all active:scale-95"
               >
-                <ChevronLeft className="w-4 h-4 mr-1" /> Back
+                <ChevronLeft className="w-4 h-4 mr-0.5" /> Back
               </button>
             )}
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
             {!isLocked && (
               <>
                 {/* Save Draft */}
@@ -2261,19 +2266,19 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   type="button"
                   onClick={handleSaveDraft}
                   disabled={saving || submitting}
-                  className={`inline-flex items-center px-3.5 py-1.5 border rounded text-xs font-semibold transition-colors ${
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-xl text-xs font-semibold shadow-sm transition-all active:scale-95 ${
                     isCurrentStepComplete
-                      ? 'border-gov-navy text-gov-navy hover:bg-blue-50'
-                      : 'border-amber-400 text-amber-900 bg-amber-50/50 hover:bg-amber-100'
+                      ? 'border-outline-variant/50 text-primary bg-white hover:bg-surface-container'
+                      : 'border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100'
                   }`}
                   title={isCurrentStepComplete ? 'Save current step as draft' : 'Fill mandatory (*) fields to save draft'}
                 >
                   {isCurrentStepComplete ? (
-                    <Save className="w-4 h-4 mr-1.5" />
+                    <Save className="w-3.5 h-3.5" />
                   ) : (
-                    <Lock className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+                    <Lock className="w-3.5 h-3.5 text-amber-600" />
                   )}
-                  <span>{saving ? 'Saving...' : 'Save as Draft'}</span>
+                  <span>{saving ? 'Saving...' : 'Save Draft'}</span>
                 </button>
 
                 {/* Save & Exit */}
@@ -2281,17 +2286,17 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   type="button"
                   onClick={handleSaveAndExit}
                   disabled={saving || submitting}
-                  className={`inline-flex items-center px-3.5 py-1.5 border rounded text-xs font-semibold transition-colors ${
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-xl text-xs font-semibold shadow-sm transition-all active:scale-95 ${
                     isCurrentStepComplete
-                      ? 'border-gray-400 text-gray-700 bg-white hover:bg-gray-50'
-                      : 'border-amber-300 text-amber-800 bg-amber-50/30 hover:bg-amber-100'
+                      ? 'border-outline-variant/40 text-on-surface-variant bg-surface-container-high/60 hover:bg-surface-container-high'
+                      : 'border-amber-200 text-amber-800 bg-amber-50/50 hover:bg-amber-100'
                   }`}
                   title={isCurrentStepComplete ? 'Save and exit form' : 'Fill mandatory (*) fields to save and exit'}
                 >
                   {isCurrentStepComplete ? (
-                    <Save className="w-4 h-4 mr-1.5 text-gray-600" />
+                    <Save className="w-3.5 h-3.5 text-on-surface-variant" />
                   ) : (
-                    <Lock className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+                    <Lock className="w-3.5 h-3.5 text-amber-600" />
                   )}
                   <span>{saving ? 'Saving...' : 'Save & Exit'}</span>
                 </button>
@@ -2303,18 +2308,18 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                 type="button"
                 onClick={handleNext}
                 disabled={saving || submitting}
-                className={`inline-flex items-center px-4 py-1.5 rounded text-xs font-semibold shadow-sm transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-semibold shadow-md transition-all active:scale-95 ${
                   isCurrentStepComplete
-                    ? 'bg-gov-navy text-white hover:bg-gov-navy-dark'
-                    : 'bg-amber-700 text-white hover:bg-amber-800'
+                    ? 'bg-primary hover:bg-primary-container text-white'
+                    : 'bg-amber-600 text-white hover:bg-amber-700'
                 }`}
                 title={isCurrentStepComplete ? 'Proceed to next step' : 'Complete mandatory (*) fields to advance'}
               >
                 {!isCurrentStepComplete && (
-                  <Lock className="w-3.5 h-3.5 mr-1.5 text-amber-200" />
+                  <Lock className="w-3.5 h-3.5 text-amber-200" />
                 )}
                 <span>Save & Continue</span>
-                <ChevronRight className="w-4 h-4 ml-1" />
+                <ChevronRight className="w-4 h-4 ml-0.5" />
               </button>
             ) : (
               !isLocked && (
@@ -2322,9 +2327,9 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   type="button"
                   onClick={handleSubmit}
                   disabled={submitting || !formData.declarationAccepted}
-                  className="inline-flex items-center px-5 py-1.5 bg-green-700 text-white rounded text-xs font-bold hover:bg-green-800 disabled:opacity-50 shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95 disabled:opacity-50"
                 >
-                  <Send className="w-4 h-4 mr-1.5" />
+                  <Send className="w-3.5 h-3.5" />
                   <span>{submitting ? 'Submitting...' : 'Final Submit Record'}</span>
                 </button>
               )
@@ -2339,7 +2344,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 p-3 bg-gov-navy text-white rounded-full shadow-lg hover:bg-gov-navy-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gov-navy z-40 transition-all duration-200"
+          className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 p-3 bg-primary hover:bg-primary-container text-white rounded-2xl shadow-xl hover:shadow-2xl focus:outline-none z-40 transition-all duration-200 active:scale-95 border border-white/20"
           title="Back to Top"
           aria-label="Back to Top"
         >
@@ -2349,31 +2354,31 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
 
       {/* Final Submit Confirmation Modal */}
       {showConfirmSubmit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full border border-gray-200 overflow-hidden transform transition-all">
-            <div className="p-5 border-b border-gray-100 flex items-start justify-between bg-amber-50/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-fade-in">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-[0_24px_64px_rgba(0,0,0,0.18)] max-w-md w-full border border-white/60 overflow-hidden transform transition-all">
+            <div className="p-5 border-b border-outline-variant/30 flex items-start justify-between bg-amber-50/60">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-amber-100 rounded-full text-amber-700">
+                <div className="p-2.5 bg-amber-100 rounded-2xl text-amber-800">
                   <ShieldAlert className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-gray-900">Confirm Final Submission</h3>
-                  <p className="text-xs text-gray-500">Department of AI & DS – Student Record Portal</p>
+                  <h3 className="text-base font-bold text-on-surface">Confirm Final Submission</h3>
+                  <p className="text-xs text-outline">Department of AI & DS – Student Record Portal</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowConfirmSubmit(false)}
-                className="text-gray-400 hover:text-gray-600 rounded-md p-1"
+                className="w-8 h-8 rounded-full bg-surface-container-high/80 hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant transition-all active:scale-95"
                 aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             
-            <div className="p-5 text-xs text-gray-600 space-y-3 leading-relaxed">
-              <div className="p-3 bg-red-50 border border-red-200 rounded text-red-800 flex items-start space-x-2">
-                <Lock className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div className="p-5 text-xs text-on-surface-variant space-y-3 leading-relaxed">
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-900 flex items-start space-x-2.5">
+                <Lock className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 <span>
                   <strong>Important Notice:</strong> Once submitted, your profile will be <strong>locked</strong> for administrative verification. You will not be able to edit your personal or academic information or re-upload documents without administrator permission.
                 </span>
@@ -2383,12 +2388,12 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
               </p>
             </div>
 
-            <div className="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-end space-x-2.5">
+            <div className="px-5 py-4 bg-surface-container-lowest/90 border-t border-outline-variant/30 flex items-center justify-end space-x-2.5">
               <button
                 type="button"
                 onClick={() => setShowConfirmSubmit(false)}
                 disabled={submitting}
-                className="px-3.5 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+                className="px-4 py-2 text-xs font-semibold text-on-surface bg-surface-container-high hover:bg-surface-container-highest rounded-xl transition-all active:scale-95"
               >
                 Review Details
               </button>
@@ -2396,7 +2401,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                 type="button"
                 onClick={executeFinalSubmit}
                 disabled={submitting}
-                className="inline-flex items-center px-4 py-1.5 text-xs font-bold text-white bg-green-700 hover:bg-green-800 rounded shadow-sm transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50"
               >
                 {submitting ? (
                   <>
@@ -2408,7 +2413,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   </>
                 ) : (
                   <>
-                    <Send className="w-3.5 h-3.5 mr-1.5" />
+                    <Send className="w-3.5 h-3.5" />
                     Confirm & Lock Profile
                   </>
                 )}

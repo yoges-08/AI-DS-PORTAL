@@ -1,27 +1,34 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X, Shield, GraduationCap } from 'lucide-react';
 
 export const Navbar = ({ onToggleMobileMenu, isMobileMenuOpen, onLogoClick }) => {
   const { user, logout } = useAuth();
 
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
   return (
-    <header className="bg-gov-navy text-white shadow-md border-b border-gov-navy-dark sticky top-0 z-40 no-print">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between min-h-[3.75rem] py-2 sm:h-20 sm:py-0 gap-2">
+    <header className="glass-nav text-on-surface sticky top-0 z-50 no-print transition-all">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-20 gap-3">
           
           {/* Left: Mobile Drawer Toggle (Admins) & Institutional Logos */}
-          <div className="flex items-center space-x-2 sm:space-x-3.5 min-w-0">
+          <div className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
             {user?.role === 'ADMIN' && (
               <button
                 type="button"
                 onClick={onToggleMobileMenu}
-                className="p-1.5 -ml-1 text-white hover:bg-white/10 rounded-md md:hidden focus:outline-none focus:ring-2 focus:ring-amber-300 shrink-0"
+                className="p-2 -ml-1 text-primary hover:bg-surface-container rounded-xl md:hidden focus:outline-none focus:ring-2 focus:ring-secondary/30 transition-all shrink-0"
                 aria-label="Toggle navigation menu"
                 title="Open menu"
               >
                 {isMobileMenuOpen ? (
-                  <X className="w-5 h-5 text-amber-300" />
+                  <X className="w-5 h-5 text-secondary" />
                 ) : (
                   <Menu className="w-5 h-5" />
                 )}
@@ -31,34 +38,34 @@ export const Navbar = ({ onToggleMobileMenu, isMobileMenuOpen, onLogoClick }) =>
             {/* Clickable Institutional Branding Group */}
             <div 
               onClick={onLogoClick || (() => window.scrollTo({ top: 0, behavior: 'smooth' }))}
-              className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group select-none min-w-0"
+              className="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer group select-none min-w-0"
               title="Return to Portal Dashboard"
             >
-              {/* College Logo */}
-              <img 
-                src="/college-logo.webp" 
-                alt="AAMEC College Crest" 
-                className="h-8 sm:h-12 w-auto max-w-[38px] sm:max-w-[58px] object-contain drop-shadow-sm group-hover:scale-105 transition-transform shrink-0"
-              />
+              {/* College Logo & Dept Logo */}
+              <div className="flex items-center space-x-1.5 p-1.5 bg-white/80 rounded-xl border border-outline-variant/40 shadow-sm shrink-0">
+                <img 
+                  src="/college-logo.webp" 
+                  alt="AAMEC College Crest" 
+                  className="h-7 sm:h-10 w-auto max-w-[34px] sm:max-w-[48px] object-contain drop-shadow-sm group-hover:scale-105 transition-transform" 
+                />
+                <img 
+                  src="/aids-logo.jpg" 
+                  alt="AI & DS Emblem" 
+                  className="h-7 w-7 sm:h-10 sm:w-10 rounded-full border border-primary/20 object-cover shadow-sm group-hover:scale-105 transition-transform hidden min-[360px]:block" 
+                />
+              </div>
 
-              {/* Department Logo (compressed WebP/JPG) */}
-              <img 
-                src="/aids-logo.jpg" 
-                alt="AI & DS Department Emblem" 
-                className="h-8 w-8 sm:h-12 sm:w-12 rounded-full border border-white/80 object-cover shadow-sm group-hover:scale-105 transition-transform shrink-0 hidden min-[360px]:block"
-              />
-
-              <div className="border-l border-blue-400/40 pl-2 sm:pl-3.5 min-w-0">
-                <div className="text-[10px] sm:text-xs md:text-sm font-extrabold tracking-tight uppercase text-amber-300 leading-tight truncate">
+              <div className="border-l border-outline-variant/50 pl-2.5 sm:pl-3 min-w-0">
+                <div className="text-[10px] sm:text-xs font-bold tracking-tight uppercase text-secondary leading-tight truncate">
                   <span className="inline sm:hidden">AAMEC</span>
                   <span className="hidden sm:inline">Anjalai Ammal Mahalingam Engineering College</span>
                 </div>
-                <div className="text-[11px] sm:text-xs md:text-base font-bold tracking-tight uppercase text-white leading-tight truncate">
+                <div className="text-xs sm:text-base font-extrabold tracking-tight text-primary leading-tight truncate">
                   <span className="inline sm:hidden">Dept. of AI & DS</span>
                   <span className="hidden sm:inline">Department of Artificial Intelligence & Data Science</span>
                 </div>
-                <div className="text-[10px] text-blue-200 font-medium hidden md:block">
-                  Department Student Information System (UMIS Portal)
+                <div className="text-[11px] text-on-surface-variant font-medium hidden md:block">
+                  Student Information System (SIS)
                 </div>
               </div>
             </div>
@@ -66,26 +73,34 @@ export const Navbar = ({ onToggleMobileMenu, isMobileMenuOpen, onLogoClick }) =>
 
           {/* Right: User Information & Logout */}
           {user && (
-            <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
-              <div className="hidden md:flex flex-col text-right">
-                <span className="text-[11px] text-amber-300 uppercase tracking-wider font-bold">
-                  {user.role === 'ADMIN' ? 'Department Administrator' : `Student (${user.registerNo})`}
-                </span>
-                <span className="text-sm font-semibold truncate max-w-[180px] lg:max-w-[240px]">
-                  {user.name}
-                </span>
+            <div className="flex items-center space-x-2.5 sm:space-x-3.5 shrink-0">
+              
+              {/* User Pill / Account Chip */}
+              <div className="flex items-center gap-2.5 pl-2 pr-3 py-1 bg-surface-container/70 border border-outline-variant/40 rounded-full shadow-sm">
+                <div className="relative w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold ring-1 ring-white shadow-inner shrink-0">
+                  {getInitials(user.name)}
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white"></span>
+                </div>
+                
+                <div className="hidden sm:flex flex-col text-left max-w-[160px] lg:max-w-[220px]">
+                  <span className="text-xs font-bold text-primary truncate leading-tight">
+                    {user.name}
+                  </span>
+                  <span className="text-[10px] text-on-surface-variant uppercase tracking-wider font-semibold truncate leading-tight">
+                    {user.role === 'ADMIN' ? 'HOD / Faculty Admin' : user.registerNo}
+                  </span>
+                </div>
               </div>
 
-              <div className="h-9 w-px bg-blue-400/30 hidden md:block"></div>
-
+              {/* Logout Button */}
               <button
                 onClick={logout}
                 title="Sign out of portal"
                 aria-label="Logout"
-                className="inline-flex items-center justify-center space-x-1.5 px-3 py-2 min-h-[38px] sm:min-h-[40px] text-xs font-semibold rounded bg-white/10 hover:bg-white/20 border border-blue-300/40 hover:border-white transition-all shadow-sm shrink-0 focus:outline-none focus:ring-2 focus:ring-white/40"
+                className="inline-flex items-center justify-center space-x-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white hover:bg-error-container hover:text-error border border-outline-variant/40 hover:border-error/30 text-on-surface transition-all active:scale-95 shadow-sm shrink-0"
               >
-                <LogOut className="w-4 h-4 shrink-0" />
-                <span className="hidden xs:inline">Logout</span>
+                <LogOut className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden xs:inline">Sign Out</span>
               </button>
             </div>
           )}
@@ -95,4 +110,3 @@ export const Navbar = ({ onToggleMobileMenu, isMobileMenuOpen, onLogoClick }) =>
     </header>
   );
 };
-

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, UserPlus, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, UserPlus, AlertCircle, CheckCircle, Calendar, Hash, User } from 'lucide-react';
 import { api } from '../services/api';
 
 export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
@@ -47,43 +47,49 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white border border-gov-border rounded-md shadow-lg w-full max-w-md overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+      <div className="bg-white/95 backdrop-blur-2xl border border-white/60 shadow-[0_24px_64px_rgba(0,0,0,0.18)] rounded-3xl w-full max-w-md overflow-hidden">
         
         {/* Modal Header */}
-        <div className="bg-gov-navy text-white px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <UserPlus className="w-4 h-4" />
-            <h3 className="text-sm font-bold uppercase tracking-wide">Add New Student</h3>
+        <div className="bg-gradient-to-r from-primary to-primary-container text-white px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
+              <UserPlus className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-white">Enroll New Student</h3>
+              <p className="text-[11px] text-white/70">Single Candidate Dossier Creation</p>
+            </div>
           </div>
           <button 
             onClick={onClose} 
-            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 rounded transition-colors"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white transition-all active:scale-95"
             aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-3.5 text-xs">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
           {error && (
-            <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 rounded flex items-center space-x-1.5">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span className="font-medium">{error}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-2.5 bg-green-50 border border-green-200 text-green-800 rounded flex items-center space-x-1.5">
-              <CheckCircle className="w-4 h-4 shrink-0 text-green-600" />
-              <span>{successMsg}</span>
+            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
+              <span className="font-medium">{successMsg}</span>
             </div>
           )}
 
           <div>
-            <label className="block font-semibold text-gray-700 mb-1">
-              Register Number <span className="text-red-600">*</span>
+            <label className="block font-semibold text-on-surface mb-1.5 flex items-center gap-1.5">
+              <Hash className="w-3.5 h-3.5 text-secondary" />
+              Register Number <span className="text-error">*</span>
             </label>
             <input
               type="text"
@@ -91,14 +97,15 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
               value={formData.registerNo}
               onChange={handleChange}
               placeholder="e.g. 71762405050"
-              className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:border-gov-navy focus:outline-none"
+              className="w-full px-3.5 py-2 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm font-mono text-on-surface focus:outline-none transition-all"
               required
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-gray-700 mb-1">
-              Student Full Name <span className="text-red-600">*</span>
+            <label className="block font-semibold text-on-surface mb-1.5 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-secondary" />
+              Student Full Name <span className="text-error">*</span>
             </label>
             <input
               type="text"
@@ -106,46 +113,48 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
               value={formData.name}
               onChange={handleChange}
               placeholder="e.g. VIJAY M"
-              className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:border-gov-navy focus:outline-none"
+              className="w-full px-3.5 py-2 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm text-on-surface focus:outline-none transition-all"
               required
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-gray-700 mb-1">
-              Date of Birth (DOB) <span className="text-red-600">*</span>
+            <label className="block font-semibold text-on-surface mb-1.5 flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-secondary" />
+              Date of Birth (DOB) <span className="text-error">*</span>
             </label>
             <input
               type="date"
               name="dob"
               value={formData.dob}
               onChange={handleChange}
-              className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:border-gov-navy focus:outline-none"
+              className="w-full px-3.5 py-2 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm text-on-surface focus:outline-none transition-all"
               required
             />
-            <p className="text-[11px] text-gray-500 mt-1">
-              Default password will be encrypted as DOB in DDMMYYYY format.
+            <p className="text-[11px] text-outline mt-1.5">
+              Default student password will be encrypted as DOB in DDMMYYYY format.
             </p>
           </div>
 
-          <div className="p-2.5 bg-blue-50/70 border border-blue-200 rounded text-[11.5px] text-blue-900">
-            <strong>Note:</strong> Year of Study and Section will be selected by the student in their profile form.
+          <div className="p-3 bg-secondary-fixed/30 border border-secondary/20 rounded-xl text-[11.5px] text-primary flex items-start gap-2">
+            <span className="font-bold">Note:</span>
+            <span>Year of Study and Section will be selected by the student in their profile form.</span>
           </div>
 
           {/* Modal Footer */}
-          <div className="pt-3 border-t border-gray-200 flex items-center justify-end space-x-2">
+          <div className="pt-4 border-t border-outline-variant/30 flex items-center justify-end space-x-2.5">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-3.5 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium"
+              className="px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest rounded-xl text-on-surface font-semibold transition-all active:scale-95"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-1.5 bg-gov-navy text-white rounded font-semibold hover:bg-gov-navy-dark disabled:opacity-50"
+              className="px-5 py-2 bg-primary hover:bg-primary-container text-white rounded-xl font-semibold shadow-md hover:shadow-lg disabled:opacity-50 transition-all active:scale-95"
             >
               {loading ? 'Adding...' : 'Add Student Record'}
             </button>

@@ -2,7 +2,19 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { MultiStepForm } from './MultiStepForm';
 import { ProfileSummaryPrint } from './ProfileSummaryPrint';
-import { Edit3, Printer, HelpCircle, ChevronDown, ChevronUp, FileText, Lock, Phone, Mail } from 'lucide-react';
+import { 
+  Edit3, 
+  Printer, 
+  HelpCircle, 
+  ChevronDown, 
+  ChevronUp, 
+  FileText, 
+  Lock, 
+  CheckCircle2, 
+  Clock, 
+  AlertTriangle,
+  GraduationCap
+} from 'lucide-react';
 import { StatusBadge } from '../../components/StatusBadge';
 
 export const StudentDashboard = () => {
@@ -30,61 +42,76 @@ export const StudentDashboard = () => {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-7">
       
-      {/* Top Welcome Bar */}
-      <div className="bg-white border border-gov-border rounded p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print">
-        <div>
-          <div className="flex items-center space-x-2.5">
-            <h1 className="text-lg font-bold text-gov-navy tracking-tight">
-              Welcome, {user?.name}
-            </h1>
-            <StatusBadge status={user?.status} isLocked={user?.isLocked} />
+      {/* Top Welcome Card (Cupertino Glass Banner) */}
+      <div className="glass-card-l2 rounded-2xl p-5 sm:p-7 shadow-sm border border-white/80 flex flex-col md:flex-row md:items-center justify-between gap-5 no-print">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center text-lg font-bold shadow-md shadow-primary/20 shrink-0 ring-1 ring-white/50">
+            <GraduationCap className="w-6 h-6" />
           </div>
-          <p className="text-xs text-gov-subtle mt-1">
-            Register Number: <span className="font-semibold text-gray-800 font-mono">{user?.registerNo}</span> | {user?.year ? `Year ${user.year}` : 'Year: Not set yet'} | {user?.section ? `Section ${user.section}` : 'Section: Not set yet'} | Artificial Intelligence & Data Science
-          </p>
+
+          <div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
+                Welcome, {user?.name}
+              </h1>
+              <StatusBadge status={user?.status} isLocked={user?.isLocked} />
+            </div>
+            
+            <p className="text-xs sm:text-sm text-on-surface-variant mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span>Register No: <strong className="font-mono text-primary">{user?.registerNo}</strong></span>
+              <span className="text-outline-variant">•</span>
+              <span>{user?.year ? `Year ${user.year}` : 'Year Pending'}</span>
+              <span className="text-outline-variant">•</span>
+              <span>{user?.section ? `Section ${user.section}` : 'Section Pending'}</span>
+              <span className="text-outline-variant">•</span>
+              <span className="text-secondary font-medium">Artificial Intelligence & Data Science</span>
+            </p>
+          </div>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex items-center space-x-2 shrink-0">
+        {/* Sliding Segmented Tab Switcher */}
+        <div className="p-1 bg-surface-variant/70 rounded-xl flex self-start md:self-center shrink-0 border border-outline-variant/30 select-none">
           <button
             onClick={() => setActiveTab('form')}
-            className={`inline-flex items-center px-3.5 py-1.5 text-xs font-semibold rounded border transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
               activeTab === 'form'
-                ? 'bg-gov-navy text-white border-gov-navy shadow-sm'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                ? 'bg-white text-primary shadow-sm font-bold'
+                : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            <Edit3 className="w-3.5 h-3.5 mr-1.5" />
-            <span>{user?.isLocked ? 'View Form' : 'Update Details Form'}</span>
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>{user?.isLocked ? 'View Dossier' : 'Update Details'}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('summary')}
-            className={`inline-flex items-center px-3.5 py-1.5 text-xs font-semibold rounded border transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
               activeTab === 'summary'
-                ? 'bg-gov-navy text-white border-gov-navy shadow-sm'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                ? 'bg-white text-primary shadow-sm font-bold'
+                : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            <Printer className="w-3.5 h-3.5 mr-1.5" />
-            <span>Print Profile Summary</span>
+            <Printer className="w-3.5 h-3.5" />
+            <span>Print A4 Dossier</span>
           </button>
         </div>
       </div>
 
       {/* Missing Year/Section Alert Banner */}
       {(!user?.year || !user?.section) && (
-        <div className="bg-amber-50 border border-amber-300 rounded p-3 text-xs text-amber-900 flex items-center justify-between no-print">
-          <div className="flex items-center space-x-2">
-            <span className="font-bold uppercase tracking-wider text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded text-[10px]">Action Required</span>
-            <span>Please select your <strong>Year of Study</strong> and <strong>Section</strong> in Step 1 of the form.</span>
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-900 flex items-center justify-between no-print shadow-xs">
+          <div className="flex items-center space-x-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Action Required:</strong> Please complete your <strong>Year of Study</strong> and <strong>Section</strong> in Step 1 of the form.
+            </span>
           </div>
           {activeTab !== 'form' && (
             <button
               onClick={() => setActiveTab('form')}
-              className="text-xs font-semibold text-amber-900 underline hover:text-amber-700 ml-2 whitespace-nowrap"
+              className="text-xs font-bold text-amber-900 underline hover:text-amber-700 ml-2 whitespace-nowrap"
             >
               Go to Form &rarr;
             </button>
@@ -100,33 +127,33 @@ export const StudentDashboard = () => {
       )}
 
       {/* Expandable Student Helpdesk & FAQ Accordion */}
-      <div className="bg-white border border-gov-border rounded-md shadow-xs p-4 sm:p-5 no-print">
-        <div className="flex items-center space-x-2 pb-3 border-b border-gray-100">
-          <HelpCircle className="w-4 h-4 text-gov-navy shrink-0" />
-          <h2 className="text-sm font-bold text-gov-navy uppercase tracking-wider">
-            Frequently Asked Questions & Helpdesk
+      <div className="glass-card-l1 rounded-2xl border border-white/80 p-5 sm:p-6 no-print shadow-xs">
+        <div className="flex items-center space-x-2.5 pb-3.5 border-b border-outline-variant/30">
+          <HelpCircle className="w-4 h-4 text-secondary shrink-0" />
+          <h2 className="text-xs font-bold text-primary uppercase tracking-wider">
+            Student Helpdesk & Guidance
           </h2>
         </div>
 
-        <div className="mt-3 divide-y divide-gray-100 text-xs">
+        <div className="mt-2 divide-y divide-outline-variant/20 text-xs">
           {faqs.map((faq, idx) => {
             const isOpen = openFaq === idx;
             return (
-              <div key={idx} className="py-2.5">
+              <div key={idx} className="py-3">
                 <button
                   type="button"
                   onClick={() => setOpenFaq(isOpen ? null : idx)}
-                  className="w-full flex items-center justify-between text-left font-semibold text-gray-800 hover:text-gov-navy gap-2 py-1"
+                  className="w-full flex items-center justify-between text-left font-semibold text-on-surface hover:text-primary gap-2 py-1 transition-colors"
                 >
                   <span>{faq.q}</span>
                   {isOpen ? (
-                    <ChevronUp className="w-4 h-4 text-gov-navy shrink-0" />
+                    <ChevronUp className="w-4 h-4 text-secondary shrink-0" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+                    <ChevronDown className="w-4 h-4 text-outline shrink-0" />
                   )}
                 </button>
                 {isOpen && (
-                  <p className="mt-2 text-gray-600 leading-relaxed pl-1 text-[11.5px] bg-blue-50/50 p-2.5 rounded border border-blue-100/60">
+                  <p className="mt-2 text-on-surface-variant leading-relaxed text-[12px] bg-surface-container/60 p-3 rounded-xl border border-outline-variant/30">
                     {faq.a}
                   </p>
                 )}
@@ -139,4 +166,3 @@ export const StudentDashboard = () => {
     </div>
   );
 };
-

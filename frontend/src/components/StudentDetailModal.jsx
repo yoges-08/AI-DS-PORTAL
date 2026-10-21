@@ -11,7 +11,14 @@ import {
   FileText, 
   Edit3, 
   AlertCircle,
-  Trash2
+  Trash2,
+  Phone,
+  Mail,
+  MapPin,
+  GraduationCap,
+  Landmark,
+  Award,
+  Users
 } from 'lucide-react';
 import { api, getFileUrl } from '../services/api';
 import { StatusBadge } from './StatusBadge';
@@ -119,79 +126,91 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-start sm:items-center justify-center p-2 sm:p-6">
-      <div className="bg-white border border-gov-border rounded-md shadow-2xl w-full max-w-4xl my-auto max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fade-in">
+      <div className="bg-white/95 backdrop-blur-2xl border border-white/60 shadow-[0_24px_64px_rgba(0,0,0,0.18)] rounded-3xl w-full max-w-4xl my-auto max-h-[94vh] flex flex-col overflow-hidden">
         
-        {/* Header */}
-        <div className="bg-gov-navy text-white px-5 py-3.5 flex items-center justify-between shrink-0">
+        {/* Top Header Bar */}
+        <div className="bg-gradient-to-r from-primary via-primary-container to-secondary px-6 py-4 flex items-center justify-between shrink-0 text-white shadow-sm">
           <div className="flex items-center space-x-3">
-            <h3 className="text-sm sm:text-base font-bold tracking-wide uppercase">
-              Student Master Profile Dossier
-            </h3>
-            {student && <StatusBadge status={student.status} isLocked={Boolean(student.is_locked)} />}
+            <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center">
+              <GraduationCap className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold tracking-tight text-white uppercase font-mono">
+                  Dossier #{student?.register_no || 'INSPECTOR'}
+                </h3>
+                {student && <StatusBadge status={student.status} isLocked={Boolean(student.is_locked)} />}
+              </div>
+              <p className="text-xs text-white/70">
+                Department of AI & Data Science • Academic Master Record
+              </p>
+            </div>
           </div>
+          
           <button 
             onClick={onClose} 
-            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 rounded transition-colors"
+            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white transition-all active:scale-95"
             aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Action Toolbar */}
-        <div className="bg-gray-100 border-b border-gray-200 px-5 py-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0 text-xs">
+        <div className="bg-surface-container-low/80 border-b border-outline-variant/30 px-6 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0 backdrop-blur-md text-xs">
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleToggleLock}
               disabled={actionLoading}
-              className={`inline-flex items-center px-3 py-1.5 rounded font-semibold border ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold border transition-all active:scale-95 ${
                 student?.is_locked
                   ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
-                  : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
+                  : 'bg-white text-on-surface border-outline-variant/50 hover:bg-surface-container shadow-sm'
               }`}
             >
-              {student?.is_locked ? <Unlock className="w-3.5 h-3.5 mr-1" /> : <Lock className="w-3.5 h-3.5 mr-1" />}
+              {student?.is_locked ? <Unlock className="w-3.5 h-3.5 text-amber-700" /> : <Lock className="w-3.5 h-3.5 text-primary" />}
               <span>{student?.is_locked ? 'Unlock Record' : 'Lock Record'}</span>
             </button>
 
             <button
               onClick={handleResetPassword}
               disabled={actionLoading}
-              className="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 text-gray-800 rounded font-semibold hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-outline-variant/50 text-on-surface rounded-xl font-semibold hover:bg-surface-container shadow-sm transition-all active:scale-95"
               title="Reset password to Date of Birth"
             >
-              <KeyRound className="w-3.5 h-3.5 mr-1 text-gov-navy" />
+              <KeyRound className="w-3.5 h-3.5 text-primary" />
               <span>Reset Password to DOB</span>
             </button>
 
             <button
               onClick={() => onEditStudent && onEditStudent(student.id)}
-              className="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 text-gray-800 rounded font-semibold hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-outline-variant/50 text-secondary rounded-xl font-semibold hover:bg-secondary-fixed/30 shadow-sm transition-all active:scale-95"
             >
-              <Edit3 className="w-3.5 h-3.5 mr-1 text-blue-700" />
+              <Edit3 className="w-3.5 h-3.5" />
               <span>Edit Details</span>
             </button>
 
             <button
               onClick={handleDeleteStudent}
               disabled={actionLoading}
-              className="inline-flex items-center px-3 py-1.5 bg-white border border-red-300 text-red-700 rounded font-semibold hover:bg-red-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 text-error rounded-xl font-semibold hover:bg-red-50 shadow-sm transition-all active:scale-95"
               title="Permanently delete student profile and login"
             >
-              <Trash2 className="w-3.5 h-3.5 mr-1 text-red-600" />
+              <Trash2 className="w-3.5 h-3.5 text-error" />
               <span>Delete Record</span>
             </button>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             {student?.status !== 'VERIFIED' && (
               <button
                 onClick={() => handleStatusUpdate('VERIFIED')}
                 disabled={actionLoading}
-                className="inline-flex items-center px-3 py-1.5 bg-green-700 text-white rounded font-bold hover:bg-green-800"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow-sm transition-all active:scale-95"
               >
-                <CheckCircle className="w-3.5 h-3.5 mr-1" /> Verify
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span>Verify & Approve</span>
               </button>
             )}
 
@@ -199,9 +218,10 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
               <button
                 onClick={() => setRejectionModal(true)}
                 disabled={actionLoading}
-                className="inline-flex items-center px-3 py-1.5 bg-red-700 text-white rounded font-bold hover:bg-red-800"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold shadow-sm transition-all active:scale-95"
               >
-                <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
+                <XCircle className="w-3.5 h-3.5" />
+                <span>Reject</span>
               </button>
             )}
           </div>
@@ -209,35 +229,38 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
 
         {/* Message Banner */}
         {msg.text && (
-          <div className={`px-5 py-2 text-xs flex items-center space-x-1.5 border-b ${
-            msg.type === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'
+          <div className={`px-6 py-2.5 text-xs flex items-center space-x-2 border-b ${
+            msg.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
           }`}>
-            {msg.type === 'success' ? <CheckCircle className="w-4 h-4 shrink-0 text-green-600" /> : <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />}
-            <span>{msg.text}</span>
+            {msg.type === 'success' ? <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" /> : <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />}
+            <span className="font-medium">{msg.text}</span>
           </div>
         )}
 
         {/* Rejection Prompt Inline */}
         {rejectionModal && (
-          <div className="bg-red-50 border-b border-red-200 p-4 text-xs">
-            <h4 className="font-bold text-red-900 mb-1">State Rejection Reason:</h4>
+          <div className="bg-rose-50/80 backdrop-blur-md border-b border-rose-200 p-5 text-xs">
+            <h4 className="font-bold text-rose-900 mb-1.5 flex items-center gap-1.5">
+              <AlertCircle className="w-4 h-4 text-rose-600" />
+              State Detailed Rejection / Discrepancy Reason:
+            </h4>
             <textarea
               rows={2}
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="e.g. Bank passbook not clearly readable; income certificate date expired."
-              className="w-full p-2 border border-red-300 rounded text-xs focus:outline-none focus:border-red-600 mb-2"
+              className="w-full p-2.5 bg-white border border-rose-300 rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-rose-500 mb-3 shadow-inner"
             />
             <div className="flex justify-end space-x-2">
               <button
                 onClick={() => setRejectionModal(false)}
-                className="px-3 py-1 bg-white border border-gray-300 rounded text-gray-700 font-medium"
+                className="px-3 py-1.5 bg-white border border-outline-variant/40 rounded-xl text-on-surface-variant font-medium hover:bg-surface-container"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleStatusUpdate('REJECTED', rejectionReason)}
-                className="px-3 py-1 bg-red-700 text-white rounded font-bold hover:bg-red-800"
+                className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold shadow-sm transition-all active:scale-95"
               >
                 Confirm Rejection
               </button>
@@ -246,147 +269,174 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
         )}
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-5 text-xs text-gray-800">
+        <div className="p-6 overflow-y-auto space-y-6 text-xs text-on-surface bg-surface/50">
           {loading ? (
-            <div className="text-center py-12 text-gray-500">Loading student dossier...</div>
+            <div className="flex flex-col items-center justify-center py-16 text-outline space-y-3">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-sm font-medium">Loading student dossier from secure storage...</span>
+            </div>
           ) : !student ? (
-            <div className="text-center py-12 text-red-600">Failed to load student information.</div>
+            <div className="text-center py-16 text-error">Failed to load student information.</div>
           ) : (
             <>
-              {/* Photo & Primary Demographics */}
-              <div className="flex flex-col sm:flex-row gap-5 border border-gray-200 p-4 rounded bg-gray-50/50">
-                <div className="w-24 h-32 border border-gray-300 bg-gray-100 rounded flex items-center justify-center overflow-hidden shrink-0">
-                  {student.photo_path ? (
-                    <img src={getFileUrl(student.photo_path)} alt="Student" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-[11px] text-gray-400 text-center">No Photo</span>
-                  )}
+              {/* Photo & Primary Demographics Hero */}
+              <div className="bg-surface-container-low/70 border border-outline-variant/30 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row gap-5 relative overflow-hidden backdrop-blur-md">
+                <div className="relative shrink-0 flex justify-center">
+                  <div className="w-28 h-36 rounded-2xl border-2 border-white shadow-md bg-surface-container-high overflow-hidden flex items-center justify-center">
+                    {student.photo_path ? (
+                      <img src={getFileUrl(student.photo_path)} alt={student.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs text-outline font-medium text-center px-2">No Photo Uploaded</span>
+                    )}
+                  </div>
+                  <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${student.is_locked ? 'bg-amber-500' : 'bg-emerald-500'}`} title={student.is_locked ? 'Record Locked' : 'Active'} />
                 </div>
 
-                <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-y-3.5 gap-x-4">
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Register Number</span>
-                    <strong className="font-mono text-sm text-gov-navy">{student.register_no}</strong>
+                    <span className="text-outline block text-[11px] font-medium uppercase tracking-wider">Register Number</span>
+                    <strong className="font-mono text-sm text-primary tracking-wide">{student.register_no}</strong>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Full Name</span>
-                    <strong className="text-sm">{student.name}</strong>
+                    <span className="text-outline block text-[11px] font-medium uppercase tracking-wider">Full Name</span>
+                    <strong className="text-sm text-on-surface">{student.name}</strong>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Date of Birth</span>
-                    <strong>{student.dob}</strong>
+                    <span className="text-outline block text-[11px] font-medium uppercase tracking-wider">Date of Birth</span>
+                    <strong className="text-sm text-on-surface">{student.dob}</strong>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Year & Section</span>
-                    <strong>{student.year ? `Year ${student.year}` : 'Not set'}{student.section ? ` - Sec ${student.section}` : ''}</strong>
+                    <span className="text-outline block text-[11px] font-medium uppercase tracking-wider">Year & Section</span>
+                    <strong className="text-on-surface">{student.year ? `Year ${student.year}` : 'Not set'}{student.section ? ` • Sec ${student.section}` : ''}</strong>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Gender / Blood Group</span>
-                    <strong>{student.gender || '-'} / {student.blood_group || '-'}</strong>
+                    <span className="text-outline block text-[11px] font-medium uppercase tracking-wider">Gender / Blood</span>
+                    <strong className="text-on-surface">{student.gender || '-'} / {student.blood_group || '-'}</strong>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Community / Caste</span>
-                    <strong>{student.community} ({student.caste || '-'})</strong>
+                    <span className="text-outline block text-[11px] font-medium uppercase tracking-wider">Community / Caste</span>
+                    <strong className="text-on-surface">{student.community} ({student.caste || '-'})</strong>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Aadhaar (Full Visible)</span>
-                    <strong className="font-mono text-gov-navy">{student.aadhaar_no || 'Not Provided'}</strong>
+                    <span className="text-outline block text-[11px] font-medium uppercase tracking-wider">Aadhaar (Visible)</span>
+                    <strong className="font-mono text-primary">{student.aadhaar_no || 'Not Provided'}</strong>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Nationality</span>
-                    <strong>{student.nationality || 'Indian'}</strong>
+                    <span className="text-outline block text-[11px] font-medium uppercase tracking-wider">Nationality</span>
+                    <strong className="text-on-surface">{student.nationality || 'Indian'}</strong>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Mother Tongue</span>
-                    <strong>{student.mother_tongue || 'Tamil'}</strong>
+                    <span className="text-outline block text-[11px] font-medium uppercase tracking-wider">Mother Tongue</span>
+                    <strong className="text-on-surface">{student.mother_tongue || 'Tamil'}</strong>
                   </div>
                 </div>
               </div>
 
               {/* Contact Information */}
-              <div className="border border-gray-200 rounded p-4">
-                <h4 className="font-bold text-gov-navy uppercase border-b border-gray-200 pb-1.5 mb-2.5">
-                  Contact & Communication Particulars
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div><span className="text-gray-500">Student Mobile:</span> <strong>{student.mobile || '-'}</strong></div>
-                  <div><span className="text-gray-500">Alternate Mobile:</span> <strong>{student.alt_mobile || '-'}</strong></div>
-                  <div><span className="text-gray-500">Email:</span> <strong>{student.email || '-'}</strong></div>
+              <div className="bg-surface-container-low/60 border border-outline-variant/30 rounded-2xl p-5 shadow-sm backdrop-blur-md">
+                <div className="flex items-center gap-2 border-b border-outline-variant/20 pb-2 mb-3 text-primary font-bold uppercase tracking-wider text-[11px]">
+                  <Phone className="w-3.5 h-3.5 text-secondary" />
+                  <span>Contact & Communication Particulars</span>
                 </div>
-                <div className="mt-2.5 pt-2 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div><span className="text-outline block text-[11px]">Student Mobile:</span> <strong className="text-on-surface">{student.mobile || '-'}</strong></div>
+                  <div><span className="text-outline block text-[11px]">Alternate Mobile:</span> <strong className="text-on-surface">{student.alt_mobile || '-'}</strong></div>
+                  <div><span className="text-outline block text-[11px]">Email:</span> <strong className="text-on-surface">{student.email || '-'}</strong></div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-outline-variant/20 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <span className="text-gray-500 block">Permanent Address:</span>
-                    <span>{student.permanent_address || '-'}, District: {student.district || '-'}, Pincode: {student.pincode || '-'}</span>
+                    <span className="text-outline block text-[11px]">Permanent Address:</span>
+                    <span className="text-on-surface font-medium">{student.permanent_address || '-'}, District: {student.district || '-'}, Pincode: {student.pincode || '-'}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block">Communication Address:</span>
-                    <span>{student.communication_address || student.permanent_address || '-'}</span>
+                    <span className="text-outline block text-[11px]">Communication Address:</span>
+                    <span className="text-on-surface font-medium">{student.communication_address || student.permanent_address || '-'}</span>
                   </div>
                 </div>
               </div>
 
               {/* Family & Academic Standing */}
-              <div className="border border-gray-200 rounded p-4">
-                <h4 className="font-bold text-gov-navy uppercase border-b border-gray-200 pb-1.5 mb-2.5">
-                  Family Particulars & Academic Records
-                </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <div><span className="text-gray-500">Father's Name:</span> <strong>{student.father_name || '-'}</strong></div>
-                  <div><span className="text-gray-500">Mother's Name:</span> <strong>{student.mother_name || '-'}</strong></div>
-                  <div><span className="text-gray-500">Parents Mobile:</span> <strong>{student.parents_mobile || '-'}</strong></div>
-                  <div><span className="text-gray-500">Parents Occupation:</span> <strong>{student.parents_occupation || '-'}</strong></div>
-                  <div><span className="text-gray-500">Annual Family Income:</span> <strong className="text-gov-navy">₹ {student.annual_income ? Number(student.annual_income).toLocaleString('en-IN') : '0.00'}</strong></div>
-                  <div><span className="text-gray-500">Mode of Admission:</span> <strong>{student.mode_of_admission || '-'}</strong></div>
-                  <div><span className="text-gray-500">10th Standard:</span> <strong>{student.sslc_percentage ? `${student.sslc_percentage}% (${student.sslc_school || ''})` : '-'}</strong></div>
-                  <div><span className="text-gray-500">12th / Diploma:</span> <strong>{student.hsc_percentage ? `${student.hsc_percentage}% (${student.hsc_school || ''})` : '-'}</strong></div>
-                  <div><span className="text-gray-500">Semester:</span> <strong>Semester {student.current_semester || 1}</strong></div>
+              <div className="bg-surface-container-low/60 border border-outline-variant/30 rounded-2xl p-5 shadow-sm backdrop-blur-md">
+                <div className="flex items-center gap-2 border-b border-outline-variant/20 pb-2 mb-3 text-primary font-bold uppercase tracking-wider text-[11px]">
+                  <Users className="w-3.5 h-3.5 text-secondary" />
+                  <span>Family Particulars & Academic Records</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+                  <div><span className="text-outline block text-[11px]">Father's Name:</span> <strong className="text-on-surface">{student.father_name || '-'}</strong></div>
+                  <div><span className="text-outline block text-[11px]">Mother's Name:</span> <strong className="text-on-surface">{student.mother_name || '-'}</strong></div>
+                  <div><span className="text-outline block text-[11px]">Parents Mobile:</span> <strong className="text-on-surface">{student.parents_mobile || '-'}</strong></div>
+                  <div><span className="text-outline block text-[11px]">Parents Occupation:</span> <strong className="text-on-surface">{student.parents_occupation || '-'}</strong></div>
+                  <div><span className="text-outline block text-[11px]">Annual Family Income:</span> <strong className="text-primary font-semibold">₹ {student.annual_income ? Number(student.annual_income).toLocaleString('en-IN') : '0.00'}</strong></div>
+                  <div><span className="text-outline block text-[11px]">Mode of Admission:</span> <strong className="text-on-surface">{student.mode_of_admission || '-'}</strong></div>
+                  <div><span className="text-outline block text-[11px]">10th Standard:</span> <strong className="text-on-surface">{student.sslc_percentage ? `${student.sslc_percentage}% (${student.sslc_school || ''})` : '-'}</strong></div>
+                  <div><span className="text-outline block text-[11px]">12th / Diploma:</span> <strong className="text-on-surface">{student.hsc_percentage ? `${student.hsc_percentage}% (${student.hsc_school || ''})` : '-'}</strong></div>
+                  <div><span className="text-outline block text-[11px]">Current Semester:</span> <strong className="text-primary font-semibold">Semester {student.current_semester || 1}</strong></div>
                 </div>
               </div>
 
               {/* Scholarship & Bank Particulars */}
-              <div className="border border-gray-200 rounded p-4">
-                <h4 className="font-bold text-gov-navy uppercase border-b border-gray-200 pb-1.5 mb-2.5">
-                  Scholarships & Bank Account Details
-                </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <div><span className="text-gray-500">First Graduate:</span> <strong className="text-gov-navy">{student.is_first_graduate ? 'YES (Eligible)' : 'NO'}</strong></div>
-                  <div><span className="text-gray-500">PMS Beneficiary:</span> <strong>{student.is_pms ? `YES (App: ${student.pms_application_no || 'N/A'}, Status: ${student.pms_status || 'Applied'})` : 'NO'}</strong></div>
-                  <div><span className="text-gray-500">Bank Name:</span> <strong>{student.bank_name || '-'}</strong></div>
-                  <div><span className="text-gray-500">Account Number (Full):</span> <strong className="font-mono text-gov-navy">{student.bank_acc_no || '-'}</strong></div>
-                  <div><span className="text-gray-500">IFSC Code:</span> <strong className="font-mono">{student.bank_ifsc || '-'}</strong></div>
-                  <div><span className="text-gray-500">Branch:</span> <strong>{student.bank_branch || '-'}</strong></div>
+              <div className="bg-surface-container-low/60 border border-outline-variant/30 rounded-2xl p-5 shadow-sm backdrop-blur-md">
+                <div className="flex items-center gap-2 border-b border-outline-variant/20 pb-2 mb-3 text-primary font-bold uppercase tracking-wider text-[11px]">
+                  <Landmark className="w-3.5 h-3.5 text-secondary" />
+                  <span>Scholarships & Bank Account Details</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+                  <div>
+                    <span className="text-outline block text-[11px]">First Graduate:</span> 
+                    <strong className={student.is_first_graduate ? 'text-emerald-700' : 'text-on-surface'}>
+                      {student.is_first_graduate ? 'YES (Eligible)' : 'NO'}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-outline block text-[11px]">PMS Beneficiary:</span> 
+                    <strong className="text-on-surface">
+                      {student.is_pms ? `YES (App: ${student.pms_application_no || 'N/A'}, Status: ${student.pms_status || 'Applied'})` : 'NO'}
+                    </strong>
+                  </div>
+                  <div><span className="text-outline block text-[11px]">Bank Name:</span> <strong className="text-on-surface">{student.bank_name || '-'}</strong></div>
+                  <div><span className="text-outline block text-[11px]">Account Number:</span> <strong className="font-mono text-primary font-semibold">{student.bank_acc_no || '-'}</strong></div>
+                  <div><span className="text-outline block text-[11px]">IFSC Code:</span> <strong className="font-mono text-on-surface">{student.bank_ifsc || '-'}</strong></div>
+                  <div><span className="text-outline block text-[11px]">Branch:</span> <strong className="text-on-surface">{student.bank_branch || '-'}</strong></div>
                 </div>
               </div>
 
-              {/* Documents Preview Table */}
-              <div className="border border-gray-200 rounded p-4">
-                <h4 className="font-bold text-gov-navy uppercase border-b border-gray-200 pb-1.5 mb-2.5">
-                  Uploaded Documents & Proofs ({student.documents?.length || 0})
-                </h4>
+              {/* Documents Preview Section */}
+              <div className="bg-surface-container-low/60 border border-outline-variant/30 rounded-2xl p-5 shadow-sm backdrop-blur-md">
+                <div className="flex items-center justify-between border-b border-outline-variant/20 pb-2 mb-3">
+                  <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-[11px]">
+                    <FileText className="w-3.5 h-3.5 text-secondary" />
+                    <span>Uploaded Documents & Proofs ({student.documents?.length || 0})</span>
+                  </div>
+                  <span className="text-[11px] text-outline font-medium">Secured in Cloudflare R2</span>
+                </div>
+
                 {student.documents && student.documents.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {student.documents.map((doc) => (
-                      <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded">
-                        <div className="flex items-center space-x-2 truncate">
-                          <FileText className="w-4 h-4 text-gov-navy shrink-0" />
+                      <div key={doc.id} className="flex items-center justify-between p-3 bg-white/90 border border-outline-variant/30 rounded-xl hover:shadow-md transition-all">
+                        <div className="flex items-center space-x-2.5 truncate min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-secondary-fixed/50 flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4 text-primary" />
+                          </div>
                           <div className="truncate">
-                            <span className="font-semibold block capitalize truncate">{doc.doc_type.replace(/_/g, ' ')}</span>
-                            <span className="text-[10px] text-gray-500 truncate block">{doc.file_name}</span>
+                            <span className="font-semibold block capitalize truncate text-on-surface text-xs">{doc.doc_type.replace(/_/g, ' ')}</span>
+                            <span className="text-[10px] text-outline truncate block font-mono">{doc.file_name}</span>
                           </div>
                         </div>
                         <a
                           href={getFileUrl(doc.file_path)}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center px-2 py-1 bg-white border border-gray-300 text-gov-navy rounded text-[11px] font-semibold hover:bg-gray-100 shrink-0 ml-2"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-container-high hover:bg-secondary-fixed/60 text-primary border border-outline-variant/40 rounded-lg text-[11px] font-semibold transition-all shrink-0 ml-2 shadow-sm"
                         >
-                          <ExternalLink className="w-3 h-3 mr-1" /> View / Download
+                          <ExternalLink className="w-3 h-3" />
+                          <span>View</span>
                         </a>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 italic">No documents uploaded by student yet.</p>
+                  <p className="text-outline italic text-center py-4">No documents uploaded by student yet.</p>
                 )}
               </div>
             </>
@@ -394,15 +444,15 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
         </div>
 
         {/* Modal Footer */}
-        <div className="bg-gray-50 border-t border-gray-200 px-5 py-3 flex items-center justify-between shrink-0 text-xs">
-          <span className="text-gray-500">
-            Audit ID: {student ? `STU-${student.id}` : ''} | Last Updated: {student?.updated_at ? new Date(student.updated_at).toLocaleString('en-GB') : '-'}
+        <div className="bg-surface-container-lowest/90 border-t border-outline-variant/30 px-6 py-3.5 flex items-center justify-between shrink-0 text-xs backdrop-blur-xl">
+          <span className="text-outline font-mono text-[11px]">
+            Audit ID: {student ? `STU-${student.id}` : ''} • Last Modified: {student?.updated_at ? new Date(student.updated_at).toLocaleString('en-GB') : '-'}
           </span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded font-semibold"
+            className="px-5 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-xl font-semibold transition-all active:scale-95 shadow-sm"
           >
-            Close
+            Close Inspector
           </button>
         </div>
 
