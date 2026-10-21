@@ -7,7 +7,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
-const { testConnection, pool } = require('./config/db');
+const { testConnection, pool, getDbMode } = require('./config/db');
 const { authenticateToken } = require('./middleware/authMiddleware');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { downloadObject, isStorageConfigured, keepAlive, getStorageProvider } = require('./config/storage');
@@ -199,11 +199,35 @@ app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/export', exportRoutes);
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'UP',
+// Health check endpoint with live database and storage verification
+app.get('/api/health', async (req, res) => {
+  let dbStatus = { connected: false, mode: getDbMode() };
+  try {
+    const [result] = await pool.query('SELECT 1 AS ping');
+    if (result && result.length > 0) {
+      dbStatus = {
+        connected: true,
+        mode: getDbMode(),
+        database: process.env.DB_NAME || 'aids_portal'
+      };
+    }
+  } catch (dbErr) {
+    dbStatus = {
+      connected: false,
+      mode: getDbMode(),
+      error: dbErr.message
+    };
+  }
+
+  const statusCode = dbStatus.connected ? 200 : 503;
+  res.status(statusCode).json({
+    status: dbStatus.connected ? 'HEALTHY' : 'DEGRADED',
     service: 'Department Student Information System API (AI & DS)',
+    database: dbStatus,
+    storage: {
+      provider: getStorageProvider(),
+      configured: isStorageConfigured()
+    },
     timestamp: new Date().toISOString()
   });
 });
