@@ -9,7 +9,10 @@ const {
   resetStudentPassword,
   updateStudentStatus,
   getAuditLogs,
-  deleteStudent
+  deleteStudent,
+  previewBulkStudents,
+  bulkLockStudents,
+  bulkDeleteStudents
 } = require('../controllers/adminController');
 const { authenticateToken, requireAdmin } = require('../middleware/authMiddleware');
 const multer = require('multer');
@@ -56,6 +59,12 @@ router.get('/dashboard-stats', getDashboardStats);
 router.get('/students', getStudents);
 router.post('/students', addStudent);
 router.post('/students/bulk-import', upload.single('file'), bulkImportStudents);
+
+// Bulk student operations (must precede /students/:id parameterized routes)
+router.post('/students/bulk/preview', previewBulkStudents);
+router.patch('/students/bulk/lock', bulkLockStudents);
+router.delete('/students/bulk', bulkDeleteStudents);
+
 router.patch('/students/:id/lock', toggleLockStudent);
 router.post('/students/:id/reset-password', resetStudentPassword);
 router.patch('/students/:id/status', updateStudentStatus);

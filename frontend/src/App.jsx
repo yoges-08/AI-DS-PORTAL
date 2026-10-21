@@ -7,6 +7,7 @@ import { StudentDashboard } from './pages/student/StudentDashboard';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminSidebar } from './components/AdminSidebar';
 import { BulkImportPage } from './pages/admin/BulkImportPage';
+import { BulkManagePage } from './pages/admin/BulkManagePage';
 import { ReportsPage } from './pages/admin/ReportsPage';
 import { AuditLogsPage } from './pages/admin/AuditLogsPage';
 import { MultiStepForm } from './pages/student/MultiStepForm';
@@ -80,6 +81,7 @@ export const App = () => {
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'students', label: 'Students' },
     { id: 'bulk-import', label: 'Bulk Import' },
+    { id: 'bulk-manage', label: 'Bulk Manage' },
     { id: 'reports', label: 'Reports' },
     { id: 'audit-logs', label: 'Audit Logs' }
   ];
@@ -148,6 +150,8 @@ export const App = () => {
             />
           ) : adminTab === 'bulk-import' ? (
             <BulkImportPage />
+          ) : adminTab === 'bulk-manage' ? (
+            <BulkManagePage />
           ) : adminTab === 'reports' ? (
             <ReportsPage />
           ) : adminTab === 'audit-logs' ? (

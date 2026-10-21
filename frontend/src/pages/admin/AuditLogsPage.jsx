@@ -12,7 +12,8 @@ import {
   XCircle, 
   Upload,
   Activity,
-  Terminal
+  Terminal,
+  Trash2
 } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -77,6 +78,24 @@ export const AuditLogsPage = () => {
           classes: 'bg-secondary-fixed text-primary border-secondary/30',
           dot: 'bg-secondary',
           icon: Upload
+        };
+      case 'BULK_LOCK':
+        return {
+          classes: 'bg-amber-100 text-amber-900 border-amber-300 font-bold',
+          dot: 'bg-amber-600',
+          icon: Lock
+        };
+      case 'BULK_UNLOCK':
+        return {
+          classes: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold',
+          dot: 'bg-emerald-600',
+          icon: Unlock
+        };
+      case 'BULK_DELETE':
+        return {
+          classes: 'bg-rose-100 text-rose-900 border-rose-300 font-bold',
+          dot: 'bg-rose-600',
+          icon: Trash2
         };
       default:
         return {

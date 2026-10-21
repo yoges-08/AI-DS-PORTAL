@@ -777,6 +777,121 @@ const getAuditLogs = async (req, res) => {
 };
 
 /**
+ * Shared helper to clean up student documents & photo from storage and local uploads folder
+ */
+const cleanupStudentFiles = async (studentId, photoPath) => {
+  const uploadsDir = path.join(__dirname, '..', 'uploads');
+  try {
+    const [docs] = await pool.query(
+      'SELECT file_path FROM student_documents WHERE student_id = ?',
+      [studentId]
+    );
+
+    for (const doc of docs) {
+      if (doc.file_path) {
+        const filename = path.basename(doc.file_path);
+        try {
+          await deleteObject(filename);
+        } catch (e) {
+          console.warn(`[Storage cleanup warning for doc ${filename}]:`, e.message);
+        }
+        const absPath = path.join(uploadsDir, filename);
+        if (fs.existsSync(absPath)) {
+          try {
+            fs.unlinkSync(absPath);
+          } catch (e) {
+            console.warn(`[Disk cleanup warning for doc ${filename}]:`, e.message);
+          }
+        }
+      }
+    }
+
+    if (photoPath) {
+      const photoName = path.basename(photoPath);
+      try {
+        await deleteObject(photoName);
+      } catch (e) {
+        console.warn(`[Storage cleanup warning for photo ${photoName}]:`, e.message);
+      }
+      const photoAbsPath = path.join(uploadsDir, photoName);
+      if (fs.existsSync(photoAbsPath)) {
+        try {
+          fs.unlinkSync(photoAbsPath);
+        } catch (e) {
+          console.warn(`[Disk cleanup warning for photo ${photoName}]:`, e.message);
+        }
+      }
+    }
+  } catch (err) {
+    console.error(`[cleanupStudentFiles error for student ${studentId}]:`, err.message);
+  }
+};
+
+/**
+ * Reusable helper to build student SQL WHERE clause and parameters from query/filter object
+ */
+const buildStudentFilter = (query = {}) => {
+  const conditions = [];
+  const params = [];
+
+  const search = toSafeString(query.search).trim();
+  const section = toSafeString(query.section).trim().toUpperCase();
+  const status = toSafeString(query.status).trim().toUpperCase();
+  const { firstGraduate, pms, lockState } = query;
+
+  if (search) {
+    conditions.push('(register_no LIKE ? OR name LIKE ? OR mobile LIKE ?)');
+    const term = `%${search}%`;
+    params.push(term, term, term);
+  }
+
+  if (query.year !== undefined && query.year !== null && query.year !== '') {
+    const yearNum = parseInt(Array.isArray(query.year) ? query.year[0] : query.year, 10);
+    if (Number.isFinite(yearNum) && [1, 2, 3, 4].includes(yearNum)) {
+      conditions.push('year = ?');
+      params.push(yearNum);
+    }
+  }
+
+  if (query.semester !== undefined && query.semester !== null && query.semester !== '') {
+    const semNum = parseInt(Array.isArray(query.semester) ? query.semester[0] : query.semester, 10);
+    if (Number.isFinite(semNum) && semNum >= 1 && semNum <= 8) {
+      conditions.push('current_semester = ?');
+      params.push(semNum);
+    }
+  }
+
+  if (section && ['A', 'B', 'C', 'D'].includes(section)) {
+    conditions.push('section = ?');
+    params.push(section);
+  }
+
+  if (firstGraduate !== undefined && firstGraduate !== null && firstGraduate !== '') {
+    conditions.push('is_first_graduate = ?');
+    params.push(firstGraduate === 'true' || firstGraduate === '1' || firstGraduate === 1 ? 1 : 0);
+  }
+
+  if (pms !== undefined && pms !== null && pms !== '') {
+    conditions.push('is_pms = ?');
+    params.push(pms === 'true' || pms === '1' || pms === 1 ? 1 : 0);
+  }
+
+  if (status && ['DRAFT', 'SUBMITTED', 'VERIFIED', 'REJECTED'].includes(status)) {
+    conditions.push('status = ?');
+    params.push(status);
+  }
+
+  if (lockState === 'locked' || lockState === 'true' || lockState === 1 || lockState === '1') {
+    conditions.push('is_locked = 1');
+  } else if (lockState === 'unlocked' || lockState === 'false' || lockState === 0 || lockState === '0') {
+    conditions.push('is_locked = 0');
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  return { whereClause, params, hasFilters: conditions.length > 0 };
+};
+
+/**
  * Permanently delete student record, uploaded documents, and login
  */
 const deleteStudent = async (req, res) => {
@@ -797,42 +912,8 @@ const deleteStudent = async (req, res) => {
 
     const student = rows[0];
 
-    // Find and delete all uploaded documents from Cloudflare R2 and disk
-    const [docs] = await pool.query(
-      'SELECT file_path FROM student_documents WHERE student_id = ?',
-      [studentId]
-    );
-
-    const uploadsDir = path.join(__dirname, '..', 'uploads');
-
-    for (const doc of docs) {
-      if (doc.file_path) {
-        const filename = path.basename(doc.file_path);
-        await deleteObject(filename);
-        const absPath = path.join(uploadsDir, filename);
-        if (fs.existsSync(absPath)) {
-          try {
-            fs.unlinkSync(absPath);
-          } catch (e) {
-            console.error('[deleteStudent file cleanup error]:', e);
-          }
-        }
-      }
-    }
-
-    // Delete photo from Cloudflare R2 and disk if present
-    if (student.photo_path) {
-      const photoName = path.basename(student.photo_path);
-      await deleteObject(photoName);
-      const photoAbsPath = path.join(uploadsDir, photoName);
-      if (fs.existsSync(photoAbsPath)) {
-        try {
-          fs.unlinkSync(photoAbsPath);
-        } catch (e) {
-          console.error('[deleteStudent photo cleanup error]:', e);
-        }
-      }
-    }
+    // Clean up all uploaded documents and photo from storage & disk
+    await cleanupStudentFiles(studentId, student.photo_path);
 
     // Delete documents and student record atomically within a database transaction
     const conn = await pool.getConnection();
@@ -868,6 +949,307 @@ const deleteStudent = async (req, res) => {
   }
 };
 
+/**
+ * Preview bulk students matching filter criteria
+ * POST /api/admin/students/bulk/preview
+ * Body: { filters }
+ */
+const previewBulkStudents = async (req, res) => {
+  try {
+    const filters = req.body?.filters || {};
+    const { whereClause, params } = buildStudentFilter(filters);
+
+    // Fetch total matching count & how many of them are currently locked
+    const [countRows] = await pool.query(
+      `SELECT 
+         COUNT(*) AS total,
+         SUM(CASE WHEN is_locked = 1 THEN 1 ELSE 0 END) AS locked_count
+       FROM students ${whereClause}`,
+      params
+    );
+
+    const count = Number(countRows[0]?.total) || 0;
+    const lockedCount = Number(countRows[0]?.locked_count) || 0;
+
+    // Fetch sample (up to first 10 students matching criteria: id, register_no, name, year, section, status, is_locked)
+    const [sampleRows] = await pool.query(
+      `SELECT id, register_no, name, year, current_semester, section, status, is_locked
+       FROM students
+       ${whereClause}
+       ORDER BY register_no ASC
+       LIMIT 10`,
+      params
+    );
+
+    const sample = sampleRows.map((s) => ({
+      id: s.id,
+      register_no: s.register_no,
+      name: s.name,
+      year: s.year,
+      current_semester: s.current_semester,
+      section: s.section,
+      status: s.status,
+      is_locked: Boolean(s.is_locked)
+    }));
+
+    return res.json({
+      success: true,
+      count,
+      lockedCount,
+      sample
+    });
+  } catch (error) {
+    console.error('[previewBulkStudents Error]:', error);
+    return res.status(500).json({ success: false, message: 'Failed to preview bulk students.' });
+  }
+};
+
+/**
+ * Bulk lock or unlock students by filter criteria or explicit IDs
+ * PATCH /api/admin/students/bulk/lock
+ * Body: { filters OR ids, lock: true|false, confirm: true, allowAll: false }
+ */
+const bulkLockStudents = async (req, res) => {
+  try {
+    const { ids, filters, lock, allowAll } = req.body;
+
+    if (typeof lock !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or missing "lock" parameter. Must be boolean true or false.'
+      });
+    }
+
+    let targetStudents = [];
+
+    if (Array.isArray(ids)) {
+      if (ids.length === 0) {
+        return res.status(400).json({ success: false, message: 'No student IDs provided for bulk lock.' });
+      }
+      if (ids.length > 500) {
+        return res.status(400).json({
+          success: false,
+          message: 'Maximum 500 student IDs can be updated in a single bulk operation.'
+        });
+      }
+      const validIds = ids.map((id) => parseInt(id, 10)).filter((id) => Number.isFinite(id) && id > 0);
+      if (validIds.length === 0) {
+        return res.status(400).json({ success: false, message: 'No valid student IDs provided.' });
+      }
+
+      const placeholders = validIds.map(() => '?').join(',');
+      const [rows] = await pool.query(
+        `SELECT id, register_no, is_locked FROM students WHERE id IN (${placeholders})`,
+        validIds
+      );
+      targetStudents = rows;
+    } else if (filters && typeof filters === 'object') {
+      const { whereClause, params, hasFilters } = buildStudentFilter(filters);
+      if (!hasFilters && !allowAll) {
+        return res.status(400).json({
+          success: false,
+          message: 'No filter applied. Bulk locking the entire student body requires explicit allowAll: true confirmation.'
+        });
+      }
+
+      const [rows] = await pool.query(
+        `SELECT id, register_no, is_locked FROM students ${whereClause} ORDER BY id ASC LIMIT 501`,
+        params
+      );
+
+      if (rows.length > 500) {
+        return res.status(400).json({
+          success: false,
+          message: 'Matched cohort exceeds safe cap of 500 students. Please refine your filter.'
+        });
+      }
+      targetStudents = rows;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Either "ids" array or "filters" object must be provided.'
+      });
+    }
+
+    if (targetStudents.length === 0) {
+      return res.status(400).json({ success: false, message: 'No matching student records found to update.' });
+    }
+
+    const targetLockVal = lock ? 1 : 0;
+    const lockedAt = lock ? new Date() : null;
+    const lockedBy = lock ? req.user.username : null;
+
+    // Skip rows already in target state
+    const studentsToUpdate = targetStudents.filter((s) => Boolean(s.is_locked) !== lock);
+    const skipped = targetStudents.length - studentsToUpdate.length;
+    let affected = 0;
+
+    // Process in safe chunks of 100
+    const chunkSize = 100;
+    const updateIds = studentsToUpdate.map((s) => s.id);
+
+    for (let i = 0; i < updateIds.length; i += chunkSize) {
+      const chunk = updateIds.slice(i, i + chunkSize);
+      const placeholders = chunk.map(() => '?').join(',');
+      const [result] = await pool.query(
+        `UPDATE students 
+         SET is_locked = ?, locked_at = ?, locked_by = ? 
+         WHERE id IN (${placeholders})`,
+        [targetLockVal, lockedAt, lockedBy, ...chunk]
+      );
+      affected += result.affectedRows || chunk.length;
+    }
+
+    const action = lock ? 'BULK_LOCK' : 'BULK_UNLOCK';
+    const regList = targetStudents.map((s) => s.register_no);
+    const regSummary = regList.slice(0, 25).join(', ') + (regList.length > 25 ? ` (+${regList.length - 25} more)` : '');
+
+    await logAdminAction({
+      adminId: req.user.id,
+      adminUsername: req.user.username,
+      action,
+      details: `${action}: ${affected} updated, ${skipped} skipped (already in state). Filters: ${JSON.stringify(filters || {})}. Register numbers: [${regSummary}]`,
+      ipAddress: req.ip
+    });
+
+    return res.json({
+      success: true,
+      message: `Bulk ${lock ? 'LOCK' : 'UNLOCK'} completed: ${affected} student records updated, ${skipped} skipped.`,
+      affected,
+      skipped,
+      failed: 0
+    });
+  } catch (error) {
+    console.error('[bulkLockStudents Error]:', error);
+    return res.status(500).json({ success: false, message: 'Failed to execute bulk lock operation.' });
+  }
+};
+
+/**
+ * Bulk delete students by filter criteria or explicit IDs
+ * DELETE /api/admin/students/bulk
+ * Body: { filters OR ids, confirmText: "DELETE", allowAll: false }
+ */
+const bulkDeleteStudents = async (req, res) => {
+  try {
+    const { ids, filters, confirmText, allowAll } = req.body;
+
+    if (confirmText !== 'DELETE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Confirmation keyword "DELETE" is required to authorize bulk deletion.'
+      });
+    }
+
+    let targetStudents = [];
+
+    if (Array.isArray(ids)) {
+      if (ids.length === 0) {
+        return res.status(400).json({ success: false, message: 'No student IDs provided for bulk deletion.' });
+      }
+      if (ids.length > 500) {
+        return res.status(400).json({
+          success: false,
+          message: 'Maximum 500 student IDs can be deleted in a single bulk operation.'
+        });
+      }
+      const validIds = ids.map((id) => parseInt(id, 10)).filter((id) => Number.isFinite(id) && id > 0);
+      if (validIds.length === 0) {
+        return res.status(400).json({ success: false, message: 'No valid student IDs provided.' });
+      }
+
+      const placeholders = validIds.map(() => '?').join(',');
+      const [rows] = await pool.query(
+        `SELECT id, register_no, name, photo_path FROM students WHERE id IN (${placeholders})`,
+        validIds
+      );
+      targetStudents = rows;
+    } else if (filters && typeof filters === 'object') {
+      const { whereClause, params, hasFilters } = buildStudentFilter(filters);
+      if (!hasFilters && !allowAll) {
+        return res.status(400).json({
+          success: false,
+          message: 'No filter applied. Bulk deleting the entire student body requires explicit allowAll: true confirmation.'
+        });
+      }
+
+      const [rows] = await pool.query(
+        `SELECT id, register_no, name, photo_path FROM students ${whereClause} ORDER BY id ASC LIMIT 501`,
+        params
+      );
+
+      if (rows.length > 500) {
+        return res.status(400).json({
+          success: false,
+          message: 'Matched cohort exceeds safe cap of 500 students. Please refine your filter.'
+        });
+      }
+      targetStudents = rows;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Either "ids" array or "filters" object must be provided.'
+      });
+    }
+
+    if (targetStudents.length === 0) {
+      return res.status(400).json({ success: false, message: 'No matching student records found to delete.' });
+    }
+
+    const allIds = targetStudents.map((s) => s.id);
+    const regList = targetStudents.map((s) => s.register_no);
+    const chunkSize = 100;
+
+    // Run database deletes within ONE transaction with rollback on failure
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      for (let i = 0; i < allIds.length; i += chunkSize) {
+        const chunk = allIds.slice(i, i + chunkSize);
+        const placeholders = chunk.map(() => '?').join(',');
+        await conn.query(`DELETE FROM student_documents WHERE student_id IN (${placeholders})`, chunk);
+        await conn.query(`DELETE FROM students WHERE id IN (${placeholders})`, chunk);
+      }
+
+      await conn.commit();
+    } catch (dbErr) {
+      await conn.rollback();
+      throw dbErr;
+    } finally {
+      conn.release();
+    }
+
+    // Clean up uploaded documents and photos from storage and disk
+    // Storage cleanup failures are logged and will not abort the batch
+    for (const student of targetStudents) {
+      await cleanupStudentFiles(student.id, student.photo_path).catch((err) => {
+        console.warn(`[Bulk delete cleanup warning for ${student.register_no}]:`, err.message);
+      });
+    }
+
+    const regSummary = regList.slice(0, 25).join(', ') + (regList.length > 25 ? ` (+${regList.length - 25} more)` : '');
+    await logAdminAction({
+      adminId: req.user.id,
+      adminUsername: req.user.username,
+      action: 'BULK_DELETE',
+      details: `Bulk deleted ${targetStudents.length} students & documents. Filters: ${JSON.stringify(filters || {})}. Register numbers: [${regSummary}]`,
+      ipAddress: req.ip
+    });
+
+    return res.json({
+      success: true,
+      message: `Permanently deleted ${targetStudents.length} student records and associated documents.`,
+      affected: targetStudents.length,
+      skipped: 0,
+      failed: 0
+    });
+  } catch (error) {
+    console.error('[bulkDeleteStudents Error]:', error);
+    return res.status(500).json({ success: false, message: 'Failed to execute bulk delete operation.' });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getStudents,
@@ -877,7 +1259,11 @@ module.exports = {
   resetStudentPassword,
   updateStudentStatus,
   getAuditLogs,
-  deleteStudent
+  deleteStudent,
+  buildStudentFilter,
+  previewBulkStudents,
+  bulkLockStudents,
+  bulkDeleteStudents
 };
 
 

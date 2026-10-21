@@ -277,6 +277,37 @@ export const api = {
     return handleResponse(res);
   },
 
+  // Bulk Operations
+  async previewBulkStudents(filters = {}) {
+    const res = await apiFetch(`${BASE_URL}/admin/students/bulk/preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ filters })
+    });
+    return handleResponse(res);
+  },
+
+  async bulkLockStudents(payload = {}) {
+    const res = await apiFetch(`${BASE_URL}/admin/students/bulk/lock`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
+  async bulkDeleteStudents(payload = {}) {
+    const res = await apiFetch(`${BASE_URL}/admin/students/bulk`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
   async getAuditLogs(page = 1) {
     const res = await apiFetch(`${BASE_URL}/admin/audit-logs?page=${page}`, { credentials: 'include' });
     return handleResponse(res);
