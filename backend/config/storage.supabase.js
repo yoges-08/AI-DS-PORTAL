@@ -2,6 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 
 let supabaseClient = null;
+let bucketVerified = false;
 
 const isConfigured = () => {
   return Boolean(
@@ -29,6 +30,32 @@ const getClient = () => {
 };
 
 /**
+ * Ensure the private storage bucket exists, creating it automatically if missing.
+ */
+const ensureBucketExists = async () => {
+  if (bucketVerified || !isConfigured()) return;
+  try {
+    const client = getClient();
+    const bucket = getBucketName();
+    const { data, error } = await client.storage.getBucket(bucket);
+    if (error || !data) {
+      console.log(`[Supabase Storage] Bucket "${bucket}" not found. Auto-creating private bucket...`);
+      const { error: createError } = await client.storage.createBucket(bucket, {
+        public: false
+      });
+      if (createError && !createError.message?.toLowerCase().includes('already exists')) {
+        console.warn(`[Supabase Storage Warning] Could not auto-create bucket "${bucket}":`, createError.message);
+      } else {
+        console.log(`[Supabase Storage] Successfully auto-created private bucket "${bucket}"!`);
+      }
+    }
+    bucketVerified = true;
+  } catch (err) {
+    console.warn('[Supabase Storage Warning] ensureBucketExists error:', err.message);
+  }
+};
+
+/**
  * Upload an object buffer to Supabase Storage (private bucket)
  */
 const uploadObject = async ({ key, body, contentType }) => {
@@ -36,12 +63,27 @@ const uploadObject = async ({ key, body, contentType }) => {
   const client = getClient();
   const bucket = getBucketName();
 
-  const { data, error } = await client.storage
+  let { data, error } = await client.storage
     .from(bucket)
     .upload(safeKey, body, {
       contentType: contentType || 'application/octet-stream',
       upsert: false
     });
+
+  // If bucket does not exist, automatically create it and retry upload once
+  if (error && error.message?.toLowerCase().includes('bucket not found')) {
+    console.log(`[Supabase Storage] Bucket "${bucket}" not found. Auto-creating private bucket and retrying...`);
+    bucketVerified = false;
+    await ensureBucketExists();
+    const retry = await client.storage
+      .from(bucket)
+      .upload(safeKey, body, {
+        contentType: contentType || 'application/octet-stream',
+        upsert: false
+      });
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) {
     throw new Error(`Supabase Storage upload error: ${error.message}`);
@@ -142,11 +184,12 @@ const objectExists = async (key) => {
 
 /**
  * Keep-alive ping for Supabase free-tier project
- * Runs a cheap bucket list query to prevent auto-pause
+ * Runs a cheap bucket query and ensures private bucket exists
  */
 const keepAlive = async () => {
   try {
     if (!isConfigured()) return;
+    await ensureBucketExists();
     const client = getClient();
     const bucket = getBucketName();
     await client.storage.from(bucket).list('', { limit: 1 });

@@ -108,11 +108,18 @@ export const api = {
 
   async logout() {
     try {
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 2500) : null;
+
       const res = await apiFetch(`${BASE_URL}/auth/logout`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        signal: controller ? controller.signal : undefined
       });
+      if (timeoutId) clearTimeout(timeoutId);
       return await handleResponse(res);
+    } catch (e) {
+      return { success: true };
     } finally {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('token');

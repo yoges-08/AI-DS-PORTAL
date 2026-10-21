@@ -44,12 +44,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    // Optimistic instant client logout (0ms delay)
+    setUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+    }
+
     try {
       await api.logout();
     } catch (e) {
       // ignore
-    } finally {
-      setUser(null);
     }
   };
 
