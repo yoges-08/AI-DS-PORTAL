@@ -20,14 +20,15 @@ import {
   Eye,
   RefreshCw,
   Trash2,
-  Sparkles
+  Sparkles,
+  ListChecks
 } from 'lucide-react';
 import { StatusBadge } from '../../components/StatusBadge';
 import { StudentDetailModal } from '../../components/StudentDetailModal';
 import { AddStudentModal } from '../../components/AddStudentModal';
 import { BulkImportModal } from '../../components/BulkImportModal';
 
-export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
+export const AdminDashboard = ({ onOpenMultiStepEdit, onNavigateTab }) => {
   const [stats, setStats] = useState({
     totalStudents: 0,
     submitted: 0,
@@ -243,6 +244,17 @@ export const AdminDashboard = ({ onOpenMultiStepEdit }) => {
             <Upload className="w-3.5 h-3.5 mr-1.5 text-secondary" />
             <span>Bulk Import</span>
           </button>
+
+          {onNavigateTab && (
+            <button
+              onClick={() => onNavigateTab('bulk-manage')}
+              className="inline-flex items-center px-3.5 py-2 bg-white hover:bg-surface-container border border-outline-variant/50 text-primary text-xs font-semibold rounded-xl shadow-2xs transition-all active:scale-[0.98]"
+              title="Cohort bulk lock, unlock, and delete"
+            >
+              <ListChecks className="w-3.5 h-3.5 mr-1.5 text-secondary" />
+              <span>Bulk Manage</span>
+            </button>
+          )}
 
           <button
             onClick={handleExportExcel}

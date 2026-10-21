@@ -147,6 +147,7 @@ export const App = () => {
           ) : adminTab === 'dashboard' || adminTab === 'students' ? (
             <AdminDashboard 
               onOpenMultiStepEdit={(id) => setEditingStudentId(id)} 
+              onNavigateTab={(tab) => setAdminTab(tab)}
             />
           ) : adminTab === 'bulk-import' ? (
             <BulkImportPage />
@@ -157,7 +158,10 @@ export const App = () => {
           ) : adminTab === 'audit-logs' ? (
             <AuditLogsPage />
           ) : (
-            <AdminDashboard onOpenMultiStepEdit={(id) => setEditingStudentId(id)} />
+            <AdminDashboard 
+              onOpenMultiStepEdit={(id) => setEditingStudentId(id)} 
+              onNavigateTab={(tab) => setAdminTab(tab)}
+            />
           )}
         </main>
       </div>
