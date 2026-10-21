@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { pool } = require('../config/db');
-const { uploadObject, deleteObject, isR2Configured } = require('../config/r2');
+const { uploadObject, deleteObject, isStorageConfigured } = require('../config/storage');
 const { generateDocumentKey } = require('../middleware/uploadMiddleware');
 const {
   validateMobile,
@@ -504,20 +504,20 @@ const uploadDocument = async (req, res) => {
     );
     const filePath = `/uploads/${key}`;
 
-    // Upload to Cloudflare R2
-    if (isR2Configured()) {
+    // Upload to Storage (Supabase Storage / R2 via unified adapter)
+    if (isStorageConfigured()) {
       try {
         await uploadObject({
           key,
           body: req.file.buffer,
           contentType: req.file.mimetype
         });
-      } catch (r2Err) {
-        console.error('[uploadDocument R2 Error]:', r2Err);
+      } catch (storageErr) {
+        console.error('[uploadDocument Storage Error]:', storageErr);
         return res.status(500).json({ success: false, message: 'Failed to upload document to cloud storage.' });
       }
     } else {
-      // Local development fallback when R2 is not configured
+      // Local development fallback when storage is not configured
       const localUploadsDir = path.join(__dirname, '..', 'uploads');
       if (!fs.existsSync(localUploadsDir)) fs.mkdirSync(localUploadsDir, { recursive: true });
       fs.writeFileSync(path.join(localUploadsDir, key), req.file.buffer);

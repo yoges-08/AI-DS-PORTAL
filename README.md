@@ -10,7 +10,7 @@ An official college department portal modeled on Tamil Nadu's **UMIS (University
 - **Backend:** Node.js + Express (REST API, modular routes and controllers)
 - **Database:** MySQL (Prisma ORM schema + native connection pool via `mysql2`)
 - **Authentication:** Role-Based Access Control (RBAC) with JWT stored in `httpOnly` secure cookies & Bearer sync
-- **File Storage:** Cloudflare R2 (S3-compatible, private bucket, 10 GB lifetime free, $0 bandwidth fees) + Express authenticated streaming
+- **File Storage:** Supabase Storage (private bucket, 1 GB free, no credit card) via swappable storage adapter (`config/storage.js`), ready for Cloudflare R2 + Express authenticated streaming
 - **Reports:** Server-side Excel exports (`xlsx`) and formatted PDF registers (`pdfkit`)
 - **Security:** Bcrypt password hashing, express rate-limiting on authentication, data masking (Aadhaar & Bank Account in list views), administrative audit trail
 
@@ -23,7 +23,9 @@ AI&DS PORTAL/
 ├── backend/
 │   ├── config/
 │   │   ├── db.js                 # MySQL pool connection and health check
-│   │   └── r2.js                 # Cloudflare R2 object storage client & helpers
+│   │   ├── storage.js            # Swappable storage adapter (Supabase / R2)
+│   │   ├── storage.supabase.js   # Supabase Storage client & keep-alive
+│   │   └── storage.r2.js         # Cloudflare R2 storage adapter (stub)
 │   ├── controllers/
 │   │   ├── authController.js     # Student & Admin login/logout, session
 │   │   ├── studentController.js  # Profile view, step draft saves, submit, uploads

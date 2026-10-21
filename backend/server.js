@@ -10,7 +10,7 @@ const fs = require('fs');
 const { testConnection, pool } = require('./config/db');
 const { authenticateToken } = require('./middleware/authMiddleware');
 const { apiLimiter } = require('./middleware/rateLimiter');
-const { getObjectStream, isR2Configured } = require('./config/r2');
+const { downloadObject, isStorageConfigured, keepAlive, getStorageProvider } = require('./config/storage');
 
 // Check critical production secrets
 if (process.env.NODE_ENV === 'production') {
@@ -146,34 +146,22 @@ app.get('/uploads/:filename', authenticateToken, async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'");
 
-    // 1. Primary: Serve stream from Cloudflare R2
-    if (isR2Configured()) {
+    // 1. Primary: Serve object from Storage (Supabase Storage / R2 via unified adapter)
+    if (isStorageConfigured()) {
       try {
-        const { stream, contentType, contentLength } = await getObjectStream(filename);
-        res.setHeader('Content-Type', docRow?.mime_type || contentType || 'application/octet-stream');
-        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(docRow?.file_name || filename)}"`);
-        if (contentLength) {
-          res.setHeader('Content-Length', contentLength);
+        const fileObj = await downloadObject(filename);
+        if (fileObj && fileObj.buffer) {
+          res.setHeader('Content-Type', docRow?.mime_type || fileObj.contentType || 'application/octet-stream');
+          res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(docRow?.file_name || filename)}"`);
+          res.setHeader('Content-Length', fileObj.buffer.length);
+          return res.send(fileObj.buffer);
         }
-
-        stream.on('error', (streamErr) => {
-          console.error(`[R2 Stream Error for ${filename}]:`, streamErr.message);
-          if (!res.headersSent) {
-            res.status(500).json({ success: false, message: 'Error streaming document.' });
-          }
-        });
-
-        return stream.pipe(res);
-      } catch (r2Err) {
-        // If object is missing or not yet in R2, fall through to temporary fallback
-        const isNotFound = r2Err.name === 'NoSuchKey' || r2Err.name === 'NotFound' || r2Err.$metadata?.httpStatusCode === 404;
-        if (!isNotFound) {
-          console.warn(`[R2 Fetch Notice for ${filename}]:`, r2Err.message);
-        }
+      } catch (storageErr) {
+        console.warn(`[Storage Fetch Notice for ${filename}]:`, storageErr.message);
       }
     }
 
-    // 2. TEMP FALLBACK: remove after R2 migration is verified
+    // 2. TEMP FALLBACK: remove after storage migration is verified
     // Fallback A: Serve from database LONGBLOB (TiDB Cloud / SQLite)
     if (docRow && docRow.file_data) {
       res.setHeader('Content-Type', docRow.mime_type || 'application/octet-stream');
@@ -276,4 +264,23 @@ app.listen(PORT, '0.0.0.0', async () => {
 
   // Verify DB connection
   await testConnection();
+
+  // Step 11: Free-plan keep-alive for Supabase Storage (prevents auto-pause from inactivity)
+  if (getStorageProvider() === 'supabase' && isStorageConfigured()) {
+    try {
+      await keepAlive();
+    } catch (e) {
+      console.warn('[Supabase Initial Keep-Alive Notice]:', e.message);
+    }
+
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    const keepAliveTimer = setInterval(async () => {
+      try {
+        await keepAlive();
+      } catch (e) {
+        console.warn('[Supabase Periodic Keep-Alive Notice]:', e.message);
+      }
+    }, TWENTY_FOUR_HOURS);
+    keepAliveTimer.unref();
+  }
 });

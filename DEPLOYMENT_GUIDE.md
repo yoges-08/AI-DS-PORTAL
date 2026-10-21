@@ -75,51 +75,39 @@ If your backend is already deployed on Render:
 
 ---
 
-### Step 3: Setup Cloudflare R2 Object Storage (10 GB Lifetime Free)
+### Step 3: Setup Supabase Storage (1 GB Free Forever, No Credit Card)
 
-To store student passport photos, Aadhaar cards, marksheets, and bank passbooks permanently without losing them on Render redeploys:
+To store student passport photos, Aadhaar cards, marksheets, and bank passbooks permanently without losing them on Render free redeploys:
 
-1. **Sign in to Cloudflare:**
-   - Log in to your [Cloudflare Dashboard](https://dash.cloudflare.com/).
-   - Click on **R2 Object Storage** in the left sidebar.
-
-2. **Create a Private Bucket:**
-   - Click **Create bucket**.
-   - **Bucket Name:** `aids-portal-files` (or your preferred name).
-   - Leave bucket access as **Private** (Do NOT enable public R2.dev access).
-   - Click **Create Bucket**.
-
-3. **Generate API Token:**
-   - On the R2 overview page, click **Manage R2 API Tokens** on the right side.
-   - Click **Create API Token**.
-   - Set Permissions to: **Object Read & Write**.
-   - Under *Specify bucket(s)*, select your bucket `aids-portal-files`.
-   - Click **Create API Token**.
-   - Copy the generated:
-     - **Access Key ID**
-     - **Secret Access Key**
-
-4. **Copy Your Account ID:**
-   - On the R2 overview page, copy your **Account ID** (found in the URL or right sidebar).
-
-5. **Add Environment Variables to Render Dashboard:**
-   - Open your Render Web Service -> **Environment Variables**.
-   - Add the following keys:
-     - `R2_ACCOUNT_ID` = `(your Cloudflare Account ID)`
-     - `R2_ACCESS_KEY_ID` = `(your R2 Access Key ID)`
-     - `R2_SECRET_ACCESS_KEY` = `(your R2 Secret Access Key)`
-     - `R2_BUCKET` = `aids-portal-files`
-
-6. **Run Existing File Migration (One-Time):**
+1. **Create Account & Project:**
+   - Create a free account and a new project at [supabase.com](https://supabase.com) (no credit card needed).
+2. **Create Private Bucket:**
+   - Go to **Storage**, click **New bucket**.
+   - Name it `aids-portal-files`.
+   - **IMPORTANT:** Keep **Public bucket OFF** (sensitive student documents must remain private).
+3. **Get Project URL & Service Role Key:**
+   - Go to **Project Settings** -> **API**.
+   - Copy the **Project URL** (e.g. `https://your-project-ref.supabase.co`).
+   - Copy the **service_role** key (secret, backend-only). Treat this key like a password.
+4. **Configure Environment Variables:**
+   - In `backend/.env` (local) and in your Render Dashboard -> **Environment Variables**:
+     - `STORAGE_PROVIDER` = `supabase`
+     - `SUPABASE_URL` = `https://your-project-ref.supabase.co`
+     - `SUPABASE_SERVICE_ROLE_KEY` = `your_service_role_key`
+     - `SUPABASE_BUCKET` = `aids-portal-files`
+5. **Run Existing File Migration (One-Time):**
    - If you have existing files in your database or disk:
      ```bash
      cd backend
-     node scripts/migrate-to-r2.js
+     node scripts/migrate-to-storage.js
      ```
-   - To also null existing database binary blobs after confirming R2 upload:
+   - To also null existing database binary blobs after confirming storage upload:
      ```bash
-     node scripts/migrate-to-r2.js --null-blobs
+     node scripts/migrate-to-storage.js --null-blobs
      ```
+6. **Free-Plan Limits & Auto-Keep-Alive:**
+   - 1 GB total file storage, 50 MB max per file.
+   - Supabase pauses free projects after ~1 week of inactivity; the backend includes an automated keep-alive ping that runs on startup and every 24 hours to prevent dormancy.
 
 ---
 
@@ -319,3 +307,28 @@ sudo systemctl restart nginx
   mysqldump -u aids_user -p aids_portal > /backups/aids_portal_$(date +%F).sql
   ```
 - [ ] **File Uploads Storage:** Ensure `backend/uploads/` directory is backed up regularly alongside the database so student certificates are never lost.
+
+---
+
+## Switching to Cloudflare R2 Later (Storage Adapter Migration)
+
+The backend is built with a swappable storage adapter in `backend/config/storage.js`. When you are ready to switch from Supabase Storage to Cloudflare R2:
+
+1. **Implement `config/storage.r2.js`:**
+   Implement the same interface (`uploadObject`, `downloadObject`, `deleteObject`, `objectExists`, `isConfigured`) using `@aws-sdk/client-s3` with `region: 'auto'` and endpoint `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com`.
+2. **Set Environment Variables:**
+   ```env
+   STORAGE_PROVIDER=r2
+   R2_ACCOUNT_ID=your_cloudflare_account_id
+   R2_ACCESS_KEY_ID=your_r2_access_key_id
+   R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
+   R2_BUCKET=aids-portal-files
+   ```
+3. **Run One-Time Migration Script:**
+   ```bash
+   cd backend
+   node scripts/migrate-to-storage.js
+   ```
+   The migration tool will detect `STORAGE_PROVIDER=r2` and copy all objects to Cloudflare R2 automatically and idempotently.
+4. **Redeploy:**
+   No frontend code or database changes are required because all file access goes through the authenticated `GET /uploads/:filename` route via `config/storage.js`.
