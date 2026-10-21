@@ -279,15 +279,40 @@ const initSqliteFallback = async () => {
     }
 
     // Check if admin exists in SQLite, if not seed
-    const adminCheck = sqliteDb.prepare('SELECT id FROM admins LIMIT 1').all();
+    const adminCheck = sqliteDb.prepare("SELECT id FROM admins WHERE username = 'admin' LIMIT 1").all();
     if (adminCheck.length === 0) {
       console.log('[DB Fallback] Initializing default seed data in local database...');
       const adminPwd = await bcrypt.hash('Admin@123', 10);
       sqliteDb.prepare(`
         INSERT INTO admins (username, password, name, email, department)
-        VALUES ('admin', ?, 'Dr. K. Rajasekaran, HOD', 'admin.aids@college.edu', 'Artificial Intelligence & Data Science')
+        VALUES ('admin', ?, 'Dr.G.NANTHAKUMAR', 'aamecaidsskill@gmail.com', 'Artificial Intelligence & Data Science')
       `).run(adminPwd);
+    } else {
+      sqliteDb.prepare("UPDATE admins SET name = 'Dr.G.NANTHAKUMAR', email = 'aamecaidsskill@gmail.com' WHERE username = 'admin'").run();
+    }
 
+    // Seed Faculty Members into SQLite
+    const sqliteFacultyList = [
+      { username: 'chitra.tk', name: 'T.K.CHITRA' },
+      { username: 'jeeva.m', name: 'M.JEEVA' },
+      { username: 'selvarani.n', name: 'N.SELVARANI' },
+      { username: 'jayanthi.k', name: 'JAYANTHI K' }
+    ];
+    const facPwd = await bcrypt.hash('Faculty@123', 10);
+    for (const fac of sqliteFacultyList) {
+      const exists = sqliteDb.prepare("SELECT id FROM admins WHERE username = ?").all(fac.username);
+      if (exists.length === 0) {
+        sqliteDb.prepare(`
+          INSERT INTO admins (username, password, name, email, department)
+          VALUES (?, ?, ?, 'aamecaidsskill@gmail.com', 'Artificial Intelligence & Data Science')
+        `).run(fac.username, facPwd, fac.name);
+      } else {
+        sqliteDb.prepare("UPDATE admins SET name = ?, email = 'aamecaidsskill@gmail.com' WHERE username = ?").run(fac.name, fac.username);
+      }
+    }
+
+    const studentCheck = sqliteDb.prepare('SELECT id FROM students LIMIT 1').all();
+    if (studentCheck.length === 0) {
       // Seed sample students
       const sampleStudents = [
         { reg: '71762105001', name: 'AARTHI S', dob: '2003-05-14', pwd: await bcrypt.hash('14052003', 10), year: 4, sec: 'A', status: 'SUBMITTED', fg: 1, pms: 0, comm: 'BC', mob: '9876543210' },
@@ -408,6 +433,38 @@ const testConnection = async () => {
       await conn.query('ALTER TABLE `students` ADD COLUMN IF NOT EXISTS `photo_data` LONGBLOB NULL;');
     } catch (migErr) {
       // Ignore if column exists
+    }
+
+    // Ensure HOD Name & Email are up to date
+    try {
+      await conn.query("UPDATE `admins` SET `name` = 'Dr.G.NANTHAKUMAR', `email` = 'aamecaidsskill@gmail.com' WHERE `username` = 'admin';");
+    } catch (e) {
+      // Ignore
+    }
+
+    // Ensure Department Faculty logins exist
+    try {
+      const facultyList = [
+        { username: 'chitra.tk', name: 'T.K.CHITRA' },
+        { username: 'jeeva.m', name: 'M.JEEVA' },
+        { username: 'selvarani.n', name: 'N.SELVARANI' },
+        { username: 'jayanthi.k', name: 'JAYANTHI K' }
+      ];
+      const facultyHash = await bcrypt.hash('Faculty@123', 10);
+      for (const fac of facultyList) {
+        const [existing] = await conn.query('SELECT id FROM `admins` WHERE `username` = ? LIMIT 1', [fac.username]);
+        if (existing.length === 0) {
+          await conn.query(
+            'INSERT INTO `admins` (username, password, name, email, department, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+            [fac.username, facultyHash, fac.name, 'aamecaidsskill@gmail.com', 'Artificial Intelligence & Data Science']
+          );
+          console.log(`[DB Setup] Created faculty account for ${fac.name} (${fac.username})`);
+        } else {
+          await conn.query('UPDATE `admins` SET `name` = ?, `email` = ? WHERE `username` = ?', [fac.name, 'aamecaidsskill@gmail.com', fac.username]);
+        }
+      }
+    } catch (e) {
+      console.warn('[DB Setup Notice] Faculty auto-sync:', e.message);
     }
 
     conn.release();

@@ -184,12 +184,12 @@ export const LoginPage = () => {
         <div className="relative z-10 flex flex-wrap items-center justify-between text-xs text-primary-fixed-dim/70 gap-3 pt-4 border-t border-white/10">
           <span>AAMEC &bull; AI & DS Academic Registry</span>
           <div className="flex items-center space-x-3">
-            <a href="tel:+914374245522" className="hover:text-white inline-flex items-center gap-1 transition-colors">
-              <Phone className="w-3 h-3" /> +91 4374 245522
+            <a href="tel:+919944823120" className="hover:text-white inline-flex items-center gap-1 transition-colors">
+              <Phone className="w-3 h-3" /> +91 99448 23120
             </a>
             <span>&bull;</span>
-            <a href="mailto:aids@aamec.edu.in" className="hover:text-white inline-flex items-center gap-1 transition-colors">
-              <Mail className="w-3 h-3" /> aids@aamec.edu.in
+            <a href="mailto:aamecaidsskill@gmail.com" className="hover:text-white inline-flex items-center gap-1 transition-colors">
+              <Mail className="w-3 h-3" /> aamecaidsskill@gmail.com
             </a>
           </div>
         </div>

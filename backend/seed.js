@@ -202,6 +202,8 @@ const seedDatabase = async () => {
       [adminUsername]
     );
 
+    const defaultEmail = process.env.DEFAULT_ADMIN_EMAIL || 'aamecaidsskill@gmail.com';
+
     if (adminExists.length === 0) {
       await connection.query(
         `INSERT INTO admins (username, password, name, email, department, created_at)
@@ -209,14 +211,42 @@ const seedDatabase = async () => {
         [
           adminUsername,
           hashedAdminPassword,
-          'Dr. K. Rajasekaran, HOD',
-          process.env.DEFAULT_ADMIN_EMAIL || 'admin.aids@college.edu',
+          'Dr.G.NANTHAKUMAR',
+          defaultEmail,
           'Artificial Intelligence & Data Science'
         ]
       );
-      console.log(` -> Admin seeded: username="${adminUsername}", password="${adminPassword}"`);
+      console.log(` -> Admin (HOD) seeded: username="${adminUsername}", password="${adminPassword}"`);
     } else {
-      console.log(` -> Admin "${adminUsername}" already exists.`);
+      await connection.query(
+        'UPDATE admins SET name = ?, email = ? WHERE username = ?',
+        ['Dr.G.NANTHAKUMAR', defaultEmail, adminUsername]
+      );
+      console.log(` -> Admin "${adminUsername}" updated with HOD Dr.G.NANTHAKUMAR.`);
+    }
+
+    // Seed Department Faculty Accounts
+    const facultyList = [
+      { username: 'chitra.tk', name: 'T.K.CHITRA' },
+      { username: 'jeeva.m', name: 'M.JEEVA' },
+      { username: 'selvarani.n', name: 'N.SELVARANI' },
+      { username: 'jayanthi.k', name: 'JAYANTHI K' }
+    ];
+    const defaultFacultyPassword = await bcrypt.hash('Faculty@123', 10);
+
+    for (const fac of facultyList) {
+      const [facExists] = await connection.query('SELECT id FROM admins WHERE username = ?', [fac.username]);
+      if (facExists.length === 0) {
+        await connection.query(
+          `INSERT INTO admins (username, password, name, email, department, created_at)
+           VALUES (?, ?, ?, ?, ?, NOW())`,
+          [fac.username, defaultFacultyPassword, fac.name, defaultEmail, 'Artificial Intelligence & Data Science']
+        );
+        console.log(` -> Faculty account seeded: ${fac.name} (${fac.username})`);
+      } else {
+        await connection.query('UPDATE admins SET name = ?, email = ? WHERE username = ?', [fac.name, defaultEmail, fac.username]);
+        console.log(` -> Faculty account verified: ${fac.name} (${fac.username})`);
+      }
     }
 
     // 4. Seed 10 Students

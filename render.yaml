@@ -19,7 +19,7 @@ services:
       - key: DEFAULT_ADMIN_PASSWORD
         sync: false
       - key: DEFAULT_ADMIN_EMAIL
-        value: admin.aids@college.edu
+        value: aamecaidsskill@gmail.com
       - key: STORAGE_PROVIDER
         value: supabase
       - key: SUPABASE_URL

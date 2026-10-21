@@ -21,21 +21,21 @@ export const Footer = () => {
         <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] text-gray-600">
           <span className="font-medium text-gray-700">Helpdesk:</span>
           <a
-            href="tel:+914374245522"
+            href="tel:+919944823120"
             className="inline-flex items-center text-gov-navy hover:underline font-semibold"
             title="Call Department Office"
           >
             <Phone className="w-3 h-3 mr-1 text-gov-navy shrink-0" />
-            +91 4374 245522
+            +91 99448 23120
           </a>
           <span className="text-gray-300">&bull;</span>
           <a
-            href="mailto:aids@aamec.edu.in"
+            href="mailto:aamecaidsskill@gmail.com"
             className="inline-flex items-center text-gov-navy hover:underline font-semibold"
             title="Email Department Coordinator"
           >
             <Mail className="w-3 h-3 mr-1 text-gov-navy shrink-0" />
-            aids@aamec.edu.in
+            aamecaidsskill@gmail.com
           </a>
         </div>
       </div>

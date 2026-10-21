@@ -130,7 +130,7 @@ const loginAdmin = async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      'SELECT id, username, password, name, email, department FROM admins WHERE username = ?',
+      'SELECT id, username, password, name, email, department FROM admins WHERE LOWER(username) = LOWER(?)',
       [username.trim()]
     );
 
@@ -275,9 +275,65 @@ const getCurrentUser = async (req, res) => {
   }
 };
 
+/**
+ * Self-service password change for authenticated users (Faculty/Admin or Student)
+ */
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required.'
+      });
+    }
+
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters long.'
+      });
+    }
+
+    const { id, role } = req.user;
+
+    if (role === 'ADMIN') {
+      const [admins] = await pool.query('SELECT password FROM admins WHERE id = ?', [id]);
+      if (admins.length === 0) {
+        return res.status(404).json({ success: false, message: 'Admin account not found.' });
+      }
+      const isMatch = await bcrypt.compare(String(currentPassword).trim(), admins[0].password);
+      if (!isMatch) {
+        return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
+      }
+      const hashed = await bcrypt.hash(String(newPassword).trim(), 10);
+      await pool.query('UPDATE admins SET password = ? WHERE id = ?', [hashed, id]);
+      return res.json({ success: true, message: 'Password updated successfully.' });
+    } else if (role === 'STUDENT') {
+      const [students] = await pool.query('SELECT password FROM students WHERE id = ?', [id]);
+      if (students.length === 0) {
+        return res.status(404).json({ success: false, message: 'Student account not found.' });
+      }
+      const isMatch = await bcrypt.compare(String(currentPassword).trim(), students[0].password);
+      if (!isMatch) {
+        return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
+      }
+      const hashed = await bcrypt.hash(String(newPassword).trim(), 10);
+      await pool.query('UPDATE students SET password = ? WHERE id = ?', [hashed, id]);
+      return res.json({ success: true, message: 'Password updated successfully.' });
+    }
+
+    return res.status(400).json({ success: false, message: 'Unknown role.' });
+  } catch (error) {
+    console.error('[changePassword Error]:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update password.' });
+  }
+};
+
 module.exports = {
   loginStudent,
   loginAdmin,
   logout,
-  getCurrentUser
+  getCurrentUser,
+  changePassword
 };

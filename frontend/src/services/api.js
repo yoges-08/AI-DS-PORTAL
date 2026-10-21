@@ -141,6 +141,16 @@ export const api = {
     }
   },
 
+  async changePassword(currentPassword, newPassword) {
+    const res = await apiFetch(`${BASE_URL}/auth/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    return await handleResponse(res);
+  },
+
   // Student Profile
   async getStudentProfile(id = null) {
     const url = id ? `${BASE_URL}/student/profile/${id}` : `${BASE_URL}/student/profile`;
