@@ -1,0 +1,279 @@
+/* ============================================================
+   AAMEC AI & DS Portal - Interactive Login Animations
+   Left Hero Bento Sheen + Mesh Drift + Robert Mascot + Welcome Pop
+   ============================================================ */
+
+/* Deep Navy Background with Animated Gradient Mesh & Technical Grid */
+.aamec-hero-bg {
+  background-color: #012357;
+  background-image: 
+    radial-gradient(circle at 20% 25%, rgba(31, 58, 110, 0.75) 0%, transparent 55%),
+    radial-gradient(circle at 85% 75%, rgba(0, 90, 179, 0.55) 0%, transparent 60%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+  animation: heroMeshDrift 14s ease-in-out infinite alternate;
+}
+
+@keyframes heroMeshDrift {
+  0% { background-position: 0 0, 0 0, 0 0, 0 0; }
+  100% { background-position: 20px 15px, -15px -20px, 0 0, 0 0; }
+}
+
+/* Bento Cards with Staggered Organic Floating & Sheen Sweep */
+.bento-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 1rem;
+  padding: 1rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.bento-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(56, 189, 248, 0.45);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 28px -6px rgba(0, 40, 110, 0.5);
+}
+
+/* Periodic Light Sheen across Bento Cards */
+.bento-card::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: 0; width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transform: translateX(-120%) skewX(-20deg);
+  animation: bentoSheen 6s ease-in-out infinite;
+}
+.bento-card-1::after { animation-delay: 0.5s; }
+.bento-card-2::after { animation-delay: 2.2s; }
+.bento-card-3::after { animation-delay: 4.0s; }
+
+@keyframes bentoSheen {
+  0% { transform: translateX(-120%) skewX(-20deg); }
+  35%, 100% { transform: translateX(350%) skewX(-20deg); }
+}
+
+/* Staggered Vertical Breathing on Bento Cards */
+.bento-float-1 { animation: bentoFloat 5.5s ease-in-out infinite; }
+.bento-float-2 { animation: bentoFloat 6.8s ease-in-out 0.8s infinite; }
+.bento-float-3 { animation: bentoFloat 6.0s ease-in-out 1.6s infinite; }
+
+@keyframes bentoFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* Pulse Glow on Bento Icons */
+.icon-pulse {
+  animation: iconGlow 3s ease-in-out infinite;
+}
+@keyframes iconGlow {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0px rgba(56, 189, 248, 0)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.7)); }
+}
+
+/* Pulsing Green Status Beacon */
+.status-beacon {
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7);
+  animation: beaconPulse 2.2s infinite;
+}
+@keyframes beaconPulse {
+  0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); }
+  70% { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+}
+
+/* ============================================================
+   ROBERT MASCOT - COMPACT ORB & EXPRESSIONS
+   ============================================================ */
+#robertContainer {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: auto;
+  transition: top 1.1s cubic-bezier(0.22, 1, 0.36, 1), left 1.1s cubic-bezier(0.22, 1, 0.36, 1), transform 0.45s ease;
+  will-change: top, left, transform;
+}
+
+.robert-hover-bob {
+  animation: robertHoverBob 3.8s ease-in-out infinite;
+}
+@keyframes robertHoverBob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  35% { transform: translateY(-6px) rotate(-2deg); }
+  70% { transform: translateY(5px) rotate(2deg); }
+}
+
+.robert-orb {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  position: relative;
+  background: radial-gradient(circle at 36% 30%, #93C5FD 0%, #3B82F6 36%, #1D4ED8 72%, #0F172A 100%);
+  box-shadow: 
+    0 6px 16px -2px rgba(37, 99, 235, 0.6),
+    0 0 14px rgba(59, 130, 246, 0.5),
+    inset 0 -2.5px 5px rgba(15, 23, 42, 0.5),
+    inset 0 2px 3.5px rgba(255, 255, 255, 0.9);
+  border: 1.5px solid rgba(147, 197, 253, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.robert-orb:hover {
+  transform: scale(1.18);
+  box-shadow: 
+    0 10px 22px -2px rgba(37, 99, 235, 0.75),
+    0 0 20px rgba(96, 165, 250, 0.7);
+}
+
+.robert-halo {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.4) 0%, rgba(37, 99, 235, 0) 70%);
+  animation: robertHaloPulse 2.8s ease-in-out infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+@keyframes robertHaloPulse {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.2); }
+}
+
+.robert-face {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transform: translate(1px, -1.5px);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.robert-eye {
+  width: 4.5px;
+  height: 9.5px;
+  background: #FFFFFF;
+  border-radius: 999px;
+  box-shadow: 0 0 4px #FFFFFF, 0 0 7px rgba(255, 255, 255, 0.85);
+  transform-origin: center;
+  animation: robertEyeBlink 4s infinite;
+  transition: all 0.2s ease;
+}
+@keyframes robertEyeBlink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.08); }
+}
+
+.robert-bubble {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(1, 35, 87, 0.96);
+  border: 1.5px solid rgba(56, 189, 248, 0.75);
+  color: #FFFFFF;
+  padding: 4.5px 10px;
+  border-radius: 11px;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px rgba(0, 15, 50, 0.45), 0 0 14px rgba(56, 189, 248, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  pointer-events: none;
+  animation: bubblePop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes bubblePop {
+  0% { opacity: 0; transform: translateY(-50%) scale(0.8); }
+  100% { opacity: 1; transform: translateY(-50%) scale(1); }
+}
+
+/* ============================================================
+   FLOATING INPUT FIELDS & MAGNETIC BUTTON
+   ============================================================ */
+.floating-group { position: relative; }
+.floating-group .login-input {
+  width: 100%;
+  padding: 1.25rem 2.75rem 0.45rem 1rem;
+  background: #FFFFFF;
+  border: 1px solid #C4C6D1;
+  border-radius: 0.75rem;
+  color: #1A1B1F;
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.25s ease;
+}
+.floating-group .login-input:focus {
+  border-color: #005AB3;
+  box-shadow: 0 0 0 3px rgba(0, 90, 179, 0.16);
+}
+.floating-group label {
+  position: absolute;
+  left: 1rem;
+  top: 0.85rem;
+  font-size: 0.85rem;
+  color: #747780;
+  pointer-events: none;
+  transition: transform 0.18s ease, font-size 0.18s ease, color 0.18s ease;
+  transform-origin: left top;
+}
+.floating-group .login-input:focus + label,
+.floating-group .login-input:not(:placeholder-shown) + label,
+.floating-group .login-input:-webkit-autofill + label {
+  transform: translateY(-0.55rem) scale(0.75);
+  color: #005AB3;
+  font-weight: 700;
+}
+
+.login-btn {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #012357 0%, #1F3A6E 50%, #005AB3 100%);
+  color: #FFFFFF;
+  box-shadow: 0 10px 24px -6px rgba(1, 35, 87, 0.45);
+  transition: transform 0.15s ease-out, box-shadow 0.2s;
+}
+.login-btn:hover:not(:disabled) {
+  box-shadow: 0 14px 28px -6px rgba(1, 35, 87, 0.6);
+}
+.login-btn::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; left: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: translateX(-120%) skewX(-20deg);
+}
+.login-btn:hover:not(:disabled)::after {
+  animation: btnSheen 1.2s ease-out;
+}
+@keyframes btnSheen {
+  0% { transform: translateX(-120%) skewX(-20deg); }
+  100% { transform: translateX(300%) skewX(-20deg); }
+}
+
+/* ============================================================
+   WELCOME SPRING-POP OVERLAY
+   ============================================================ */
+@keyframes aamecSpringPop {
+  0% { transform: scale(0.2); opacity: 0; }
+  65% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes aamecFadeUp {
+  0% { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .aamec-hero-bg, .bento-card::after, .bento-float-1, .bento-float-2, .bento-float-3,
+  .icon-pulse, .status-beacon, #robertContainer, .robert-hover-bob, .robert-halo,
+  .robert-eye, .login-btn::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

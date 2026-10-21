@@ -34,21 +34,24 @@ export const AuthProvider = ({ children }) => {
     checkSession();
   }, []);
 
-  const loginStudent = async (registerNo, password) => {
+  const loginStudent = async (registerNo, password, { defer = false } = {}) => {
     const data = await api.loginStudent(registerNo, password);
-    if (data.success && data.user) {
+    if (data.success && data.user && !defer) {
       setUser(data.user);
     }
     return data;
   };
 
-  const loginAdmin = async (username, password) => {
+  const loginAdmin = async (username, password, { defer = false } = {}) => {
     const data = await api.loginAdmin(username, password);
-    if (data.success && data.user) {
+    if (data.success && data.user && !defer) {
       setUser(data.user);
     }
     return data;
   };
+
+  // Called after the welcome animation finishes
+  const completeLogin = (loggedInUser) => setUser(loggedInUser);
 
   const logout = async () => {
     // Optimistic instant client logout (0ms delay)
@@ -69,7 +72,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginStudent, loginAdmin, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, loginStudent, loginAdmin, completeLogin, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
