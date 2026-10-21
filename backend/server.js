@@ -221,6 +221,7 @@ app.get('/api/health', async (req, res) => {
   }
 
   const statusCode = dbStatus.connected ? 200 : 503;
+  console.log(`[Health Ping] Received ping at ${new Date().toISOString()} from ${req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown'} (Status: ${dbStatus.connected ? 'OK' : 'ERR'})`);
   res.status(statusCode).json({
     status: dbStatus.connected ? 'HEALTHY' : 'DEGRADED',
     service: 'Department Student Information System API (AI & DS)',
