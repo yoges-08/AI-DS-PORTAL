@@ -107,17 +107,17 @@
 }
 
 .robert-orb {
-  width: 35px;
-  height: 35px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   position: relative;
   background: radial-gradient(circle at 36% 30%, #93C5FD 0%, #3B82F6 36%, #1D4ED8 72%, #0F172A 100%);
   box-shadow: 
     0 6px 16px -2px rgba(37, 99, 235, 0.6),
-    0 0 14px rgba(59, 130, 246, 0.5),
+    0 0 16px rgba(59, 130, 246, 0.5),
     inset 0 -2.5px 5px rgba(15, 23, 42, 0.5),
     inset 0 2px 3.5px rgba(255, 255, 255, 0.9);
-  border: 1.5px solid rgba(147, 197, 253, 0.55);
+  border: 1.5px solid rgba(147, 197, 253, 0.65);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -126,7 +126,7 @@
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .robert-orb:hover {
-  transform: scale(1.18);
+  transform: scale(1.15);
   box-shadow: 
     0 10px 22px -2px rgba(37, 99, 235, 0.75),
     0 0 20px rgba(96, 165, 250, 0.7);
@@ -136,7 +136,7 @@
   position: absolute;
   inset: -4px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(96, 165, 250, 0.4) 0%, rgba(37, 99, 235, 0) 70%);
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.45) 0%, rgba(37, 99, 235, 0) 70%);
   animation: robertHaloPulse 2.8s ease-in-out infinite;
   z-index: -1;
   pointer-events: none;
@@ -146,14 +146,25 @@
   50% { opacity: 0.9; transform: scale(1.2); }
 }
 
-.robert-face {
+/* OLED Visor Screen (Provides crisp, high-contrast backdrop for LED eyes and mouth) */
+.robert-visor {
+  width: 30px;
+  height: 23px;
+  border-radius: 12px;
+  background: rgba(2, 16, 36, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.75), 0 0 8px rgba(56, 189, 248, 0.35);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  transform: translate(0.5px, -1px);
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  gap: 1.5px;
+  transition: all 0.3s ease;
+}
+.robert-visor-worried {
+  background: rgba(43, 11, 20, 0.94);
+  border: 1px solid rgba(244, 63, 94, 0.65);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.75), 0 0 10px rgba(244, 63, 94, 0.45);
 }
 
 .robert-eyes-row {
@@ -164,11 +175,11 @@
 }
 
 .robert-eye {
-  width: 4.5px;
-  height: 9px;
+  width: 4px;
+  height: 8.5px;
   background: #FFFFFF;
   border-radius: 999px;
-  box-shadow: 0 0 4px #FFFFFF, 0 0 7px rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 4px #FFFFFF, 0 0 7px #38BDF8;
   transform-origin: center;
   animation: robertEyeBlink 4s infinite;
   transition: all 0.2s ease;
@@ -183,6 +194,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  line-height: 0;
 }
 
 @keyframes robertMouthChatter {
@@ -190,20 +202,20 @@
   50% { transform: scale(1.15, 0.85); }
 }
 .robert-mouth-chatter {
-  animation: robertMouthChatter 0.25s infinite ease-in-out;
+  animation: robertMouthChatter 0.22s infinite ease-in-out;
 }
 
 .robert-blush {
   width: 2.5px;
   height: 2px;
   border-radius: 999px;
-  background: rgba(56, 189, 248, 0.6);
-  box-shadow: 0 0 4px rgba(56, 189, 248, 0.7);
+  background: rgba(56, 189, 248, 0.65);
+  box-shadow: 0 0 4px rgba(56, 189, 248, 0.75);
   transition: all 0.2s ease;
 }
 .robert-blush-worried {
-  background: rgba(253, 164, 175, 0.75);
-  box-shadow: 0 0 4px rgba(244, 63, 94, 0.8);
+  background: rgba(253, 164, 175, 0.8);
+  box-shadow: 0 0 4px rgba(244, 63, 94, 0.85);
 }
 
 .robert-cursor {

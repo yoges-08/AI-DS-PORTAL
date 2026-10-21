@@ -194,7 +194,6 @@ export const LoginPage = () => {
                     placeholder=" "
                     className="login-input font-mono font-medium"
                     required
-                    autoFocus
                   />
                   <label htmlFor="studentRegNo">Register Number</label>
                 </div>
@@ -265,7 +264,6 @@ export const LoginPage = () => {
                     placeholder=" "
                     className="login-input font-medium"
                     required
-                    autoFocus
                   />
                   <label htmlFor="adminUsername">Faculty / Admin Username</label>
                 </div>
