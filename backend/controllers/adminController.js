@@ -8,7 +8,7 @@ const xlsx = require('xlsx');
 const fs = require('fs');
 const path = require('path');
 const { pool } = require('../config/db');
-const { deleteObject } = require('../config/storage');
+const { deleteObject, deleteObjects } = require('../config/storage');
 const {
   cleanRegisterNo,
   validateRegisterNo,
@@ -812,54 +812,66 @@ const getAuditLogs = async (req, res) => {
 };
 
 /**
- * Shared helper to clean up student documents & photo from storage and local uploads folder
+ * Collect every storage file key (documents and photos) belonging to the given students.
+ * MUST be called BEFORE database rows in student_documents or students are deleted.
  */
-const cleanupStudentFiles = async (studentId, photoPath) => {
-  const uploadsDir = path.join(__dirname, '..', 'uploads');
-  try {
-    const [docs] = await pool.query(
-      'SELECT file_path FROM student_documents WHERE student_id = ?',
-      [studentId]
-    );
+const collectStudentFileKeys = async (students = []) => {
+  const keys = new Set();
+  const ids = students.map((s) => s.id).filter(Boolean);
 
-    for (const doc of docs) {
-      if (doc.file_path) {
-        const filename = path.basename(doc.file_path);
-        try {
-          await deleteObject(filename);
-        } catch (e) {
-          console.warn(`[Storage cleanup warning for doc ${filename}]:`, e.message);
-        }
-        const absPath = path.join(uploadsDir, filename);
-        if (fs.existsSync(absPath)) {
-          try {
-            fs.unlinkSync(absPath);
-          } catch (e) {
-            console.warn(`[Disk cleanup warning for doc ${filename}]:`, e.message);
-          }
-        }
-      }
+  // Photos recorded directly on students table
+  for (const s of students) {
+    if (s.photo_path) {
+      keys.add(path.basename(s.photo_path));
     }
-
-    if (photoPath) {
-      const photoName = path.basename(photoPath);
-      try {
-        await deleteObject(photoName);
-      } catch (e) {
-        console.warn(`[Storage cleanup warning for photo ${photoName}]:`, e.message);
-      }
-      const photoAbsPath = path.join(uploadsDir, photoName);
-      if (fs.existsSync(photoAbsPath)) {
-        try {
-          fs.unlinkSync(photoAbsPath);
-        } catch (e) {
-          console.warn(`[Disk cleanup warning for photo ${photoName}]:`, e.message);
-        }
-      }
-    }
-  } catch (err) {
-    console.error(`[cleanupStudentFiles error for student ${studentId}]:`, err.message);
   }
+
+  if (ids.length === 0) return [...keys];
+
+  // Documents recorded in student_documents (chunked to keep SQL query size bounded)
+  const CHUNK = 100;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const chunk = ids.slice(i, i + CHUNK);
+    const placeholders = chunk.map(() => '?').join(',');
+    const [docs] = await pool.query(
+      `SELECT file_path FROM student_documents WHERE student_id IN (${placeholders})`,
+      chunk
+    );
+    for (const d of docs) {
+      if (d.file_path) {
+        keys.add(path.basename(d.file_path));
+      }
+    }
+  }
+
+  return [...keys];
+};
+
+/**
+ * Remove file keys from cloud object storage (Supabase / R2) and local uploads folder.
+ * Never throws. Returns { deleted: number, failed: string[] }.
+ */
+const removeFileKeys = async (keys = []) => {
+  const safeKeys = [...new Set(keys.filter(Boolean).map((k) => path.basename(k)))];
+  if (safeKeys.length === 0) return { deleted: 0, failed: [] };
+
+  // 1. Delete from Cloud Storage
+  const storageResult = await deleteObjects(safeKeys);
+
+  // 2. Delete local disk copies in uploads directory (if any)
+  const uploadsDir = path.join(__dirname, '..', 'uploads');
+  for (const key of safeKeys) {
+    const absPath = path.join(uploadsDir, key);
+    if (fs.existsSync(absPath)) {
+      try {
+        fs.unlinkSync(absPath);
+      } catch (e) {
+        console.warn(`[Disk cleanup warning for ${key}]:`, e.message);
+      }
+    }
+  }
+
+  return storageResult;
 };
 
 /**
@@ -947,10 +959,10 @@ const deleteStudent = async (req, res) => {
 
     const student = rows[0];
 
-    // Clean up all uploaded documents and photo from storage & disk
-    await cleanupStudentFiles(studentId, student.photo_path);
+    // 1. Pre-collect all document & photo keys while database rows still exist
+    const fileKeys = await collectStudentFileKeys([student]);
 
-    // Delete documents and student record atomically within a database transaction
+    // 2. Delete documents and student record atomically within a database transaction
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
@@ -964,19 +976,28 @@ const deleteStudent = async (req, res) => {
       conn.release();
     }
 
+    // 3. Clean up storage and disk copies ONLY after DB commit succeeds
+    const fileResult = await removeFileKeys(fileKeys);
+
     await logAdminAction({
       adminId: req.user.id,
       adminUsername: req.user.username,
       action: 'DELETE_STUDENT',
       studentId: null,
       studentRegNo: student.register_no,
-      details: `Permanently deleted student record & login for ${student.name} (${student.register_no})`,
+      details:
+        `Permanently deleted student record & login for ${student.name} (${student.register_no}). ` +
+        `Files removed: ${fileResult.deleted}/${fileKeys.length}` +
+        (fileResult.failed.length ? `. FAILED keys: ${fileResult.failed.join(', ')}` : ''),
       ipAddress: req.ip
     });
 
     return res.json({
       success: true,
-      message: `Student ${student.name} (${student.register_no}) and all associated records have been permanently deleted.`
+      message: `Student ${student.name} (${student.register_no}) and all associated records have been permanently deleted.` +
+        (fileResult.failed.length ? ` Warning: ${fileResult.failed.length} file(s) could not be removed from storage.` : ''),
+      filesRemoved: fileResult.deleted,
+      filesFailed: fileResult.failed.length
     });
   } catch (error) {
     console.error('[deleteStudent Error]:', error);
@@ -1235,7 +1256,10 @@ const bulkDeleteStudents = async (req, res) => {
     const regList = targetStudents.map((s) => s.register_no);
     const chunkSize = 100;
 
-    // Run database deletes within ONE transaction with rollback on failure
+    // 1. Pre-collect all document & photo keys BEFORE deleting database rows
+    const fileKeys = await collectStudentFileKeys(targetStudents);
+
+    // 2. Run database deletes within ONE transaction with rollback on failure
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
@@ -1255,27 +1279,31 @@ const bulkDeleteStudents = async (req, res) => {
       conn.release();
     }
 
-    // Clean up uploaded documents and photos from storage and disk
-    // Storage cleanup failures are logged and will not abort the batch
-    for (const student of targetStudents) {
-      await cleanupStudentFiles(student.id, student.photo_path).catch((err) => {
-        console.warn(`[Bulk delete cleanup warning for ${student.register_no}]:`, err.message);
-      });
-    }
+    // 3. Clean up uploaded documents and photos from storage and disk
+    const fileResult = await removeFileKeys(fileKeys);
 
     const regSummary = regList.slice(0, 25).join(', ') + (regList.length > 25 ? ` (+${regList.length - 25} more)` : '');
     await logAdminAction({
       adminId: req.user.id,
       adminUsername: req.user.username,
       action: 'BULK_DELETE',
-      details: `Bulk deleted ${targetStudents.length} students & documents. Filters: ${JSON.stringify(filters || {})}. Register numbers: [${regSummary}]`,
+      details:
+        `Bulk deleted ${targetStudents.length} students. ` +
+        `Files removed: ${fileResult.deleted}/${fileKeys.length}. ` +
+        `Filters: ${JSON.stringify(filters || {})}. Register numbers: [${regSummary}]` +
+        (fileResult.failed.length ? `. FAILED keys (first 20): ${fileResult.failed.slice(0, 20).join(', ')}` : ''),
       ipAddress: req.ip
     });
 
     return res.json({
       success: true,
-      message: `Permanently deleted ${targetStudents.length} student records and associated documents.`,
+      message: `Permanently deleted ${targetStudents.length} student records.` +
+        (fileResult.failed.length
+          ? ` Warning: ${fileResult.failed.length} file(s) could not be removed from storage and may need manual cleanup.`
+          : ` ${fileResult.deleted} associated file(s) removed.`),
       affected: targetStudents.length,
+      filesRemoved: fileResult.deleted,
+      filesFailed: fileResult.failed.length,
       skipped: 0,
       failed: 0
     });

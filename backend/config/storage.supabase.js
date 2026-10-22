@@ -149,6 +149,45 @@ const deleteObject = async (key) => {
 };
 
 /**
+ * Delete many objects from Supabase Storage in batches.
+ * Never throws. Returns { deleted: number, failed: string[] }.
+ */
+const deleteObjects = async (keys = []) => {
+  const result = { deleted: 0, failed: [] };
+  const safeKeys = [...new Set(
+    (Array.isArray(keys) ? keys : [keys]).filter(Boolean).map((k) => path.basename(k))
+  )];
+
+  if (safeKeys.length === 0) return result;
+
+  if (!isConfigured()) {
+    result.failed = safeKeys;
+    return result;
+  }
+
+  const client = getClient();
+  const bucket = getBucketName();
+  const BATCH = 100;
+
+  for (let i = 0; i < safeKeys.length; i += BATCH) {
+    const batch = safeKeys.slice(i, i + BATCH);
+    try {
+      const { data, error } = await client.storage.from(bucket).remove(batch);
+      if (error) {
+        console.warn('[Supabase Storage Warning] Batch remove failed:', error.message);
+        result.failed.push(...batch);
+      } else {
+        result.deleted += Array.isArray(data) ? data.length : batch.length;
+      }
+    } catch (err) {
+      console.warn('[Supabase Storage Warning] Batch remove error:', err.message);
+      result.failed.push(...batch);
+    }
+  }
+  return result;
+};
+
+/**
  * Check if an object exists in Supabase Storage
  */
 const objectExists = async (key) => {
@@ -204,6 +243,7 @@ module.exports = {
   uploadObject,
   downloadObject,
   deleteObject,
+  deleteObjects,
   objectExists,
   keepAlive
 };
