@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/db');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_aids_portal_2026_department_system';
+const { JWT_SECRET } = require('../config/secrets');
 
 // In-memory cache for token versions to avoid excessive database queries (TTL 15 seconds)
 const tokenVersionCache = new Map();

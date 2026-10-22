@@ -42,6 +42,14 @@ const parseSafeFloat = (v) => {
   return Number.isFinite(num) ? num : null;
 };
 
+const parseSafeDecimal = (v, min = 0, max = Infinity, decimals = 2) => {
+  if (v === undefined || v === null || v === '') return null;
+  const num = parseFloat(v);
+  if (!Number.isFinite(num) || num < min || num > max) return null;
+  const factor = Math.pow(10, decimals);
+  return Math.round(num * factor) / factor;
+};
+
 const parseSafeInt = (v) => {
   if (v === undefined || v === null || v === '') return null;
   const num = parseInt(v, 10);
@@ -188,10 +196,11 @@ const updateStudentDetails = async (req, res) => {
       errors.bankIfsc = 'Invalid IFSC code format (e.g., SBIN0001234).';
     }
 
-    // Safe number validations
+    // Safe number & boundary validations (SEC-05)
     if (d.annualIncome !== undefined && d.annualIncome !== '' && d.annualIncome !== null) {
-      if (parseSafeFloat(d.annualIncome) === null) {
-        errors.annualIncome = 'Annual income must be a valid number.';
+      const income = parseSafeFloat(d.annualIncome);
+      if (income === null || income < 0 || income > 9999999999.99) {
+        errors.annualIncome = 'Annual income must be a valid number between ₹0 and ₹99,99,99,999.';
       }
     }
     if (d.sslcPercentage !== undefined && d.sslcPercentage !== '' && d.sslcPercentage !== null) {
@@ -204,6 +213,12 @@ const updateStudentDetails = async (req, res) => {
       const p = parseSafeFloat(d.hscPercentage);
       if (p === null || p < 0 || p > 100) {
         errors.hscPercentage = 'HSC percentage must be a number between 0 and 100.';
+      }
+    }
+    if (d.otherScholarshipAmount !== undefined && d.otherScholarshipAmount !== '' && d.otherScholarshipAmount !== null) {
+      const amt = parseSafeFloat(d.otherScholarshipAmount);
+      if (amt === null || amt < 0 || amt > 99999999.99) {
+        errors.otherScholarshipAmount = 'Scholarship amount must be a positive number.';
       }
     }
 
@@ -267,16 +282,16 @@ const updateStudentDetails = async (req, res) => {
       ['guardianName', 'guardian_name', (v) => parseSafeString(v)],
       ['parentsOccupation', 'parents_occupation', (v) => parseSafeString(v)],
       ['parentsMobile', 'parents_mobile', (v) => parseSafeString(v)],
-      ['annualIncome', 'annual_income', (v) => parseSafeFloat(v)],
+      ['annualIncome', 'annual_income', (v) => parseSafeDecimal(v, 0, 9999999999.99, 2)],
 
       ['sslcSchool', 'sslc_school', (v) => parseSafeString(v)],
       ['sslcBoard', 'sslc_board', (v) => parseSafeString(v)],
       ['sslcYear', 'sslc_year', (v) => parseSafeInt(v)],
-      ['sslcPercentage', 'sslc_percentage', (v) => parseSafeFloat(v)],
+      ['sslcPercentage', 'sslc_percentage', (v) => parseSafeDecimal(v, 0, 100, 2)],
       ['hscSchool', 'hsc_school', (v) => parseSafeString(v)],
       ['hscBoard', 'hsc_board', (v) => parseSafeString(v)],
       ['hscYear', 'hsc_year', (v) => parseSafeInt(v)],
-      ['hscPercentage', 'hsc_percentage', (v) => parseSafeFloat(v)],
+      ['hscPercentage', 'hsc_percentage', (v) => parseSafeDecimal(v, 0, 100, 2)],
       ['currentSemester', 'current_semester', (v) => parseSafeInt(v)],
       ['modeOfAdmission', 'mode_of_admission', (v) => parseSafeString(v)],
 
@@ -285,7 +300,7 @@ const updateStudentDetails = async (req, res) => {
       ['pmsApplicationNo', 'pms_application_no', (v) => parseSafeString(v)],
       ['pmsStatus', 'pms_status', (v) => parseSafeString(v)],
       ['otherScholarshipName', 'other_scholarship_name', (v) => parseSafeString(v)],
-      ['otherScholarshipAmount', 'other_scholarship_amount', (v) => parseSafeFloat(v)],
+      ['otherScholarshipAmount', 'other_scholarship_amount', (v) => parseSafeDecimal(v, 0, 99999999.99, 2)],
       ['otherScholarshipStatus', 'other_scholarship_status', (v) => parseSafeString(v)],
       ['communityCertNo', 'community_cert_no', (v) => parseSafeString(v)],
       ['communityCertIssuer', 'community_cert_issuer', (v) => parseSafeString(v)],

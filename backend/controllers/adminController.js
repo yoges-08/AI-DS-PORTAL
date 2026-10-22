@@ -340,18 +340,21 @@ const bulkImportStudents = async (req, res) => {
   }
 
   const filePath = req.file.path;
+  const conn = await pool.getConnection();
   try {
     // Magic byte binary validation on spreadsheet file (SEC-01)
     const fileBuf = fs.readFileSync(filePath);
     const magicCheck = validateSpreadsheetBuffer(fileBuf, req.file.originalname);
     if (!magicCheck.valid) {
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      conn.release();
       return res.status(400).json({ success: false, message: magicCheck.error });
     }
 
     const workbook = xlsx.readFile(filePath, { cellDates: true });
     const sheetName = workbook.SheetNames[0];
     if (!sheetName) {
+      conn.release();
       return res.status(400).json({ success: false, message: 'Spreadsheet has no sheets.' });
     }
 
@@ -360,6 +363,7 @@ const bulkImportStudents = async (req, res) => {
     const nonEmptyRows = allRows.filter(row => Array.isArray(row) && row.some(cell => String(cell).trim() !== ''));
 
     if (!nonEmptyRows || nonEmptyRows.length === 0) {
+      conn.release();
       return res.status(400).json({ success: false, message: 'The uploaded spreadsheet is empty.' });
     }
 
@@ -383,8 +387,12 @@ const bulkImportStudents = async (req, res) => {
     }
 
     if (dataRows.length === 0) {
+      conn.release();
       return res.status(400).json({ success: false, message: 'The uploaded spreadsheet contains headers but no student records.' });
     }
+
+    // Begin database transaction to prevent race conditions and partial batch corruption (SEC-08)
+    await conn.beginTransaction();
 
     // Resolve column indices dynamically
     let regCol = -1;
@@ -530,9 +538,9 @@ const bulkImportStudents = async (req, res) => {
       const pwdString = dobToPasswordString(dob);
       const hashedPassword = await bcrypt.hash(pwdString, 10);
 
-      // Check if student exists in database
-      const [existing] = await pool.query(
-        'SELECT id, name, is_locked FROM students WHERE register_no = ?',
+      // Check if student exists in database with row lock (prevents race condition: SEC-08)
+      const [existing] = await conn.query(
+        'SELECT id, name, is_locked FROM students WHERE register_no = ? FOR UPDATE',
         [cleanRegNo]
       );
 
@@ -546,7 +554,7 @@ const bulkImportStudents = async (req, res) => {
 
         // Sync and update student record for login purpose (preserve existing year/section if row doesn't provide them)
         try {
-          await pool.query(
+          await conn.query(
             `UPDATE students 
              SET name = ?, dob = ?, password = ?, year = COALESCE(?, year), section = COALESCE(?, section)
              WHERE id = ?`,
@@ -561,7 +569,7 @@ const bulkImportStudents = async (req, res) => {
       } else {
         // Insert new student record (year and section can be NULL)
         try {
-          await pool.query(
+          await conn.query(
             `INSERT INTO students (register_no, name, dob, password, year, section, status, is_locked)
              VALUES (?, ?, ?, ?, ?, ?, 'DRAFT', 0)`,
             [cleanRegNo, name, dob, hashedPassword, year, section]
@@ -574,6 +582,9 @@ const bulkImportStudents = async (req, res) => {
         }
       }
     }
+
+    // Commit transaction once entire batch completes atomically (SEC-08)
+    await conn.commit();
 
     await logAdminAction({
       adminId: req.user.id,
@@ -592,9 +603,19 @@ const bulkImportStudents = async (req, res) => {
       errors: errors.slice(0, 15)
     });
   } catch (error) {
+    try {
+      await conn.rollback();
+    } catch (rbErr) {
+      // ignore rollback error if connection closed
+    }
     console.error('[bulkImportStudents Error]:', error);
     return res.status(500).json({ success: false, message: 'Failed to process bulk import.' });
   } finally {
+    try {
+      conn.release();
+    } catch (relErr) {
+      // ignore
+    }
     try {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);

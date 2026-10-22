@@ -8,9 +8,8 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('../config/db');
 const { validateRegisterNo } = require('../utils/validators');
 const { invalidateTokenCache } = require('../middleware/authMiddleware');
+const { JWT_SECRET, isProduction } = require('../config/secrets');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_aids_portal_2026_department_system';
-const isProduction = process.env.NODE_ENV === 'production';
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProduction,

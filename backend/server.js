@@ -11,18 +11,7 @@ const { testConnection, pool, getDbMode } = require('./config/db');
 const { authenticateToken } = require('./middleware/authMiddleware');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { downloadObject, isStorageConfigured, keepAlive, getStorageProvider } = require('./config/storage');
-
-// Check critical production secrets
-if (process.env.NODE_ENV === 'production') {
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.includes('super_secret_jwt_key')) {
-    console.error('FATAL: A secure, unique JWT_SECRET must be configured in production environment.');
-    process.exit(1);
-  }
-  if (!process.env.COOKIE_SECRET || process.env.COOKIE_SECRET.includes('department_cookie_secret')) {
-    console.error('FATAL: A secure, unique COOKIE_SECRET must be configured in production environment.');
-    process.exit(1);
-  }
-}
+const { JWT_SECRET, COOKIE_SECRET } = require('./config/secrets');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
