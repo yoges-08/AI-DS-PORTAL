@@ -46,6 +46,36 @@ const bulkActionLimiter = rateLimit({
 });
 
 /**
+ * Dedicated rate limiter for student live eligibility verification (Requirement C).
+ * Strict 10 requests per 15-minute window per IP to prevent dictionary scanning.
+ */
+const verifyEligibilityLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many verification attempts from this IP address. Please try again after 15 minutes.'
+  }
+});
+
+/**
+ * Dedicated rate limiter for student self-registration endpoint (Requirement D).
+ * Limits to 10 registration submissions per 15-minute window per IP.
+ */
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many registration attempts from this IP address. Please try again after 15 minutes.'
+  }
+});
+
+/**
  * General API rate limiter for other endpoints
  */
 const apiLimiter = rateLimit({
@@ -61,6 +91,8 @@ const apiLimiter = rateLimit({
 
 module.exports = {
   loginLimiter,
+  verifyEligibilityLimiter,
+  registerLimiter,
   exportLimiter,
   bulkActionLimiter,
   apiLimiter

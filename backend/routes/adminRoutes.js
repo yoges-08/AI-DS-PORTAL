@@ -5,6 +5,7 @@ const {
   getStudents,
   addStudent,
   bulkImportStudents,
+  previewBulkImport,
   toggleLockStudent,
   resetStudentPassword,
   updateStudentStatus,
@@ -59,6 +60,7 @@ router.use(authenticateToken, requireAdmin);
 router.get('/dashboard-stats', getDashboardStats);
 router.get('/students', getStudents);
 router.post('/students', addStudent);
+router.post('/students/bulk-import/preview', bulkActionLimiter, upload.single('file'), previewBulkImport);
 router.post('/students/bulk-import', bulkActionLimiter, upload.single('file'), bulkImportStudents);
 
 // Bulk student operations with dedicated rate limiting (SEC-02)

@@ -144,15 +144,8 @@ const normalizeDob = (rawDob, formatHint = null) => {
         } else if (formatHint === 'MDY') {
           m = p1;
           d = p2;
-        } else if (formatHint === 'DMY') {
-          d = p1;
-          m = p2;
-        } else if (sep === '/') {
-          // In Excel default exports, slash format is typically M/D/YYYY
-          m = p1;
-          d = p2;
         } else {
-          // Dash or dot is standard DD-MM-YYYY
+          // Standard Indian format: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY
           d = p1;
           m = p2;
         }
@@ -186,6 +179,30 @@ const normalizeDob = (rawDob, formatHint = null) => {
   return `${y}-${pad(m)}-${pad(d)}`;
 };
 
+/**
+ * Validate student age (must be real calendar date, not in future, age between minAge and maxAge)
+ * Default age window: 15 to 40 years
+ */
+const validateStudentAge = (dobString, minAge = 15, maxAge = 40) => {
+  if (!dobString) return false;
+  const parts = String(dobString).split('-');
+  if (parts.length !== 3) return false;
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+
+  const birthDate = new Date(Date.UTC(y, m - 1, d));
+  const today = new Date();
+  if (birthDate > today) return false;
+
+  let age = today.getUTCFullYear() - y;
+  const monthDiff = (today.getUTCMonth() + 1) - m;
+  if (monthDiff < 0 || (monthDiff === 0 && today.getUTCDate() < d)) {
+    age--;
+  }
+  return age >= minAge && age <= maxAge;
+};
+
 module.exports = {
   cleanRegisterNo,
   validateMobile,
@@ -197,7 +214,8 @@ module.exports = {
   maskAadhaar,
   maskBankAcc,
   dobToPasswordString,
-  normalizeDob
+  normalizeDob,
+  validateStudentAge
 };
 
 

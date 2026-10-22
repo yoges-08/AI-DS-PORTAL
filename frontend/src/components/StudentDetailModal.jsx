@@ -19,7 +19,9 @@ import {
   GraduationCap,
   Landmark,
   Award,
-  Users
+  Users,
+  Copy,
+  Check
 } from 'lucide-react';
 import { api, getFileUrl } from '../services/api';
 import { StatusBadge } from './StatusBadge';
@@ -29,6 +31,8 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
+  const [tempPassword, setTempPassword] = useState(null);
+  const [copied, setCopied] = useState(false);
   const [rejectionModal, setRejectionModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
 
@@ -78,15 +82,20 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
     }
   };
 
-  // Reset Password to DOB
+  // Generate temporary password reset
   const handleResetPassword = async () => {
     if (!student) return;
-    if (!window.confirm(`Are you sure you want to reset password for ${student.name} back to Date of Birth?`)) return;
+    if (!window.confirm(`Generate a temporary password for ${student.name}? Active sessions will be terminated and the student must set a new password on sign-in.`)) return;
 
     try {
       setActionLoading(true);
+      setTempPassword(null);
+      setCopied(false);
       const res = await api.resetPassword(student.id);
       setMsg({ type: 'success', text: res.message });
+      if (res.tempPassword) {
+        setTempPassword(res.tempPassword);
+      }
       onRefresh && onRefresh();
     } catch (err) {
       setMsg({ type: 'error', text: err.message || 'Failed to reset password.' });
@@ -187,10 +196,10 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
               onClick={handleResetPassword}
               disabled={actionLoading}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-outline-variant/50 text-on-surface rounded-xl font-semibold hover:bg-surface-container shadow-sm transition-all active:scale-95"
-              title="Reset password to Date of Birth"
+              title="Generate temporary password"
             >
               <KeyRound className="w-3.5 h-3.5 text-primary" />
-              <span>Reset Password to DOB</span>
+              <span>Reset Password (Temp Key)</span>
             </button>
 
             <button
@@ -244,6 +253,36 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
           }`}>
             {msg.type === 'success' ? <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" /> : <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />}
             <span className="font-medium">{msg.text}</span>
+          </div>
+        )}
+
+        {/* Temporary Password Reset Alert */}
+        {tempPassword && (
+          <div className="mx-6 mt-3 p-4 bg-amber-50/90 border-2 border-amber-300 rounded-2xl space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-amber-900 text-xs">
+                <KeyRound className="w-4 h-4 text-amber-600" />
+                <span>One-Time Temporary Password</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(tempPassword);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="px-2.5 py-1 bg-amber-200/80 hover:bg-amber-300 rounded-lg text-amber-950 font-bold text-xs flex items-center gap-1 active:scale-95 transition-all shadow-sm"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-700" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? 'Copied!' : 'Copy'}</span>
+              </button>
+            </div>
+            <div className="font-mono text-base font-black text-amber-950 tracking-wider bg-white p-2.5 rounded-xl border border-amber-200 select-all">
+              {tempPassword}
+            </div>
+            <p className="text-[11px] text-amber-800 leading-tight">
+              Provide this temporary password to the student. They will be prompted to choose a new password immediately upon logging in. This password will not be shown again.
+            </p>
           </div>
         )}
 

@@ -172,6 +172,17 @@ const initSqliteFallback = async () => {
         FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE SET NULL,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL
       );
+
+      CREATE TABLE IF NOT EXISTS student_whitelist (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        register_no TEXT UNIQUE NOT NULL,
+        dob TEXT NOT NULL,
+        is_claimed INTEGER DEFAULT 0,
+        claimed_student_id INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (claimed_student_id) REFERENCES students(id) ON DELETE SET NULL
+      );
     `);
 
     // Safe migration: ensure existing SQLite students table allows NULL for student-chosen year and section
@@ -277,9 +288,19 @@ const initSqliteFallback = async () => {
       if (!studentCols.some(c => c.name === 'token_version')) {
         sqliteDb.exec('ALTER TABLE students ADD COLUMN token_version INTEGER DEFAULT 1;');
       }
+      if (!studentCols.some(c => c.name === 'must_change_password')) {
+        sqliteDb.exec('ALTER TABLE students ADD COLUMN must_change_password INTEGER DEFAULT 0;');
+      }
       const adminCols = sqliteDb.prepare("PRAGMA table_info(admins)").all();
       if (!adminCols.some(c => c.name === 'token_version')) {
         sqliteDb.exec('ALTER TABLE admins ADD COLUMN token_version INTEGER DEFAULT 1;');
+      }
+
+      // Backfill any existing students into student_whitelist as claimed
+      const allStudents = sqliteDb.prepare('SELECT id, register_no, dob FROM students').all();
+      const insertWhitelist = sqliteDb.prepare('INSERT OR IGNORE INTO student_whitelist (register_no, dob, is_claimed, claimed_student_id) VALUES (?, ?, 1, ?)');
+      for (const st of allStudents) {
+        insertWhitelist.run(st.register_no, st.dob, st.id);
       }
     } catch (e) {
       // ignore
@@ -384,7 +405,8 @@ const pool = {
     // SQLite Execution (only used if DB was intentionally initialized in sqlite mode)
     let cleanSql = sql
       .replace(/NOW\(\)/gi, "datetime('now', 'localtime')")
-      .replace(/DATE_FORMAT\(([^,]+),\s*'[^']+'\)/gi, "strftime('%d-%m-%Y %H:%M', $1)");
+      .replace(/DATE_FORMAT\(([^,]+),\s*'[^']+'\)/gi, "strftime('%d-%m-%Y %H:%M', $1)")
+      .replace(/\s+FOR\s+UPDATE/gi, '');
 
     const isSelect = /^\s*SELECT/i.test(cleanSql);
     const safeParams = params.map(toSqliteParam);
@@ -450,6 +472,29 @@ const testConnection = async () => {
       await conn.query('ALTER TABLE `admins` ADD COLUMN IF NOT EXISTS `token_version` INT NOT NULL DEFAULT 1;');
     } catch (migErr) {
       // Ignore if column exists
+    }
+    try {
+      await conn.query(`
+        CREATE TABLE IF NOT EXISTS \`student_whitelist\` (
+          \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+          \`register_no\` VARCHAR(20) NOT NULL UNIQUE,
+          \`dob\` VARCHAR(10) NOT NULL COMMENT 'Format: YYYY-MM-DD',
+          \`is_claimed\` TINYINT(1) NOT NULL DEFAULT 0,
+          \`claimed_student_id\` INT NULL,
+          \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX \`idx_whitelist_reg_dob\` (\`register_no\`, \`dob\`),
+          INDEX \`idx_whitelist_claimed\` (\`is_claimed\`),
+          CONSTRAINT \`fk_whitelist_student\` FOREIGN KEY (\`claimed_student_id\`) REFERENCES \`students\` (\`id\`) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+    } catch (migErr) {
+      // Ignore
+    }
+    try {
+      await conn.query('ALTER TABLE `students` ADD COLUMN IF NOT EXISTS `must_change_password` TINYINT(1) NOT NULL DEFAULT 0;');
+    } catch (migErr) {
+      // Ignore
     }
 
     // Ensure HOD Name & Email are up to date

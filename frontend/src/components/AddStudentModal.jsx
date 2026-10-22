@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, UserPlus, AlertCircle, CheckCircle, Calendar, Hash, User } from 'lucide-react';
+import { X, UserPlus, AlertCircle, CheckCircle, Calendar, Hash } from 'lucide-react';
 import { api } from '../services/api';
 
 export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     registerNo: '',
-    name: '',
     dob: ''
   });
   const [loading, setLoading] = useState(false);
@@ -35,8 +34,8 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
     setError('');
     setSuccessMsg('');
 
-    if (!formData.registerNo || !formData.name || !formData.dob) {
-      setError('Please fill out all mandatory fields.');
+    if (!formData.registerNo || !formData.dob) {
+      setError('Please provide both Register Number and Date of Birth.');
       return;
     }
 
@@ -51,7 +50,7 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
         }, 1200);
       }
     } catch (err) {
-      setError(err.message || 'Failed to add student.');
+      setError(err.message || 'Failed to pre-register student.');
     } finally {
       setLoading(false);
     }
@@ -72,8 +71,8 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
               <UserPlus className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-white">Enroll New Student</h3>
-              <p className="text-[11px] text-white/70">Single Candidate Dossier Creation</p>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-white">Pre-register Student</h3>
+              <p className="text-[11px] text-white/70">Whitelist Single Candidate Eligibility</p>
             </div>
           </div>
           <button 
@@ -112,23 +111,7 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
               value={formData.registerNo}
               onChange={handleChange}
               placeholder="e.g. 71762405050"
-              className="w-full px-3.5 py-2 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm font-mono text-on-surface focus:outline-none transition-all"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block font-semibold text-on-surface mb-1.5 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-secondary" />
-              Student Full Name <span className="text-error">*</span>
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="e.g. VIJAY M"
-              className="w-full px-3.5 py-2 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm text-on-surface focus:outline-none transition-all"
+              className="w-full px-3.5 py-2 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm font-mono text-on-surface focus:outline-none transition-all uppercase"
               required
             />
           </div>
@@ -146,14 +129,11 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
               className="w-full px-3.5 py-2 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm text-on-surface focus:outline-none transition-all"
               required
             />
-            <p className="text-[11px] text-outline mt-1.5">
-              Default student password will be encrypted as DOB in DDMMYYYY format.
-            </p>
           </div>
 
           <div className="p-3 bg-secondary-fixed/30 border border-secondary/20 rounded-xl text-[11.5px] text-primary flex items-start gap-2">
-            <span className="font-bold">Note:</span>
-            <span>Year of Study and Section will be selected by the student in their profile form.</span>
+            <span className="font-bold">Student Self-Signup:</span>
+            <span>Pre-registers this student on the whitelist. The student will self-create their account, choose a password, and enter their email on the login page.</span>
           </div>
 
           {/* Modal Footer */}
@@ -171,7 +151,7 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
               disabled={loading}
               className="px-5 py-2 bg-primary hover:bg-primary-container text-white rounded-xl font-semibold shadow-md hover:shadow-lg disabled:opacity-50 transition-all active:scale-95"
             >
-              {loading ? 'Adding...' : 'Add Student Record'}
+              {loading ? 'Pre-registering...' : 'Pre-register Student'}
             </button>
           </div>
         </form>

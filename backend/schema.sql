@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS `students` (
   -- Step 2: Contact Details
   `mobile` VARCHAR(15) NULL,
   `alt_mobile` VARCHAR(15) NULL,
-  `email` VARCHAR(100) NULL,
+  `email` VARCHAR(100) NULL UNIQUE,
   `permanent_address` TEXT NULL,
   `communication_address` TEXT NULL,
   `is_same_address` TINYINT(1) DEFAULT 0,
@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS `students` (
   `rejection_reason` TEXT NULL,
   `declaration_accepted` TINYINT(1) DEFAULT 0,
   `token_version` INT NOT NULL DEFAULT 1,
+  `must_change_password` TINYINT(1) NOT NULL DEFAULT 0,
 
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -141,4 +142,18 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT `fk_audit_admin` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_audit_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5. Student Whitelist Table (Pre-registration / Eligibility)
+CREATE TABLE IF NOT EXISTS `student_whitelist` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `register_no` VARCHAR(20) NOT NULL UNIQUE,
+  `dob` VARCHAR(10) NOT NULL COMMENT 'Format: YYYY-MM-DD',
+  `is_claimed` TINYINT(1) NOT NULL DEFAULT 0,
+  `claimed_student_id` INT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_whitelist_reg_dob` (`register_no`, `dob`),
+  INDEX `idx_whitelist_claimed` (`is_claimed`),
+  CONSTRAINT `fk_whitelist_student` FOREIGN KEY (`claimed_student_id`) REFERENCES `students` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

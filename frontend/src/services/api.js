@@ -87,6 +87,31 @@ export const api = {
     return data;
   },
 
+  async verifyEligibility(registerNo, dob, signal) {
+    const res = await apiFetch(`${BASE_URL}/auth/student/verify-eligibility`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      signal,
+      body: JSON.stringify({ registerNo, dob })
+    });
+    return await handleResponse(res);
+  },
+
+  async registerStudent(payload) {
+    const res = await apiFetch(`${BASE_URL}/auth/student/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+    const data = await handleResponse(res);
+    if (data?.token && typeof window !== 'undefined') {
+      localStorage.setItem('token', data.token);
+    }
+    return data;
+  },
+
   async loginAdmin(username, password) {
     const res = await apiFetch(`${BASE_URL}/auth/admin/login`, {
       method: 'POST',
@@ -221,6 +246,17 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+  },
+
+  async previewBulkImport(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await apiFetch(`${BASE_URL}/admin/students/bulk-import/preview`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
     });
     return handleResponse(res);
   },

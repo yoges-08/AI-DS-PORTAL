@@ -6,9 +6,16 @@ try {
 }
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/db');
-const { validateRegisterNo } = require('../utils/validators');
+const { 
+  validateRegisterNo, 
+  cleanRegisterNo, 
+  normalizeDob, 
+  validateEmail, 
+  validateStudentAge 
+} = require('../utils/validators');
 const { invalidateTokenCache } = require('../middleware/authMiddleware');
 const { JWT_SECRET, isProduction } = require('../config/secrets');
+const { logAdminAction } = require('../utils/auditLogger');
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -18,10 +25,304 @@ const COOKIE_OPTIONS = {
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
 
+// Per-register-number sliding failure tracker to prevent online DOB dictionary attacks (Requirement C)
+// Map<cleanRegNo, { failures: number, lockedUntil: number, firstAttempt: number }>
+const regNoLockouts = new Map();
+
+// Periodic cleanup of stale entries every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [regNo, data] of regNoLockouts.entries()) {
+    if (now > data.lockedUntil && now - data.firstAttempt > 15 * 60 * 1000) {
+      regNoLockouts.delete(regNo);
+    }
+  }
+}, 10 * 60 * 1000).unref();
+
+/**
+ * Handle verification failure counting and lockout logic
+ */
+const handleVerificationFailure = async (req, res, cleanReg) => {
+  const now = Date.now();
+  const current = regNoLockouts.get(cleanReg) || { failures: 0, lockedUntil: 0, firstAttempt: now };
+  if (now - current.firstAttempt > 15 * 60 * 1000) {
+    current.failures = 0;
+    current.firstAttempt = now;
+  }
+  current.failures += 1;
+
+  if (current.failures >= 5) {
+    current.lockedUntil = now + 15 * 60 * 1000;
+    regNoLockouts.set(cleanReg, current);
+
+    // Log ONLY lockouts to audit log (Requirement C)
+    await logAdminAction({
+      adminUsername: 'SYSTEM',
+      action: 'VERIFICATION_LOCKOUT',
+      studentRegNo: cleanReg,
+      details: `Register number ${cleanReg} locked out for 15 minutes after 5 failed eligibility verification attempts.`,
+      ipAddress: req.ip
+    });
+
+    return res.status(429).json({
+      success: false,
+      status: 'RATE_LIMITED',
+      message: 'Too many verification attempts for this Register Number. Please try again after 15 minutes.'
+    });
+  }
+
+  regNoLockouts.set(cleanReg, current);
+  return res.json({
+    success: true,
+    status: 'NO_MATCH'
+  });
+};
+
+/**
+ * Live student eligibility verification against whitelist (Requirement C)
+ * POST /api/auth/student/verify-eligibility
+ * Body: { registerNo, dob }
+ */
+const verifyStudentEligibility = async (req, res) => {
+  try {
+    const { registerNo, dob } = req.body;
+    const cleanReg = cleanRegisterNo(registerNo);
+    const normalizedDob = normalizeDob(dob);
+
+    if (!cleanReg || !normalizedDob || !validateRegisterNo(cleanReg)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid Register Number and Date of Birth are required.'
+      });
+    }
+
+    const now = Date.now();
+    const lockout = regNoLockouts.get(cleanReg);
+    if (lockout && now < lockout.lockedUntil) {
+      return res.status(429).json({
+        success: false,
+        status: 'RATE_LIMITED',
+        message: 'Too many verification attempts for this Register Number. Please try again after 15 minutes.'
+      });
+    }
+
+    // Age validation: plausible student age 15 to 40
+    if (!validateStudentAge(normalizedDob, 15, 40)) {
+      return handleVerificationFailure(req, res, cleanReg);
+    }
+
+    // Query whitelist
+    const [whitelistRows] = await pool.query(
+      'SELECT id, is_claimed, claimed_student_id FROM student_whitelist WHERE register_no = ? AND dob = ?',
+      [cleanReg, normalizedDob]
+    );
+
+    // Also check students table
+    const [studentRows] = await pool.query(
+      'SELECT id FROM students WHERE register_no = ?',
+      [cleanReg]
+    );
+
+    if (whitelistRows.length > 0) {
+      const entry = whitelistRows[0];
+      if (entry.is_claimed === 1 || entry.claimed_student_id !== null || studentRows.length > 0) {
+        regNoLockouts.delete(cleanReg);
+        return res.json({
+          success: true,
+          status: 'ALREADY_REGISTERED'
+        });
+      }
+
+      // Valid unclaimed match
+      regNoLockouts.delete(cleanReg);
+      return res.json({
+        success: true,
+        status: 'MATCH'
+      });
+    }
+
+    // No match: either wrong DOB or unknown register number (indistinguishable)
+    return handleVerificationFailure(req, res, cleanReg);
+  } catch (error) {
+    console.error('[verifyStudentEligibility Error]:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to verify student eligibility. Please try again.'
+    });
+  }
+};
+
+/**
+ * Student Self-Registration (Requirement D)
+ * POST /api/auth/student/register
+ * Body: { name, registerNo, dob, email, password }
+ */
+const registerStudent = async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { name, registerNo, dob, email, password } = req.body;
+
+    const trimmedName = String(name || '').trim();
+    const cleanReg = cleanRegisterNo(registerNo);
+    const normalizedDob = normalizeDob(dob);
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const rawPassword = String(password || '');
+
+    // Validate inputs
+    if (!trimmedName || trimmedName.length > 100) {
+      return res.status(400).json({ success: false, message: 'Full Name is required (up to 100 characters).' });
+    }
+    if (!cleanReg || !validateRegisterNo(cleanReg)) {
+      return res.status(400).json({ success: false, message: 'Invalid Register Number format.' });
+    }
+    if (!normalizedDob) {
+      return res.status(400).json({ success: false, message: 'Invalid Date of Birth format.' });
+    }
+    if (!validateStudentAge(normalizedDob, 15, 40)) {
+      return res.status(400).json({ success: false, message: 'Date of Birth must represent a student age between 15 and 40.' });
+    }
+    if (!cleanEmail || !validateEmail(cleanEmail) || cleanEmail.length > 100) {
+      return res.status(400).json({ success: false, message: 'A valid email address is required.' });
+    }
+    if (!rawPassword || rawPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
+    }
+
+    // Begin atomic transaction
+    await conn.beginTransaction();
+
+    // 1. Re-verify whitelist record with row lock FOR UPDATE
+    const [whitelistRows] = await conn.query(
+      'SELECT id, is_claimed, claimed_student_id FROM student_whitelist WHERE register_no = ? AND dob = ? FOR UPDATE',
+      [cleanReg, normalizedDob]
+    );
+
+    if (whitelistRows.length === 0) {
+      await conn.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Register Number and Date of Birth do not match department records.'
+      });
+    }
+
+    const whitelistEntry = whitelistRows[0];
+    if (whitelistEntry.is_claimed === 1 || whitelistEntry.claimed_student_id !== null) {
+      await conn.rollback();
+      return res.status(409).json({
+        success: false,
+        message: 'An account has already been registered for this student. Please log in.'
+      });
+    }
+
+    // 2. Double-check students table for register number
+    const [existingStudent] = await conn.query(
+      'SELECT id FROM students WHERE register_no = ? FOR UPDATE',
+      [cleanReg]
+    );
+    if (existingStudent.length > 0) {
+      await conn.rollback();
+      return res.status(409).json({
+        success: false,
+        message: 'An account has already been registered for this student. Please log in.'
+      });
+    }
+
+    // 3. Check email uniqueness across students
+    const [existingEmail] = await conn.query(
+      'SELECT id FROM students WHERE LOWER(email) = LOWER(?)',
+      [cleanEmail]
+    );
+    if (existingEmail.length > 0) {
+      await conn.rollback();
+      return res.status(409).json({
+        success: false,
+        message: 'This email address is already in use by another student account.'
+      });
+    }
+
+    // 4. Hash password with bcrypt
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
+
+    // 5. Insert new student account
+    const [insertResult] = await conn.query(
+      `INSERT INTO students (register_no, name, dob, email, password, status, is_locked, token_version, must_change_password)
+       VALUES (?, ?, ?, ?, ?, 'DRAFT', 0, 1, 0)`,
+      [cleanReg, trimmedName, normalizedDob, cleanEmail, hashedPassword]
+    );
+    const newStudentId = insertResult.insertId;
+
+    // 6. Mark whitelist entry as claimed
+    await conn.query(
+      'UPDATE student_whitelist SET is_claimed = 1, claimed_student_id = ? WHERE id = ?',
+      [newStudentId, whitelistEntry.id]
+    );
+
+    await conn.commit();
+
+    // 7. Audit log (Never log password!)
+    await logAdminAction({
+      adminUsername: 'SYSTEM',
+      action: 'STUDENT_SELF_REGISTER',
+      studentId: newStudentId,
+      studentRegNo: cleanReg,
+      details: `Student ${trimmedName} (${cleanReg}) self-registered successfully.`,
+      ipAddress: req.ip
+    });
+
+    // 8. Generate JWT session and set cookie
+    const token = jwt.sign(
+      {
+        id: newStudentId,
+        role: 'STUDENT',
+        registerNo: cleanReg,
+        name: trimmedName,
+        year: null,
+        section: null,
+        tokenVersion: 1
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.cookie('token', token, COOKIE_OPTIONS);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Account created successfully. Welcome to the Student Portal!',
+      token,
+      user: {
+        id: newStudentId,
+        role: 'STUDENT',
+        registerNo: cleanReg,
+        name: trimmedName,
+        email: cleanEmail,
+        year: null,
+        section: null,
+        status: 'DRAFT',
+        isLocked: false,
+        mustChangePassword: false
+      }
+    });
+  } catch (error) {
+    try {
+      await conn.rollback();
+    } catch (rbErr) {}
+    console.error('[registerStudent Error]:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An unexpected error occurred during account creation. Please try again.'
+    });
+  } finally {
+    try {
+      conn.release();
+    } catch (relErr) {}
+  }
+};
+
 /**
  * Student Login
  * Username: Register Number
- * Password: DOB in DDMMYYYY format
+ * Password: User-chosen password (Requirement E)
  */
 const loginStudent = async (req, res) => {
   try {
@@ -30,11 +331,12 @@ const loginStudent = async (req, res) => {
     if (!registerNo || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Register Number and Password (DOB in DDMMYYYY) are required.'
+        message: 'Register Number and Password are required.'
       });
     }
 
-    if (!validateRegisterNo(registerNo)) {
+    const cleanReg = cleanRegisterNo(registerNo);
+    if (!cleanReg || !validateRegisterNo(cleanReg)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid Register Number format.'
@@ -42,8 +344,8 @@ const loginStudent = async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      'SELECT id, register_no, name, dob, password, year, section, status, is_locked, token_version FROM students WHERE register_no = ?',
-      [registerNo.trim()]
+      'SELECT id, register_no, name, dob, email, password, year, section, status, is_locked, token_version, must_change_password FROM students WHERE register_no = ?',
+      [cleanReg]
     );
 
     if (rows.length === 0) {
@@ -59,7 +361,7 @@ const loginStudent = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid Register Number or Password. Password must be your DOB (DDMMYYYY).'
+        message: 'Invalid Register Number or Password.'
       });
     }
 
@@ -85,15 +387,18 @@ const loginStudent = async (req, res) => {
       success: true,
       message: 'Login successful.',
       token, // Expose token for cross-domain Bearer authorization (e.g. Vercel -> Render)
+      mustChangePassword: Boolean(student.must_change_password),
       user: {
         id: student.id,
         role: 'STUDENT',
         registerNo: student.register_no,
         name: student.name,
+        email: student.email || null,
         year: student.year !== null && student.year !== undefined ? student.year : null,
         section: student.section || null,
         status: student.status,
-        isLocked: Boolean(student.is_locked)
+        isLocked: Boolean(student.is_locked),
+        mustChangePassword: Boolean(student.must_change_password)
       }
     });
   } catch (error) {
@@ -346,7 +651,7 @@ const changePassword = async (req, res) => {
       }
       const hashed = await bcrypt.hash(String(newPassword).trim(), 10);
       await pool.query(
-        'UPDATE students SET password = ?, token_version = COALESCE(token_version, 1) + 1 WHERE id = ?',
+        'UPDATE students SET password = ?, token_version = COALESCE(token_version, 1) + 1, must_change_password = 0 WHERE id = ?',
         [hashed, id]
       );
       invalidateTokenCache('STUDENT', id);
@@ -365,5 +670,7 @@ module.exports = {
   loginAdmin,
   logout,
   getCurrentUser,
-  changePassword
+  changePassword,
+  verifyStudentEligibility,
+  registerStudent
 };

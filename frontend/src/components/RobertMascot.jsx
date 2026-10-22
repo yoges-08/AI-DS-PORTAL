@@ -154,7 +154,6 @@ export const RobertMascot = ({ activeField = 'idle', role = 'STUDENT', errorMess
     // User clicked a field -> Guide them safely from his left perch!
     switch (activeField) {
       case 'reg': {
-        // If already positioned on left hero, hop in place and speak; otherwise fly to perch
         if (prevField === 'idle') {
           flyToSafePerch('Enter register number 🎓', 'happy');
         } else {
@@ -162,8 +161,49 @@ export const RobertMascot = ({ activeField = 'idle', role = 'STUDENT', errorMess
         }
         break;
       }
+      case 'studentPass':
       case 'dob': {
-        hopAndSpeak('Enter DOB (DDMMYYYY) 🎂', 'happy');
+        hopAndSpeak('Enter your password 🔑', 'happy');
+        break;
+      }
+      case 'signupReg': {
+        if (prevField === 'idle') {
+          flyToSafePerch('Enter register number 🎓', 'happy');
+        } else {
+          hopAndSpeak('Enter register number 🎓', 'happy');
+        }
+        break;
+      }
+      case 'signupDob': {
+        hopAndSpeak('Select your Date of Birth 🎂', 'happy');
+        break;
+      }
+      case 'signupName': {
+        hopAndSpeak('Enter your Full Name ✍️', 'happy');
+        break;
+      }
+      case 'signupEmail': {
+        hopAndSpeak('Enter your email address ✉️', 'happy');
+        break;
+      }
+      case 'signupPass': {
+        hopAndSpeak('Choose a strong password 🔒', 'happy');
+        break;
+      }
+      case 'signupConfirmPass': {
+        hopAndSpeak('Confirm your password 🔑', 'happy');
+        break;
+      }
+      case 'match': {
+        hopAndSpeak('Eligible! Whitelist verified ✅', 'happy');
+        break;
+      }
+      case 'no_match': {
+        hopAndSpeak('No matching record found 🧐', 'worried');
+        break;
+      }
+      case 'already_registered': {
+        hopAndSpeak('Account already created! Please sign in 👉', 'happy');
         break;
       }
       case 'adminUser': {
@@ -182,6 +222,10 @@ export const RobertMascot = ({ activeField = 'idle', role = 'STUDENT', errorMess
         hopAndSpeak('Checking credentials... ⚡', 'surprised');
         break;
       }
+      case 'verifying': {
+        hopAndSpeak('Checking eligibility... 🔍', 'surprised');
+        break;
+      }
       case 'success': {
         flyToSafePerch('Access Granted! Welcome! 🎉', 'happy');
         break;
@@ -194,19 +238,15 @@ export const RobertMascot = ({ activeField = 'idle', role = 'STUDENT', errorMess
         let errMsg = "Oops! Check your details 🧐";
         if (errorMessage && typeof errorMessage === 'string') {
           const lower = errorMessage.toLowerCase();
-          if (lower.includes('date of birth') || lower.includes('dob')) {
-            errMsg = 'Check DOB: DDMMYYYY format (e.g. 14052003) 🎂';
-          } else if (lower.includes('register') || lower.includes('student')) {
-            errMsg = 'Oops! Check your Reg No & DOB 🧐';
-          } else if (lower.includes('username') || lower.includes('password') || lower.includes('admin')) {
-            errMsg = 'Uh-oh! Check username & password 🔑';
+          if (lower.includes('username') || lower.includes('admin')) {
+            errMsg = 'Uh-oh! Check faculty username & password 🔑';
           } else if (errorMessage.length <= 48) {
             errMsg = errorMessage;
           }
-        } else if (role === 'STUDENT') {
-          errMsg = 'Oops! Check your Reg No & DOB (DDMMYYYY) 🧐';
-        } else {
+        } else if (role === 'ADMIN') {
           errMsg = 'Uh-oh! Check faculty username & password 🔑';
+        } else {
+          errMsg = 'Oops! Check your credentials 🧐';
         }
 
         hopAndSpeak(errMsg, 'worried');
