@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { api, getFileUrl } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ProgressBar } from '../../components/ProgressBar';
@@ -30,6 +31,16 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [lastSavedTime, setLastSavedTime] = useState(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // Lock body scroll while submit confirmation modal is active (prevents background scroll and blur misalignment)
+  useEffect(() => {
+    if (!showConfirmSubmit) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [showConfirmSubmit]);
 
   // Student form state
   const [formData, setFormData] = useState({
@@ -2353,9 +2364,12 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
       )}
 
       {/* Final Submit Confirmation Modal */}
-      {showConfirmSubmit && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-[0_24px_64px_rgba(0,0,0,0.18)] max-w-md w-full border border-white/60 overflow-hidden transform transition-all">
+      {showConfirmSubmit && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-center justify-center p-3 sm:p-6 animate-fade-in">
+          {/* Click-away backdrop overlay */}
+          <div className="fixed inset-0 bg-transparent" onClick={() => !submitting && setShowConfirmSubmit(false)} aria-hidden="true" />
+
+          <div className="relative z-10 apple-modal-card rounded-3xl max-w-md w-full overflow-hidden my-auto transition-all">
             <div className="p-5 border-b border-outline-variant/30 flex items-start justify-between bg-amber-50/60">
               <div className="flex items-center space-x-3">
                 <div className="p-2.5 bg-amber-100 rounded-2xl text-amber-800">
@@ -2420,7 +2434,8 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

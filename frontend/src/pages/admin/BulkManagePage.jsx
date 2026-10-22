@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../../services/api';
 import { StatusBadge } from '../../components/StatusBadge';
 import { 
@@ -52,6 +53,16 @@ export const BulkManagePage = () => {
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionResult, setActionResult] = useState(null);
+
+  // Lock body scroll while any modal is active (prevents background scroll and blur misalignment)
+  useEffect(() => {
+    if (!activeModal) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [activeModal]);
 
   // Debounce search input by 300ms
   useEffect(() => {
@@ -693,9 +704,12 @@ export const BulkManagePage = () => {
       {/* ============================================================ */}
       {/* MODAL 1: BULK LOCK CONFIRMATION */}
       {/* ============================================================ */}
-      {activeModal === 'lock' && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-outline-variant/40 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      {activeModal === 'lock' && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-center justify-center p-3 sm:p-6 animate-fade-in">
+          {/* Click-away backdrop overlay */}
+          <div className="fixed inset-0 bg-transparent" onClick={() => !actionLoading && setActiveModal(null)} aria-hidden="true" />
+          
+          <div className="relative z-10 apple-modal-card rounded-2xl max-w-md w-full p-6 space-y-4 my-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-amber-700">
               <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
                 <Lock className="w-5 h-5 text-amber-600" />
@@ -740,15 +754,19 @@ export const BulkManagePage = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ============================================================ */}
       {/* MODAL 2: BULK UNLOCK CONFIRMATION */}
       {/* ============================================================ */}
-      {activeModal === 'unlock' && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-outline-variant/40 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      {activeModal === 'unlock' && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-center justify-center p-3 sm:p-6 animate-fade-in">
+          {/* Click-away backdrop overlay */}
+          <div className="fixed inset-0 bg-transparent" onClick={() => !actionLoading && setActiveModal(null)} aria-hidden="true" />
+          
+          <div className="relative z-10 apple-modal-card rounded-2xl max-w-md w-full p-6 space-y-4 my-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-emerald-700">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
                 <Unlock className="w-5 h-5 text-emerald-600" />
@@ -788,15 +806,19 @@ export const BulkManagePage = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ============================================================ */}
       {/* MODAL 3: BULK DELETE CONFIRMATION (With DELETE typing guard) */}
       {/* ============================================================ */}
-      {activeModal === 'delete' && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-rose-300 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      {activeModal === 'delete' && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-center justify-center p-3 sm:p-6 animate-fade-in">
+          {/* Click-away backdrop overlay */}
+          <div className="fixed inset-0 bg-transparent" onClick={() => !actionLoading && setActiveModal(null)} aria-hidden="true" />
+          
+          <div className="relative z-10 apple-modal-card rounded-2xl max-w-lg w-full p-6 space-y-4 my-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-rose-700">
               <div className="w-11 h-11 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0">
                 <Trash2 className="w-6 h-6 text-rose-600" />
@@ -863,15 +885,19 @@ export const BulkManagePage = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ============================================================ */}
       {/* MODAL 4: ACTION RESULT FEEDBACK BANNER */}
       {/* ============================================================ */}
-      {activeModal === 'result' && actionResult && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-outline-variant/40 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      {activeModal === 'result' && actionResult && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-center justify-center p-3 sm:p-6 animate-fade-in">
+          {/* Click-away backdrop overlay */}
+          <div className="fixed inset-0 bg-transparent" onClick={() => { setActiveModal(null); setActionResult(null); }} aria-hidden="true" />
+          
+          <div className="relative z-10 apple-modal-card rounded-2xl max-w-md w-full p-6 space-y-4 my-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-5 h-5" />
@@ -914,7 +940,8 @@ export const BulkManagePage = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

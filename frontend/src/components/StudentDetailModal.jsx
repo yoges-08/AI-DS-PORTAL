@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, 
   Lock, 
@@ -50,6 +51,11 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
     if (isOpen) {
       loadData();
       setMsg({ type: '', text: '' });
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
     }
   }, [isOpen, studentId]);
 
@@ -125,9 +131,13 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fade-in">
-      <div className="bg-white/95 backdrop-blur-2xl border border-white/60 shadow-[0_24px_64px_rgba(0,0,0,0.18)] rounded-3xl w-full max-w-4xl my-auto max-h-[94vh] flex flex-col overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-center justify-center p-3 sm:p-6 animate-fade-in">
+      {/* Click-away backdrop overlay */}
+      <div className="fixed inset-0 bg-transparent" onClick={onClose} aria-hidden="true" />
+      
+      {/* Modal Dialog Card */}
+      <div className="relative z-10 apple-modal-card rounded-3xl w-full max-w-4xl my-auto max-h-[94vh] flex flex-col overflow-hidden transition-all">
         
         {/* Top Header Bar */}
         <div className="bg-gradient-to-r from-primary via-primary-container to-secondary px-6 py-4 flex items-center justify-between shrink-0 text-white shadow-sm">
@@ -462,6 +472,7 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

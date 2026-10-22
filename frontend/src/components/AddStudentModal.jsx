@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, UserPlus, AlertCircle, CheckCircle, Calendar, Hash, User } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -11,6 +12,16 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Lock body scroll while modal is active (prevents background scroll and blur misalignment)
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -46,9 +57,13 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-      <div className="bg-white/95 backdrop-blur-2xl border border-white/60 shadow-[0_24px_64px_rgba(0,0,0,0.18)] rounded-3xl w-full max-w-md overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-center justify-center p-3 sm:p-6 animate-fade-in">
+      {/* Click-away backdrop overlay */}
+      <div className="fixed inset-0 bg-transparent" onClick={onClose} aria-hidden="true" />
+      
+      {/* Modal Dialog Card */}
+      <div className="relative z-10 apple-modal-card rounded-3xl w-full max-w-md overflow-hidden my-auto transition-all">
         
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-primary to-primary-container text-white px-6 py-4 flex items-center justify-between">
@@ -162,6 +177,7 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
         </form>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   LayoutDashboard, 
   Users, 
@@ -95,17 +96,17 @@ export const AdminSidebar = ({ activeTab, onSelectTab, isOpenMobile, onCloseMobi
       </aside>
 
       {/* Mobile Slide-over Drawer */}
-      {isOpenMobile && (
-        <div className="fixed inset-0 z-[90] md:hidden flex no-print">
+      {isOpenMobile && createPortal(
+        <div className="fixed inset-0 z-[9990] md:hidden flex no-print">
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-md transition-opacity" 
             onClick={onCloseMobile}
             aria-hidden="true"
           />
 
           {/* Drawer Panel */}
-          <div className="relative w-64 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col justify-between z-10">
+          <div className="relative w-64 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col justify-between z-10 animate-in slide-in-from-left duration-200">
             {/* Top Close Bar */}
             <div className="px-4 py-3 bg-primary text-white flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -125,7 +126,8 @@ export const AdminSidebar = ({ activeTab, onSelectTab, isOpenMobile, onCloseMobi
               {renderNavContent()}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

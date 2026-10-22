@@ -69,6 +69,21 @@
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
+/* Apple Cupertino Modal Backdrop & Dialog Surface */
+.apple-modal-backdrop {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+}
+
+.apple-modal-card {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 25px 65px -12px rgba(1, 35, 87, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+}
+
 /* Print styling for Student Profile Verification Slip */
 @media print {
   body {
