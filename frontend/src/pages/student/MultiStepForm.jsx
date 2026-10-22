@@ -2354,7 +2354,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
 
       {/* Final Submit Confirmation Modal */}
       {showConfirmSubmit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in">
           <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-[0_24px_64px_rgba(0,0,0,0.18)] max-w-md w-full border border-white/60 overflow-hidden transform transition-all">
             <div className="p-5 border-b border-outline-variant/30 flex items-start justify-between bg-amber-50/60">
               <div className="flex items-center space-x-3">

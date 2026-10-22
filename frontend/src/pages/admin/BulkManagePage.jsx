@@ -694,7 +694,7 @@ export const BulkManagePage = () => {
       {/* MODAL 1: BULK LOCK CONFIRMATION */}
       {/* ============================================================ */}
       {activeModal === 'lock' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-outline-variant/40 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-amber-700">
               <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
@@ -747,7 +747,7 @@ export const BulkManagePage = () => {
       {/* MODAL 2: BULK UNLOCK CONFIRMATION */}
       {/* ============================================================ */}
       {activeModal === 'unlock' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-outline-variant/40 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-emerald-700">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
@@ -795,7 +795,7 @@ export const BulkManagePage = () => {
       {/* MODAL 3: BULK DELETE CONFIRMATION (With DELETE typing guard) */}
       {/* ============================================================ */}
       {activeModal === 'delete' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fade-in">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-rose-300 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-rose-700">
               <div className="w-11 h-11 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0">
@@ -870,7 +870,7 @@ export const BulkManagePage = () => {
       {/* MODAL 4: ACTION RESULT FEEDBACK BANNER */}
       {/* ============================================================ */}
       {activeModal === 'result' && actionResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-outline-variant/40 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">

@@ -126,7 +126,7 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fade-in">
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fade-in">
       <div className="bg-white/95 backdrop-blur-2xl border border-white/60 shadow-[0_24px_64px_rgba(0,0,0,0.18)] rounded-3xl w-full max-w-4xl my-auto max-h-[94vh] flex flex-col overflow-hidden">
         
         {/* Top Header Bar */}

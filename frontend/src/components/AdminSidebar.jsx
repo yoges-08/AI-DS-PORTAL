@@ -96,10 +96,10 @@ export const AdminSidebar = ({ activeTab, onSelectTab, isOpenMobile, onCloseMobi
 
       {/* Mobile Slide-over Drawer */}
       {isOpenMobile && (
-        <div className="fixed inset-0 z-50 md:hidden flex no-print">
+        <div className="fixed inset-0 z-[90] md:hidden flex no-print">
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" 
             onClick={onCloseMobile}
             aria-hidden="true"
           />
