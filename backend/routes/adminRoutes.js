@@ -15,6 +15,7 @@ const {
   bulkDeleteStudents
 } = require('../controllers/adminController');
 const { authenticateToken, requireAdmin } = require('../middleware/authMiddleware');
+const { bulkActionLimiter } = require('../middleware/rateLimiter');
 const multer = require('multer');
 const path = require('path');
 
@@ -58,12 +59,12 @@ router.use(authenticateToken, requireAdmin);
 router.get('/dashboard-stats', getDashboardStats);
 router.get('/students', getStudents);
 router.post('/students', addStudent);
-router.post('/students/bulk-import', upload.single('file'), bulkImportStudents);
+router.post('/students/bulk-import', bulkActionLimiter, upload.single('file'), bulkImportStudents);
 
-// Bulk student operations (must precede /students/:id parameterized routes)
-router.post('/students/bulk/preview', previewBulkStudents);
-router.patch('/students/bulk/lock', bulkLockStudents);
-router.delete('/students/bulk', bulkDeleteStudents);
+// Bulk student operations with dedicated rate limiting (SEC-02)
+router.post('/students/bulk/preview', bulkActionLimiter, previewBulkStudents);
+router.patch('/students/bulk/lock', bulkActionLimiter, bulkLockStudents);
+router.delete('/students/bulk', bulkActionLimiter, bulkDeleteStudents);
 
 router.patch('/students/:id/lock', toggleLockStudent);
 router.post('/students/:id/reset-password', resetStudentPassword);

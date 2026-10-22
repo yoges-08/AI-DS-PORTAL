@@ -423,15 +423,20 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
                             <span className="text-[10px] text-outline truncate block font-mono">{doc.file_name}</span>
                           </div>
                         </div>
-                        <a
-                          href={getFileUrl(doc.file_path)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-container-high hover:bg-secondary-fixed/60 text-primary border border-outline-variant/40 rounded-lg text-[11px] font-semibold transition-all shrink-0 ml-2 shadow-sm"
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await api.openDocument(doc.file_path);
+                            } catch (err) {
+                              alert(err.message || 'Failed to open document');
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-container-high hover:bg-secondary-fixed/60 text-primary border border-outline-variant/40 rounded-lg text-[11px] font-semibold transition-all shrink-0 ml-2 shadow-sm cursor-pointer"
                         >
                           <ExternalLink className="w-3 h-3" />
                           <span>View</span>
-                        </a>
+                        </button>
                       </div>
                     ))}
                   </div>

@@ -102,15 +102,20 @@ export const DocumentUploadField = ({
           </div>
 
           <div className="flex items-center space-x-2 shrink-0 ml-2">
-            <a
-              href={getFileUrl(currentDoc.filePath || currentDoc.file_path)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-primary hover:bg-white bg-white/70 border border-outline-variant/40 rounded-lg shadow-2xs transition-all"
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await api.openDocument(currentDoc.filePath || currentDoc.file_path);
+                } catch (err) {
+                  alert(err.message || 'Failed to open document');
+                }
+              }}
+              className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-primary hover:bg-white bg-white/70 border border-outline-variant/40 rounded-lg shadow-2xs transition-all cursor-pointer"
               title="Preview / Open document"
             >
               <ExternalLink className="w-3 h-3 mr-1" /> View
-            </a>
+            </button>
             {!disabled && (
               <button
                 type="button"

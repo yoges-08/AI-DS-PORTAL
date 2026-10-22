@@ -3,6 +3,7 @@ const path = require('path');
 const { pool } = require('../config/db');
 const { uploadObject, deleteObject, isStorageConfigured } = require('../config/storage');
 const { generateDocumentKey } = require('../middleware/uploadMiddleware');
+const { validateDocumentBuffer } = require('../utils/fileSecurity');
 const {
   validateMobile,
   validateAadhaar,
@@ -478,6 +479,20 @@ const uploadDocument = async (req, res) => {
         success: false,
         message: 'No file was uploaded or file type is not supported. Please select a JPG, PNG, or PDF file.'
       });
+    }
+
+    // Binary magic byte validation: inspect buffer to prevent file masquerading attacks (SEC-01)
+    const magicCheck = validateDocumentBuffer(req.file.buffer, req.file.originalname);
+    if (!magicCheck.valid) {
+      return res.status(400).json({
+        success: false,
+        message: magicCheck.error
+      });
+    }
+
+    // Overwrite client-supplied MIME type with verified binary MIME type
+    if (magicCheck.detectedType?.mime) {
+      req.file.mimetype = magicCheck.detectedType.mime;
     }
 
     // Enforce 2MB maximum limit

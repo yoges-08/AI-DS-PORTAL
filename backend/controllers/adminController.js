@@ -22,6 +22,8 @@ const {
   normalizeDob
 } = require('../utils/validators');
 const { logAdminAction } = require('../utils/auditLogger');
+const { validateSpreadsheetBuffer } = require('../utils/fileSecurity');
+const { invalidateTokenCache } = require('../middleware/authMiddleware');
 
 // Safe parsing helpers
 const toPositiveInt = (v, fallback) => {
@@ -339,6 +341,14 @@ const bulkImportStudents = async (req, res) => {
 
   const filePath = req.file.path;
   try {
+    // Magic byte binary validation on spreadsheet file (SEC-01)
+    const fileBuf = fs.readFileSync(filePath);
+    const magicCheck = validateSpreadsheetBuffer(fileBuf, req.file.originalname);
+    if (!magicCheck.valid) {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      return res.status(400).json({ success: false, message: magicCheck.error });
+    }
+
     const workbook = xlsx.readFile(filePath, { cellDates: true });
     const sheetName = workbook.SheetNames[0];
     if (!sheetName) {
@@ -662,7 +672,11 @@ const resetStudentPassword = async (req, res) => {
     const pwdString = dobToPasswordString(student.dob);
     const hashedPassword = await bcrypt.hash(pwdString, 10);
 
-    await pool.query('UPDATE students SET password = ? WHERE id = ?', [hashedPassword, studentId]);
+    await pool.query(
+      'UPDATE students SET password = ?, token_version = COALESCE(token_version, 1) + 1 WHERE id = ?',
+      [hashedPassword, studentId]
+    );
+    invalidateTokenCache('STUDENT', studentId);
 
     // Do NOT write the plain password to audit log
     await logAdminAction({

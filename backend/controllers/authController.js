@@ -7,6 +7,7 @@ try {
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/db');
 const { validateRegisterNo } = require('../utils/validators');
+const { invalidateTokenCache } = require('../middleware/authMiddleware');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_aids_portal_2026_department_system';
 const isProduction = process.env.NODE_ENV === 'production';
@@ -42,7 +43,7 @@ const loginStudent = async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      'SELECT id, register_no, name, dob, password, year, section, status, is_locked FROM students WHERE register_no = ?',
+      'SELECT id, register_no, name, dob, password, year, section, status, is_locked, token_version FROM students WHERE register_no = ?',
       [registerNo.trim()]
     );
 
@@ -71,7 +72,8 @@ const loginStudent = async (req, res) => {
         registerNo: student.register_no,
         name: student.name,
         year: student.year !== null && student.year !== undefined ? student.year : null,
-        section: student.section || null
+        section: student.section || null,
+        tokenVersion: student.token_version || 1
       },
       JWT_SECRET,
       { expiresIn: '7d' }
@@ -130,7 +132,7 @@ const loginAdmin = async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      'SELECT id, username, password, name, email, department FROM admins WHERE LOWER(username) = LOWER(?)',
+      'SELECT id, username, password, name, email, department, token_version FROM admins WHERE LOWER(username) = LOWER(?)',
       [username.trim()]
     );
 
@@ -158,7 +160,8 @@ const loginAdmin = async (req, res) => {
         role: 'ADMIN',
         username: admin.username,
         name: admin.name,
-        department: admin.department
+        department: admin.department,
+        tokenVersion: admin.token_version || 1
       },
       JWT_SECRET,
       { expiresIn: '7d' }
@@ -200,14 +203,34 @@ const loginAdmin = async (req, res) => {
 
 /**
  * Logout
- * Clears cookie
+ * Clears cookie and increments token_version to invalidate existing JWT sessions (SEC-03)
  */
-const logout = (req, res) => {
-  res.clearCookie('token', {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production'
-  });
+const logout = async (req, res) => {
+  try {
+    let token = req.cookies?.token;
+    if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded?.id && decoded?.role) {
+          const table = decoded.role === 'ADMIN' ? 'admins' : 'students';
+          await pool.query(
+            `UPDATE ${table} SET token_version = COALESCE(token_version, 1) + 1 WHERE id = ?`,
+            [decoded.id]
+          ).catch(() => {});
+          invalidateTokenCache(decoded.role, decoded.id);
+        }
+      } catch (jwtErr) {
+        // Token was invalid or expired, continue to clear cookie
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  res.clearCookie('token', COOKIE_OPTIONS);
   return res.json({
     success: true,
     message: 'Logged out successfully.'
@@ -307,8 +330,12 @@ const changePassword = async (req, res) => {
         return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
       }
       const hashed = await bcrypt.hash(String(newPassword).trim(), 10);
-      await pool.query('UPDATE admins SET password = ? WHERE id = ?', [hashed, id]);
-      return res.json({ success: true, message: 'Password updated successfully.' });
+      await pool.query(
+        'UPDATE admins SET password = ?, token_version = COALESCE(token_version, 1) + 1 WHERE id = ?',
+        [hashed, id]
+      );
+      invalidateTokenCache('ADMIN', id);
+      return res.json({ success: true, message: 'Password updated successfully. Existing sessions have been revoked.' });
     } else if (role === 'STUDENT') {
       const [students] = await pool.query('SELECT password FROM students WHERE id = ?', [id]);
       if (students.length === 0) {
@@ -319,8 +346,12 @@ const changePassword = async (req, res) => {
         return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
       }
       const hashed = await bcrypt.hash(String(newPassword).trim(), 10);
-      await pool.query('UPDATE students SET password = ? WHERE id = ?', [hashed, id]);
-      return res.json({ success: true, message: 'Password updated successfully.' });
+      await pool.query(
+        'UPDATE students SET password = ?, token_version = COALESCE(token_version, 1) + 1 WHERE id = ?',
+        [hashed, id]
+      );
+      invalidateTokenCache('STUDENT', id);
+      return res.json({ success: true, message: 'Password updated successfully. Existing sessions have been revoked.' });
     }
 
     return res.status(400).json({ success: false, message: 'Unknown role.' });

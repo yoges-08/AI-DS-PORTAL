@@ -1,20 +1,25 @@
 const jwt = require('jsonwebtoken');
+const { pool } = require('../config/db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_aids_portal_2026_department_system';
 
+// In-memory cache for token versions to avoid excessive database queries (TTL 15 seconds)
+const tokenVersionCache = new Map();
+
+function invalidateTokenCache(role, id) {
+  tokenVersionCache.delete(`${role}:${id}`);
+}
+
 /**
- * Verify JWT from httpOnly cookie or Authorization header
+ * Verify JWT from httpOnly cookie or Authorization header.
+ * Note: URL query parameter token acceptance has been removed to prevent token leakage in logs/history (SEC-04).
  */
-const authenticateToken = (req, res, next) => {
-  // Support httpOnly cookie first, then Bearer header, then query parameter (for direct <img> & <a> document views)
+const authenticateToken = async (req, res, next) => {
+  // Support httpOnly cookie first, then Bearer header
   let token = req.cookies?.token;
 
   if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
     token = req.headers.authorization.split(' ')[1];
-  }
-
-  if (!token && req.query?.token) {
-    token = req.query.token;
   }
 
   if (!token) {
@@ -27,6 +32,34 @@ const authenticateToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
+
+    // SEC-03: Invalidate tokens upon password change or logout via token_version check
+    if (decoded.tokenVersion !== undefined && decoded.id && decoded.role) {
+      const cacheKey = `${decoded.role}:${decoded.id}`;
+      const now = Date.now();
+      let currentVersion;
+
+      const cached = tokenVersionCache.get(cacheKey);
+      if (cached && (now - cached.cachedAt < 15000)) {
+        currentVersion = cached.version;
+      } else {
+        const table = decoded.role === 'ADMIN' ? 'admins' : 'students';
+        const [rows] = await pool.query(`SELECT token_version FROM ${table} WHERE id = ?`, [decoded.id]);
+        if (rows.length === 0) {
+          return res.status(401).json({ success: false, message: 'Account no longer exists.' });
+        }
+        currentVersion = rows[0].token_version || 1;
+        tokenVersionCache.set(cacheKey, { version: currentVersion, cachedAt: now });
+      }
+
+      if (decoded.tokenVersion !== currentVersion) {
+        return res.status(401).json({
+          success: false,
+          message: 'Session has been invalidated due to a recent password change or logout. Please log in again.'
+        });
+      }
+    }
+
     next();
   } catch (error) {
     return res.status(403).json({
@@ -98,5 +131,6 @@ module.exports = {
   authenticateToken,
   requireAdmin,
   requireStudent,
-  requireSelfOrAdmin
+  requireSelfOrAdmin,
+  invalidateTokenCache
 };

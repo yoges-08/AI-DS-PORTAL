@@ -274,6 +274,13 @@ const initSqliteFallback = async () => {
       if (!docCols.some(c => c.name === 'file_data')) {
         sqliteDb.exec('ALTER TABLE student_documents ADD COLUMN file_data BLOB;');
       }
+      if (!studentCols.some(c => c.name === 'token_version')) {
+        sqliteDb.exec('ALTER TABLE students ADD COLUMN token_version INTEGER DEFAULT 1;');
+      }
+      const adminCols = sqliteDb.prepare("PRAGMA table_info(admins)").all();
+      if (!adminCols.some(c => c.name === 'token_version')) {
+        sqliteDb.exec('ALTER TABLE admins ADD COLUMN token_version INTEGER DEFAULT 1;');
+      }
     } catch (e) {
       // ignore
     }
@@ -431,6 +438,16 @@ const testConnection = async () => {
     }
     try {
       await conn.query('ALTER TABLE `students` ADD COLUMN IF NOT EXISTS `photo_data` LONGBLOB NULL;');
+    } catch (migErr) {
+      // Ignore if column exists
+    }
+    try {
+      await conn.query('ALTER TABLE `students` ADD COLUMN IF NOT EXISTS `token_version` INT NOT NULL DEFAULT 1;');
+    } catch (migErr) {
+      // Ignore if column exists
+    }
+    try {
+      await conn.query('ALTER TABLE `admins` ADD COLUMN IF NOT EXISTS `token_version` INT NOT NULL DEFAULT 1;');
     } catch (migErr) {
       // Ignore if column exists
     }

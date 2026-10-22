@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS `admins` (
   `name` VARCHAR(100) NOT NULL,
   `email` VARCHAR(100) NULL,
   `department` VARCHAR(100) NOT NULL DEFAULT 'Artificial Intelligence & Data Science',
+  `token_version` INT NOT NULL DEFAULT 1,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -104,6 +105,7 @@ CREATE TABLE IF NOT EXISTS `students` (
   `submission_date` TIMESTAMP NULL,
   `rejection_reason` TEXT NULL,
   `declaration_accepted` TINYINT(1) DEFAULT 0,
+  `token_version` INT NOT NULL DEFAULT 1,
 
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

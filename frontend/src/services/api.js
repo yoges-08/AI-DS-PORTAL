@@ -68,11 +68,6 @@ export const getFileUrl = (filePath) => {
   }
   const cleanPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
   const base = API_HOST || '';
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  if (token) {
-    const separator = cleanPath.includes('?') ? '&' : '?';
-    return `${base}${cleanPath}${separator}token=${encodeURIComponent(token)}`;
-  }
   return `${base}${cleanPath}`;
 };
 
@@ -354,18 +349,37 @@ export const api = {
     setTimeout(() => window.URL.revokeObjectURL(url), 1000);
   },
 
-  // Export URLs (legacy string references)
+  /**
+   * Secure document preview: fetches file via authenticated API request (Bearer / Cookie)
+   * and opens a local blob URL in a new tab without exposing JWT in URL query parameters (SEC-04).
+   */
+  async openDocument(filePath) {
+    if (!filePath) return;
+    if (filePath.startsWith('data:') || filePath.startsWith('blob:')) {
+      window.open(filePath, '_blank');
+      return;
+    }
+    const cleanPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+    const url = `${API_HOST || ''}${cleanPath}`;
+    const res = await apiFetch(url, { credentials: 'include' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to open document. You may not have permission to view it.');
+    }
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    window.open(blobUrl, '_blank');
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+  },
+
+  // Export URLs (legacy references without query tokens)
   getExcelExportUrl(filters = {}) {
     const query = new URLSearchParams(filters).toString();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
-    return `${BASE_URL}/export/excel?${query}${tokenParam}`;
+    return `${BASE_URL}/export/excel?${query}`;
   },
 
   getPdfExportUrl(filters = {}) {
     const query = new URLSearchParams(filters).toString();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
-    return `${BASE_URL}/export/pdf?${query}${tokenParam}`;
+    return `${BASE_URL}/export/pdf?${query}`;
   }
 };
