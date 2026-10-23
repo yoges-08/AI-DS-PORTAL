@@ -1,0 +1,639 @@
+/**
+ * Glassy Cyberpunk Login Styling
+ * Scoped tokens, chamfered glass card geometry, neon light streaks, and morph animations.
+ */
+
+:root {
+  --gl-bg-0: #02060F;
+  --gl-bg-1: #06142B;
+  --gl-accent: #38BDF8;
+  --gl-accent-2: #0EA5E9;
+  --gl-accent-light: #BAE6FD;
+  --gl-glow: rgba(56, 189, 248, 0.45);
+  --gl-card-fill: linear-gradient(145deg, rgba(14, 40, 80, 0.62), rgba(5, 14, 32, 0.82));
+  --gl-card-border: rgba(120, 190, 255, 0.24);
+  --gl-card-border-hi: rgba(186, 230, 253, 0.55);
+  --gl-text: #F1F5FF;
+  --gl-muted: #8FA3C4;
+  --gl-input-fill: rgba(255, 255, 255, 0.05);
+  --gl-input-border: rgba(255, 255, 255, 0.12);
+  --gl-success: #34D399;
+  --gl-warn: #FBBF24;
+  --gl-error: #F87171;
+}
+
+/* Base Scene Wrapper */
+.glass-scene {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100vw;
+  background-color: var(--gl-bg-0);
+  background-image: radial-gradient(120% 90% at 20% 10%, var(--gl-bg-1) 0%, var(--gl-bg-0) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  overflow: hidden;
+  font-family: inherit;
+  color: var(--gl-text);
+  box-sizing: border-box;
+}
+
+/* Vignette Overlay */
+.glass-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, transparent 35%, rgba(2, 6, 15, 0.75) 100%);
+  z-index: 2;
+}
+
+/* Background Neon Streaks Layer */
+.glass-streaks-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+  will-change: transform;
+}
+
+/* Slow Background Drift */
+.glass-streaks-group {
+  animation: glStreaksDrift 24s ease-in-out infinite alternate;
+  transform-origin: 50% 50%;
+}
+
+.glass-streaks-group--secondary {
+  animation: glStreaksDriftReverse 30s ease-in-out infinite alternate;
+  transform-origin: 40% 60%;
+}
+
+@keyframes glStreaksDrift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(14px, -18px, 0) scale(1.02); }
+  100% { transform: translate3d(-12px, 15px, 0) scale(0.99); }
+}
+
+@keyframes glStreaksDriftReverse {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-18px, 12px, 0) scale(0.98); }
+  100% { transform: translate3d(15px, -14px, 0) scale(1.02); }
+}
+
+/* ============================================================ */
+/* GLASS CARD SHELL & CHAMFERED GEOMETRY                        */
+/* ============================================================ */
+
+.glass-card-wrapper {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 480px;
+  margin: auto;
+  perspective: 1200px;
+}
+
+/* The Frosted Glass Container with Clip-Path Polygon */
+.glass-card {
+  position: relative;
+  width: 100%;
+  background: var(--gl-card-fill);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--gl-card-border);
+  box-shadow: 
+    0 24px 60px -15px rgba(2, 6, 23, 0.7),
+    0 0 35px -5px rgba(56, 189, 248, 0.25),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  transition: clip-path 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-color 0.3s ease,
+              box-shadow 0.4s ease;
+  overflow: hidden;
+
+  /* Idle Small Chamfer (8 points) */
+  clip-path: polygon(
+    28px 0%,
+    calc(100% - 16px) 0%,
+    100% 16px,
+    100% calc(100% - 28px),
+    calc(100% - 28px) 100%,
+    16px 100%,
+    0% calc(100% - 16px),
+    0% 28px
+  );
+}
+
+/* Morph State: Card shape transforms into large chamfered octagon */
+.glass-card[data-phase="morph"] {
+  clip-path: polygon(
+    88px 0%,
+    calc(100% - 16px) 0%,
+    100% 16px,
+    100% calc(100% - 88px),
+    calc(100% - 88px) 100%,
+    16px 100%,
+    0% calc(100% - 16px),
+    0% 88px
+  );
+  box-shadow: 
+    0 24px 80px -10px rgba(2, 6, 23, 0.9),
+    0 0 55px 0px rgba(56, 189, 248, 0.4),
+    inset 0 1px 2px rgba(255, 255, 255, 0.3);
+  border-color: var(--gl-card-border-hi);
+}
+
+/* Subtle Idle Light Sweep */
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -80%;
+  width: 60%;
+  height: 220%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.03) 40%,
+    rgba(186, 230, 253, 0.08) 50%,
+    transparent 65%
+  );
+  transform: rotate(25deg);
+  pointer-events: none;
+  animation: glLightSweep 9s ease-in-out infinite;
+  z-index: 1;
+}
+
+@keyframes glLightSweep {
+  0% { transform: translateX(0) rotate(25deg); }
+  25%, 100% { transform: translateX(380%) rotate(25deg); }
+}
+
+/* ============================================================ */
+/* SIGNATURE GLASS WEDGES (Top-Left & Bottom-Right)             */
+/* ============================================================ */
+
+.glass-wedge {
+  position: absolute;
+  z-index: 15;
+  pointer-events: none;
+  transition: transform 0.42s cubic-bezier(0.3, 0, 0.2, 1),
+              opacity 0.35s ease,
+              filter 0.35s ease;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.4), rgba(14, 40, 80, 0.65));
+  border: 1px solid rgba(186, 230, 253, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.4);
+}
+
+/* Top-Left Wedge */
+.glass-wedge--tl {
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  clip-path: polygon(0% 0%, 100% 0%, 0% 100%);
+  transform-origin: 0 0;
+}
+
+/* Bottom-Right Wedge */
+.glass-wedge--br {
+  bottom: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  clip-path: polygon(100% 0%, 100% 100%, 0% 100%);
+  transform-origin: 100% 100%;
+}
+
+/* During Morph: Wedges detach and travel into the center */
+.glass-card[data-phase="morph"] .glass-wedge--tl {
+  transform: translate(calc(240px - 14px), calc(280px - 14px)) scale(2.6) rotate(135deg);
+  opacity: 0.85;
+  filter: drop-shadow(0 0 12px var(--gl-accent));
+}
+
+.glass-card[data-phase="morph"] .glass-wedge--br {
+  transform: translate(calc(-240px + 14px), calc(-280px + 14px)) scale(2.6) rotate(135deg);
+  opacity: 0.85;
+  filter: drop-shadow(0 0 12px var(--gl-accent));
+}
+
+/* ============================================================ */
+/* MORPH REVEAL: CENTER LOGO & SHOCKWAVE RING                   */
+/* ============================================================ */
+
+.glass-morph-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Central Merged Logo Container */
+.glass-morph-logo {
+  position: relative;
+  width: 82px;
+  height: 82px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(14, 40, 80, 0.9), rgba(6, 20, 43, 0.95));
+  border: 2px solid var(--gl-accent);
+  box-shadow: 
+    0 0 32px var(--gl-glow),
+    inset 0 0 14px rgba(56, 189, 248, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.28s cubic-bezier(0.3, 1.4, 0.5, 1),
+              transform 0.35s cubic-bezier(0.3, 1.4, 0.5, 1);
+  overflow: hidden;
+}
+
+.glass-morph-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+/* Glowing Shockwave Ripple Ring */
+.glass-morph-ring {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 2px solid var(--gl-accent);
+  box-shadow: 0 0 25px var(--gl-accent);
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+}
+
+/* Morph Active State for Logo & Ring */
+.glass-card[data-phase="morph"] .glass-morph-logo {
+  opacity: 1;
+  transform: scale(1);
+  animation: glLogoPop 0.45s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.glass-card[data-phase="morph"] .glass-morph-ring {
+  animation: glRingRipple 0.65s 0.35s ease-out forwards;
+}
+
+@keyframes glLogoPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes glRingRipple {
+  0% { transform: scale(0.7); opacity: 0.9; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* ============================================================ */
+/* CONTENT BLUR FADE TRANSITIONS                                */
+/* ============================================================ */
+
+.glass-card-content {
+  position: relative;
+  z-index: 5;
+  padding: 2.25rem 2rem;
+  transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              filter 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Content Fade/Blur Out */
+.glass-card[data-phase="out"] .glass-card-content,
+.glass-card[data-phase="morph"] .glass-card-content {
+  opacity: 0;
+  filter: blur(10px);
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+/* Content Fade/Blur In */
+.glass-card[data-phase="in"] .glass-card-content {
+  animation: glFadeBlurIn 0.38s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes glFadeBlurIn {
+  0% { opacity: 0; filter: blur(10px); transform: translateY(8px); }
+  100% { opacity: 1; filter: blur(0px); transform: translateY(0); }
+}
+
+/* Content Stagger Children */
+.gl-stagger-1 { animation-delay: 40ms; }
+.gl-stagger-2 { animation-delay: 80ms; }
+.gl-stagger-3 { animation-delay: 120ms; }
+.gl-stagger-4 { animation-delay: 160ms; }
+
+/* ============================================================ */
+/* GLASS INPUTS & LABELS                                        */
+/* ============================================================ */
+
+.glass-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.glass-field-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--gl-muted);
+  letter-spacing: 0.01em;
+}
+
+.glass-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.glass-input-icon {
+  position: absolute;
+  left: 0.875rem;
+  width: 1rem;
+  height: 1rem;
+  color: var(--gl-muted);
+  transition: color 0.2s ease;
+  pointer-events: none;
+}
+
+.glass-input {
+  width: 100%;
+  height: 2.875rem; /* ~46px */
+  background: var(--gl-input-fill);
+  border: 1px solid var(--gl-input-border);
+  border-radius: 12px;
+  padding: 0 2.5rem 0 2.5rem;
+  color: var(--gl-text);
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.glass-input::placeholder {
+  color: rgba(143, 163, 196, 0.45);
+}
+
+.glass-input:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.glass-input:focus {
+  background: rgba(14, 40, 80, 0.4);
+  border-color: var(--gl-accent);
+  box-shadow: 
+    0 0 0 3px rgba(56, 189, 248, 0.18),
+    0 0 16px rgba(56, 189, 248, 0.22);
+}
+
+.glass-input:focus ~ .glass-input-icon,
+.glass-input:focus + .glass-input-icon {
+  color: var(--gl-accent);
+}
+
+.glass-input-toggle {
+  position: absolute;
+  right: 0.875rem;
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  color: var(--gl-muted);
+  cursor: pointer;
+  transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glass-input-toggle:hover {
+  color: var(--gl-text);
+}
+
+/* ============================================================ */
+/* PRIMARY GLASS BUTTON                                         */
+/* ============================================================ */
+
+.glass-button {
+  width: 100%;
+  height: 3rem; /* 48px */
+  background: linear-gradient(90deg, #38BDF8 0%, #0EA5E9 100%);
+  color: #03142B;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 8px 24px rgba(56, 189, 248, 0.35);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.01em;
+  user-select: none;
+}
+
+.glass-button:hover:not(:disabled) {
+  background: linear-gradient(90deg, #7DD3FC 0%, #38BDF8 100%);
+  box-shadow: 0 10px 30px rgba(56, 189, 248, 0.5);
+  transform: translateY(-1px);
+}
+
+.glass-button:hover:not(:disabled) .glass-button-arrow {
+  transform: translateX(3px);
+}
+
+.glass-button:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3);
+}
+
+.glass-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.glass-button-arrow {
+  transition: transform 0.2s ease;
+}
+
+/* ============================================================ */
+/* ROLE SEGMENTED PILL SWITCH                                   */
+/* ============================================================ */
+
+.glass-role-switch {
+  display: flex;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 3px;
+  margin-bottom: 1.5rem;
+  user-select: none;
+}
+
+.glass-role-tab {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gl-muted);
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  transition: all 0.2s ease;
+}
+
+.glass-role-tab:hover:not(.active) {
+  color: var(--gl-text);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.glass-role-tab.active {
+  color: #FFFFFF;
+  background: rgba(56, 189, 248, 0.16);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 2px 10px rgba(56, 189, 248, 0.15);
+}
+
+/* ============================================================ */
+/* LIVE VERIFICATION STATUS LINE                                */
+/* ============================================================ */
+
+.glass-status-line {
+  padding: 0.625rem 0.875rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.4;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.glass-status--checking {
+  background: rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.25);
+  color: #BAE6FD;
+}
+
+.glass-status--match {
+  background: rgba(52, 211, 153, 0.1);
+  border-color: rgba(52, 211, 153, 0.35);
+  color: #6EE7B7;
+  animation: glSuccessGlow 0.5s ease-out;
+}
+
+.glass-status--no-match {
+  background: rgba(248, 113, 113, 0.1);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #FCA5A5;
+}
+
+.glass-status--already {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.35);
+  color: #FDE68A;
+}
+
+.glass-status--limited {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #FCA5A5;
+}
+
+@keyframes glSuccessGlow {
+  0% { box-shadow: 0 0 0 rgba(52, 211, 153, 0.6); }
+  50% { box-shadow: 0 0 16px rgba(52, 211, 153, 0.4); }
+  100% { box-shadow: 0 0 0 rgba(52, 211, 153, 0); }
+}
+
+/* ============================================================ */
+/* ACCESSIBILITY & REDUCED MOTION                               */
+/* ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-card,
+  .glass-wedge,
+  .glass-streaks-group,
+  .glass-streaks-group--secondary,
+  .glass-card::before,
+  .glass-card-content,
+  .glass-morph-logo,
+  .glass-morph-ring {
+    animation: none !important;
+    transition: opacity 0.15s ease !important;
+  }
+
+  .glass-card[data-phase="morph"] {
+    clip-path: none !important;
+  }
+}
+
+/* ============================================================ */
+/* RESPONSIVE TUNING                                            */
+/* ============================================================ */
+
+@media (max-width: 640px) {
+  .glass-card-content {
+    padding: 1.75rem 1.25rem;
+  }
+
+  .glass-wedge--tl,
+  .glass-wedge--br {
+    width: 22px;
+    height: 22px;
+  }
+
+  .glass-card {
+    clip-path: polygon(
+      22px 0%,
+      calc(100% - 12px) 0%,
+      100% 12px,
+      100% calc(100% - 22px),
+      calc(100% - 22px) 100%,
+      12px 100%,
+      0% calc(100% - 12px),
+      0% 22px
+    );
+  }
+
+  .glass-card[data-phase="morph"] {
+    clip-path: polygon(
+      64px 0%,
+      calc(100% - 12px) 0%,
+      100% 12px,
+      100% calc(100% - 64px),
+      calc(100% - 64px) 100%,
+      12px 100%,
+      0% calc(100% - 12px),
+      0% 64px
+    );
+  }
+}
