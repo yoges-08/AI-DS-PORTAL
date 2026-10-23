@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
+import { LandingPage } from './components/landing/LandingPage';
+import { LoginOverlay } from './components/auth/LoginOverlay';
+import { Robert } from './components/robert/Robert';
 import { LoginPage } from './pages/LoginPage';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -58,9 +61,15 @@ export const App = () => {
     );
   }
 
-  // Not logged in: Show Login Page
+  // Not logged in: Show Portal Landing Page with Glass Login Overlay & Persistent Robert
   if (!user) {
-    return <LoginPage />;
+    return (
+      <div className="relative min-h-screen">
+        <LandingPage />
+        <LoginOverlay />
+        <Robert />
+      </div>
+    );
   }
 
   // STUDENT VIEW

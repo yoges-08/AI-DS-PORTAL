@@ -1,0 +1,27 @@
+/**
+ * SIS Portal White Theme Design Tokens
+ */
+:root {
+  --bg: #F7F9FC;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-dim: #F1F4F9;
+  --text: #0B1B3A;
+  --text-muted: #5B6B86;
+  --text-dim: #8B9BB4;
+  --primary: #1E4FD8;
+  --primary-hover: #153EBA;
+  --primary-soft: #E8EEFF;
+  --primary-soft-border: rgba(30, 79, 216, 0.18);
+  --border: rgba(15, 35, 80, 0.10);
+  --border-strong: rgba(15, 35, 80, 0.18);
+  --accent-cyan: #0EA5E9;
+  --accent-emerald: #10B981;
+  --shadow-sm: 0 2px 8px rgba(15, 35, 80, 0.05);
+  --shadow-md: 0 8px 24px rgba(15, 35, 80, 0.08);
+  --shadow-lg: 0 20px 60px rgba(30, 79, 216, 0.12);
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+}
