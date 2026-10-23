@@ -1,5 +1,6 @@
 @import './styles/theme-light.css';
 @import './styles/glass.css';
+@import './styles/glassLogin.css';
 
 @tailwind base;
 @tailwind components;

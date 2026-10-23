@@ -1,0 +1,375 @@
+/**
+ * Glassy Login Styling (White Theme Edition)
+ * Light frosted glass card geometry (56px chamfers, 24px corner curves),
+ * royal blue accents (#1E4FD8), white inputs with subtle slate borders,
+ * interactive 3D tilt, floating luminous bubbles, and signature morph animation.
+ */
+
+:root {
+  --gl-bg-0: #F8FAFC;
+  --gl-bg-1: #EFF6FF;
+  --gl-accent: #1E4FD8;
+  --gl-accent-2: #2563EB;
+  --gl-accent-light: #DBEAFE;
+  --gl-glow: rgba(30, 79, 216, 0.35);
+  --gl-card-fill: rgba(255, 255, 255, 0.95);
+  --gl-card-border: rgba(30, 79, 216, 0.28);
+  --gl-card-border-hi: rgba(30, 79, 216, 0.6);
+  --gl-text: #0B1B3A;
+  --gl-muted: #64748B;
+  --gl-input-fill: #FFFFFF;
+  --gl-input-border: #CBD5E1;
+  --gl-success: #059669;
+  --gl-warn: #D97706;
+  --gl-error: #DC2626;
+}
+
+/* Base Scene Wrapper */
+.glass-scene {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100vw;
+  background-color: #F8FAFC;
+  background-image: radial-gradient(120% 90% at 20% 10%, #EFF6FF 0%, #F1F5F9 60%, #E2E8F0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  overflow: hidden;
+  font-family: inherit;
+  color: var(--gl-text);
+  box-sizing: border-box;
+}
+
+/* Soft Vignette Overlay */
+.glass-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, transparent 40%, rgba(15, 23, 42, 0.18) 100%);
+  z-index: 2;
+}
+
+/* Floating Glass Bubbles */
+.glass-floating-bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.85), rgba(219, 234, 254, 0.55) 45%, rgba(191, 219, 254, 0.3) 75%, rgba(147, 197, 253, 0.5) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 30px rgba(30, 79, 216, 0.12), inset 0 0 16px rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: glBubbleFloat ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes glBubbleFloat {
+  0% {
+    transform: translateY(0px) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-22px) scale(1.05) rotate(10deg);
+  }
+  100% {
+    transform: translateY(16px) scale(0.96) rotate(-8deg);
+  }
+}
+
+/* Central Bubble Shockwave Ring during Morph (White Theme) */
+.glass-bubble-shockwave--white {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 2px solid #1E4FD8;
+  background: radial-gradient(circle, rgba(30, 79, 216, 0.22) 0%, rgba(56, 189, 248, 0.08) 60%, transparent 100%);
+  box-shadow: 0 0 35px rgba(30, 79, 216, 0.5), inset 0 0 18px rgba(56, 189, 248, 0.35);
+  animation: glBubbleExpand 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes glBubbleExpand {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.95;
+  }
+  60% {
+    transform: scale(1.85);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(2.7);
+    opacity: 0;
+  }
+}
+
+@keyframes glEmblemPop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes glSheen {
+  0% { transform: translateX(0) rotate(25deg); }
+  25%, 100% { transform: translateX(380%) rotate(25deg); }
+}
+
+/* ============================================================ */
+/* GLASS INPUTS & LABELS (White Theme)                          */
+/* ============================================================ */
+
+.glass-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.glass-field-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+  letter-spacing: 0.01em;
+}
+
+.glass-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.glass-input-icon {
+  position: absolute;
+  left: 0.875rem;
+  width: 1rem;
+  height: 1rem;
+  color: #64748B;
+  transition: color 0.2s ease;
+  pointer-events: none;
+}
+
+.glass-input {
+  width: 100%;
+  height: 2.875rem; /* ~46px */
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 12px;
+  padding: 0 2.5rem 0 2.5rem;
+  color: #0F172A;
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  box-sizing: border-box;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.glass-input::placeholder {
+  color: #94A3B8;
+}
+
+.glass-input:hover {
+  background: #FFFFFF;
+  border-color: #94A3B8;
+}
+
+.glass-input:focus {
+  background: #FFFFFF;
+  border-color: #2563EB;
+  box-shadow: 
+    0 0 0 3px rgba(37, 99, 235, 0.16),
+    0 2px 6px rgba(37, 99, 235, 0.08);
+}
+
+.glass-input:focus ~ .glass-input-icon,
+.glass-input:focus + .glass-input-icon {
+  color: #1E4FD8;
+}
+
+.glass-input-toggle {
+  position: absolute;
+  right: 0.875rem;
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  color: #64748B;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glass-input-toggle:hover {
+  color: #0F172A;
+}
+
+/* ============================================================ */
+/* PRIMARY GLASS BUTTON (Royal Blue Gradient)                   */
+/* ============================================================ */
+
+.glass-button {
+  width: 100%;
+  height: 3rem; /* 48px */
+  background: linear-gradient(135deg, #1E4FD8 0%, #1D4ED8 100%);
+  color: #FFFFFF;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 6px 20px rgba(30, 79, 216, 0.32);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.01em;
+  user-select: none;
+}
+
+.glass-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563EB 0%, #1E4FD8 100%);
+  box-shadow: 0 8px 25px rgba(30, 79, 216, 0.42);
+  transform: translateY(-1px);
+}
+
+.glass-button:hover:not(:disabled) .glass-button-arrow {
+  transform: translateX(3px);
+}
+
+.glass-button:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: 0 4px 12px rgba(30, 79, 216, 0.24);
+}
+
+.glass-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.glass-button-arrow {
+  transition: transform 0.2s ease;
+  color: #FFFFFF;
+}
+
+/* ============================================================ */
+/* ROLE SEGMENTED PILL SWITCH (White Theme)                     */
+/* ============================================================ */
+
+.glass-role-switch {
+  display: flex;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 1.25rem;
+  user-select: none;
+}
+
+.glass-role-tab {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748B;
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+}
+
+.glass-role-tab:hover:not(.active) {
+  color: #0F172A;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.glass-role-tab.active {
+  color: #1E4FD8;
+  background: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+/* ============================================================ */
+/* LIVE VERIFICATION STATUS LINE (White Theme)                  */
+/* ============================================================ */
+
+.glass-status-line {
+  padding: 0.625rem 0.875rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.4;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.glass-status--checking {
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+  color: #1E40AF;
+}
+
+.glass-status--match {
+  background: #ECFDF5;
+  border-color: #A7F3D0;
+  color: #065F46;
+  animation: glSuccessGlow 0.5s ease-out;
+}
+
+.glass-status--no-match {
+  background: #FEF2F2;
+  border-color: #FECACA;
+  color: #991B1B;
+}
+
+.glass-status--already {
+  background: #FFFBEB;
+  border-color: #FDE68A;
+  color: #92400E;
+}
+
+.glass-status--limited {
+  background: #FEF2F2;
+  border-color: #F87171;
+  color: #991B1B;
+}
+
+@keyframes glSuccessGlow {
+  0% { box-shadow: 0 0 0 rgba(5, 150, 105, 0.4); }
+  50% { box-shadow: 0 0 16px rgba(5, 150, 105, 0.3); }
+  100% { box-shadow: 0 0 0 rgba(5, 150, 105, 0); }
+}
+
+/* ============================================================ */
+/* ACCESSIBILITY & REDUCED MOTION                               */
+/* ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-card,
+  .glass-floating-bubble,
+  .glass-bubble-shockwave--white {
+    animation: none !important;
+    transition: opacity 0.15s ease !important;
+  }
+}

@@ -29,22 +29,9 @@ export const Robert = () => {
   const wobbleTimerRef = useRef(null);
   const prevFieldRef = useRef(activeField);
 
-  // Update positioning between Landing and Login modal states
+  // Keep Robert in bottom-left dock with clear margin so he never obstructs the card
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const isMobile = window.innerWidth < 1024;
-
-    if (isLoginOpen) {
-      if (isMobile) {
-        setPosition({ top: '16px', left: '16px', bottom: 'auto' });
-      } else {
-        // Desktop: float beside the centered glass login card
-        setPosition({ top: '120px', left: 'calc(50vw - 380px)', bottom: 'auto' });
-      }
-    } else {
-      // Landing page: bottom-left dock
-      setPosition({ bottom: '28px', left: '28px', top: 'auto' });
-    }
+    setPosition({ bottom: '28px', left: '28px', top: 'auto' });
   }, [isLoginOpen]);
 
   // Typewriter Speech Engine
