@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useRobert } from '../context/RobertContext';
 
 /**
  * RobertMascot Component
@@ -13,7 +14,24 @@ import React, { useState, useEffect, useRef } from 'react';
  *     - Playful wink smirk.
  * - Typewriter Speech Engine: Characters type out smoothly with blinking cursor while Robert chatters.
  */
-export const RobertMascot = ({ activeField = 'idle', role = 'STUDENT', errorMessage = '' }) => {
+const TYPING_FIELDS = [
+  'reg',
+  'studentPass',
+  'signupReg',
+  'signupDob',
+  'signupName',
+  'signupEmail',
+  'signupPass',
+  'signupConfirmPass',
+  'adminUser',
+  'adminPass'
+];
+
+export const RobertMascot = (props) => {
+  const context = useRobert() || {};
+  const activeField = props.activeField || context.activeField || 'idle';
+  const role = props.role || context.role || 'STUDENT';
+  const errorMessage = props.errorMessage || context.errorMessage || '';
   // Flight & Position state - strictly anchored to the safe left side
   const [position, setPosition] = useState({ top: '95px', left: '70px' });
   const [isMoving, setIsMoving] = useState(false);
@@ -40,26 +58,33 @@ export const RobertMascot = ({ activeField = 'idle', role = 'STUDENT', errorMess
   // ============================================================
   // STRICT LEFT-SIDE SAFE PERCH ENGINE (Never enters typing area!)
   // ============================================================
-  const getSafeLeftPerch = () => {
-    if (typeof window === 'undefined') return { top: '95px', left: '70px' };
+  const getSafeLeftPerch = (field) => {
+    if (typeof window === 'undefined') return { top: '22%', left: 'clamp(20px, 3.5vw, 44px)' };
     const winW = window.innerWidth;
 
-    // Mobile / Tablet: Sit safely at the very top, well above the centered card
-    if (winW < 1024) {
-      return { top: '35px', left: '35px' };
+    // Mobile / Tablet: Stay safely docked at bottom-left corner so inputs & banner are never covered
+    if (winW < 768) {
+      return { top: 'auto', bottom: '16px', left: '16px' };
     }
 
-    // Desktop: Dedicated perches on the LEFT HERO art area (columns 1-7)
-    // The typing fields are in columns 8-12 on the right side (>700px).
-    // All perches here have left <= 100px, leaving a 350px+ clear buffer!
-    const desktopPerches = [
-      { top: '95px', left: '70px' },   // Upper Left Banner
-      { top: '190px', left: '80px' },  // Bento Card Top Margin
-      { top: '140px', left: '105px' }  // Upper Hero Center-Left
-    ];
-
-    perchIdxRef.current = (perchIdxRef.current + 1) % desktopPerches.length;
-    return desktopPerches[perchIdxRef.current];
+    // Fixed dedicated perches on the left margin, guaranteed >150px clearance from the centered card
+    switch (field) {
+      case 'reg':
+      case 'signupReg':
+        return { top: '22%', bottom: 'auto', left: 'clamp(20px, 3.5vw, 44px)' };
+      case 'studentPass':
+      case 'dob':
+      case 'signupPass':
+      case 'signupConfirmPass':
+      case 'adminPass':
+        return { top: '48%', bottom: 'auto', left: 'clamp(24px, 4vw, 52px)' };
+      case 'signupName':
+      case 'signupEmail':
+      case 'signupDob':
+      case 'adminUser':
+      default:
+        return { top: '35%', bottom: 'auto', left: 'clamp(20px, 3.5vw, 48px)' };
+    }
   };
 
   // ============================================================
@@ -97,7 +122,7 @@ export const RobertMascot = ({ activeField = 'idle', role = 'STUDENT', errorMess
   // Safe flight (moves smoothly within left-side hero zone, hides bubble during flight)
   const flyToSafePerch = (text, nextExpr = 'happy') => {
     const curX = parseInt(position.left, 10) || 70;
-    const newPos = getSafeLeftPerch();
+    const newPos = getSafeLeftPerch(activeField);
 
     const deltaX = parseInt(newPos.left, 10) - curX;
     setFlightTilt(deltaX > 15 ? 10 : deltaX < -15 ? -10 : 0);
@@ -110,7 +135,7 @@ export const RobertMascot = ({ activeField = 'idle', role = 'STUDENT', errorMess
       setIsMoving(false);
       setFlightTilt(0);
       triggerTypewriter(text, nextExpr);
-    }, 850);
+    }, 1100);
   };
 
   // ============================================================
@@ -292,7 +317,7 @@ export const RobertMascot = ({ activeField = 'idle', role = 'STUDENT', errorMess
         top: position.top,
         left: position.left,
         transform: `rotate(${flightTilt}deg) ${isHopping ? 'translateY(-10px)' : ''} ${isWobbling ? 'scale(1.08)' : 'scale(1)'}`,
-        transition: 'top 0.85s cubic-bezier(0.22, 1, 0.36, 1), left 0.85s cubic-bezier(0.22, 1, 0.36, 1), transform 0.35s ease'
+        transition: 'top 1.1s cubic-bezier(0.22, 1, 0.36, 1), bottom 1.1s cubic-bezier(0.22, 1, 0.36, 1), left 1.1s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)'
       }}
     >
       {/* Rest in Motion: Gentle vertical breathing hover bob in place */}
