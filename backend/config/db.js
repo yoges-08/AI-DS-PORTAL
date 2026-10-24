@@ -43,7 +43,8 @@ try {
   ) {
     mysqlConfig.ssl = {
       minVersion: 'TLSv1.2',
-      rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true'
+      // S9 fix: Verify TLS certificate by default. Only explicitly disabled if set to 'false'.
+      rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false'
     };
   }
 
@@ -177,11 +178,19 @@ const initSqliteFallback = async () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         register_no TEXT UNIQUE NOT NULL,
         dob TEXT NOT NULL,
+        claim_code_hash TEXT,
         is_claimed INTEGER DEFAULT 0,
         claimed_student_id INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (claimed_student_id) REFERENCES students(id) ON DELETE SET NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS auth_lockouts (
+        key_name TEXT PRIMARY KEY,
+        failures INTEGER NOT NULL DEFAULT 0,
+        first_attempt_ms INTEGER NOT NULL,
+        locked_until_ms INTEGER NOT NULL DEFAULT 0
       );
     `);
 
@@ -306,66 +315,10 @@ const initSqliteFallback = async () => {
       // ignore
     }
 
-    // Check if admin exists in SQLite, if not seed
-    const adminCheck = sqliteDb.prepare("SELECT id FROM admins WHERE username = 'admin' LIMIT 1").all();
-    if (adminCheck.length === 0) {
-      console.log('[DB Fallback] Initializing default seed data in local database...');
-      const adminPwd = await bcrypt.hash('Admin@123', 10);
-      sqliteDb.prepare(`
-        INSERT INTO admins (username, password, name, email, department)
-        VALUES ('admin', ?, 'Dr.G.NANTHAKUMAR', 'aamecaidsskill@gmail.com', 'Artificial Intelligence & Data Science')
-      `).run(adminPwd);
-    } else {
-      sqliteDb.prepare("UPDATE admins SET name = 'Dr.G.NANTHAKUMAR', email = 'aamecaidsskill@gmail.com' WHERE username = 'admin'").run();
-    }
-
-    // Seed Faculty Members into SQLite
-    const sqliteFacultyList = [
-      { username: 'chitra.tk', name: 'T.K.CHITRA' },
-      { username: 'jeeva.m', name: 'M.JEEVA' },
-      { username: 'selvarani.n', name: 'N.SELVARANI' },
-      { username: 'jayanthi.k', name: 'JAYANTHI K' }
-    ];
-    const facPwd = await bcrypt.hash('Faculty@123', 10);
-    for (const fac of sqliteFacultyList) {
-      const exists = sqliteDb.prepare("SELECT id FROM admins WHERE username = ?").all(fac.username);
-      if (exists.length === 0) {
-        sqliteDb.prepare(`
-          INSERT INTO admins (username, password, name, email, department)
-          VALUES (?, ?, ?, 'aamecaidsskill@gmail.com', 'Artificial Intelligence & Data Science')
-        `).run(fac.username, facPwd, fac.name);
-      } else {
-        sqliteDb.prepare("UPDATE admins SET name = ?, email = 'aamecaidsskill@gmail.com' WHERE username = ?").run(fac.name, fac.username);
-      }
-    }
-
-    const studentCheck = sqliteDb.prepare('SELECT id FROM students LIMIT 1').all();
-    if (studentCheck.length === 0) {
-      // Seed sample students
-      const sampleStudents = [
-        { reg: '71762105001', name: 'AARTHI S', dob: '2003-05-14', pwd: await bcrypt.hash('14052003', 10), year: 4, sec: 'A', status: 'SUBMITTED', fg: 1, pms: 0, comm: 'BC', mob: '9876543210' },
-        { reg: '71762105002', name: 'BALAJI K', dob: '2003-08-22', pwd: await bcrypt.hash('22082003', 10), year: 4, sec: 'A', status: 'VERIFIED', locked: 1, fg: 0, pms: 1, comm: 'MBC', mob: '9845123456' },
-        { reg: '71762105003', name: 'CHANDRU M', dob: '2003-11-30', pwd: await bcrypt.hash('30112003', 10), year: 4, sec: 'B', status: 'VERIFIED', locked: 1, fg: 0, pms: 1, comm: 'SC', mob: '9753124680' },
-        { reg: '71762205015', name: 'DEEPALAKSHMI R', dob: '2004-03-18', pwd: await bcrypt.hash('18032004', 10), year: 3, sec: 'A', status: 'SUBMITTED', fg: 1, pms: 0, comm: 'BC', mob: '9632587410' },
-        { reg: '71762205022', name: 'ELANGOVAN T', dob: '2004-07-09', pwd: await bcrypt.hash('09072004', 10), year: 3, sec: 'A', status: 'DRAFT', fg: 0, pms: 0, comm: 'BCM', mob: '9512345678' },
-        { reg: '71762205035', name: 'HARINI V', dob: '2004-12-25', pwd: await bcrypt.hash('25122004', 10), year: 3, sec: 'B', status: 'DRAFT', fg: 0, pms: 0, comm: 'OC', mob: '9423456789' },
-        { reg: '71762305008', name: 'KARTHIK N', dob: '2005-01-15', pwd: await bcrypt.hash('15012005', 10), year: 2, sec: 'A', status: 'SUBMITTED', fg: 1, pms: 1, comm: 'MBC', mob: '9312345678' },
-        { reg: '71762305019', name: 'MONISHA P', dob: '2005-06-20', pwd: await bcrypt.hash('20062005', 10), year: 2, sec: 'B', status: 'SUBMITTED', fg: 1, pms: 1, comm: 'SCA', mob: '9212345678' },
-        { reg: '71762405004', name: 'NAVEEN KUMAR S', dob: '2006-04-10', pwd: await bcrypt.hash('10042006', 10), year: 1, sec: 'A', status: 'DRAFT', fg: 0, pms: 0, comm: 'BC', mob: '9112345678' },
-        { reg: '71762405028', name: 'PRIYADHARSHINI M', dob: '2006-09-05', pwd: await bcrypt.hash('05092006', 10), year: 1, sec: 'B', status: 'DRAFT', fg: 1, pms: 0, comm: 'DNC', mob: '9012345678' }
-      ];
-
-      const stmt = sqliteDb.prepare(`
-        INSERT INTO students (
-          register_no, name, dob, password, year, section, status, is_locked, 
-          is_first_graduate, is_pms, pms_status, community, mobile, nationality
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved', ?, ?, 'Indian')
-      `);
-
-      for (const s of sampleStudents) {
-        stmt.run(s.reg, s.name, s.dob, s.pwd, s.year, s.sec, s.status, s.locked || 0, s.fg, s.pms, s.comm, s.mob);
-      }
-      console.log(' -> Seeded 10 students into local fallback database.');
+    // Verify admins table state in SQLite (S2 fix: default hardcoded credentials removed)
+    const adminCheck = sqliteDb.prepare("SELECT COUNT(*) AS count FROM admins").all();
+    if (adminCheck[0]?.count === 0) {
+      console.log('[DB Fallback] Notice: No admin account found. Create one securely using: node scripts/create-admin.js <username> "<Full Name>" <email> <password>');
     }
 
     dbMode = 'sqlite';
@@ -479,6 +432,7 @@ const testConnection = async () => {
           \`id\` INT AUTO_INCREMENT PRIMARY KEY,
           \`register_no\` VARCHAR(20) NOT NULL UNIQUE,
           \`dob\` VARCHAR(10) NOT NULL COMMENT 'Format: YYYY-MM-DD',
+          \`claim_code_hash\` VARCHAR(100) NULL,
           \`is_claimed\` TINYINT(1) NOT NULL DEFAULT 0,
           \`claimed_student_id\` INT NULL,
           \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -488,6 +442,29 @@ const testConnection = async () => {
           CONSTRAINT \`fk_whitelist_student\` FOREIGN KEY (\`claimed_student_id\`) REFERENCES \`students\` (\`id\`) ON DELETE SET NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
       `);
+    } catch (migErr) {
+      // Ignore
+    }
+    try {
+      await conn.query('ALTER TABLE `student_whitelist` ADD COLUMN IF NOT EXISTS `claim_code_hash` VARCHAR(100) NULL;');
+    } catch (migErr) {
+      // Ignore
+    }
+    try {
+      await conn.query(`
+        CREATE TABLE IF NOT EXISTS \`auth_lockouts\` (
+          \`key_name\` VARCHAR(150) PRIMARY KEY,
+          \`failures\` INT NOT NULL DEFAULT 0,
+          \`first_attempt_ms\` BIGINT NOT NULL,
+          \`locked_until_ms\` BIGINT NOT NULL DEFAULT 0
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+    } catch (migErr) {
+      // Ignore
+    }
+    try {
+      // Expand sensitive field lengths to store encrypted ciphertext (S10 fix)
+      await conn.query('ALTER TABLE `students` MODIFY `aadhaar_no` VARCHAR(255) NULL, MODIFY `bank_acc_no` VARCHAR(255) NULL;');
     } catch (migErr) {
       // Ignore
     }
@@ -502,31 +479,6 @@ const testConnection = async () => {
       await conn.query("UPDATE `admins` SET `name` = 'Dr.G.NANTHAKUMAR', `email` = 'aamecaidsskill@gmail.com' WHERE `username` = 'admin';");
     } catch (e) {
       // Ignore
-    }
-
-    // Ensure Department Faculty logins exist
-    try {
-      const facultyList = [
-        { username: 'chitra.tk', name: 'T.K.CHITRA' },
-        { username: 'jeeva.m', name: 'M.JEEVA' },
-        { username: 'selvarani.n', name: 'N.SELVARANI' },
-        { username: 'jayanthi.k', name: 'JAYANTHI K' }
-      ];
-      const facultyHash = await bcrypt.hash('Faculty@123', 10);
-      for (const fac of facultyList) {
-        const [existing] = await conn.query('SELECT id FROM `admins` WHERE `username` = ? LIMIT 1', [fac.username]);
-        if (existing.length === 0) {
-          await conn.query(
-            'INSERT INTO `admins` (username, password, name, email, department, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
-            [fac.username, facultyHash, fac.name, 'aamecaidsskill@gmail.com', 'Artificial Intelligence & Data Science']
-          );
-          console.log(`[DB Setup] Created faculty account for ${fac.name} (${fac.username})`);
-        } else {
-          await conn.query('UPDATE `admins` SET `name` = ?, `email` = ? WHERE `username` = ?', [fac.name, 'aamecaidsskill@gmail.com', fac.username]);
-        }
-      }
-    } catch (e) {
-      console.warn('[DB Setup Notice] Faculty auto-sync:', e.message);
     }
 
     conn.release();

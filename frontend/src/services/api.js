@@ -8,22 +8,14 @@ const API_HOST = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_
 const BASE_URL = `${API_HOST}/api`;
 
 /**
- * Robust fetch wrapper:
- * 1. Attaches Bearer token from localStorage (essential for cross-origin deployments if 3rd-party cookies are restricted)
- * 2. Attempts relative URL via Vite proxy or direct base URL
- * 3. In local development, if proxy is disconnected, falls back to direct port 5000.
+ * S4 fix: Pure httpOnly cookie authenticated fetch wrapper.
+ * credentials: 'include' transmits secure session cookie with all API calls.
  */
 const apiFetch = async (url, options = {}) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const headers = new Headers(options.headers || {});
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
   const finalOptions = {
     ...options,
-    headers,
-    credentials: options.credentials || 'include'
+    headers: new Headers(options.headers || {}),
+    credentials: 'include'
   };
 
   try {
@@ -80,11 +72,7 @@ export const api = {
       credentials: 'include',
       body: JSON.stringify({ registerNo, password })
     });
-    const data = await handleResponse(res);
-    if (data?.token && typeof window !== 'undefined') {
-      localStorage.setItem('token', data.token);
-    }
-    return data;
+    return await handleResponse(res);
   },
 
   async verifyEligibility(registerNo, dob, signal) {
@@ -105,11 +93,7 @@ export const api = {
       credentials: 'include',
       body: JSON.stringify(payload)
     });
-    const data = await handleResponse(res);
-    if (data?.token && typeof window !== 'undefined') {
-      localStorage.setItem('token', data.token);
-    }
-    return data;
+    return await handleResponse(res);
   },
 
   async loginAdmin(username, password) {
@@ -119,11 +103,7 @@ export const api = {
       credentials: 'include',
       body: JSON.stringify({ username, password })
     });
-    const data = await handleResponse(res);
-    if (data?.token && typeof window !== 'undefined') {
-      localStorage.setItem('token', data.token);
-    }
-    return data;
+    return await handleResponse(res);
   },
 
   async logout() {
@@ -140,10 +120,6 @@ export const api = {
       return await handleResponse(res);
     } catch (e) {
       return { success: true };
-    } finally {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-      }
     }
   },
 

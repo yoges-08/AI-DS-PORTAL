@@ -65,20 +65,21 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Limit: 10MB buffer in multer, 2MB enforced in controller
+// B8 fix: Enforce 2MB limit directly at multer upload layer (prevents buffering 10MB into RAM)
 const upload = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024
+    fileSize: 2 * 1024 * 1024
   },
   fileFilter
 });
 
-// Memory storage configuration for student documents (Cloudflare R2)
+// Memory storage configuration for student documents (Supabase Storage / Cloudflare R2)
 const documentUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024
+    fileSize: 2 * 1024 * 1024,
+    files: 1
   },
   fileFilter
 });

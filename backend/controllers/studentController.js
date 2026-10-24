@@ -4,6 +4,7 @@ const { pool } = require('../config/db');
 const { uploadObject, deleteObject, isStorageConfigured } = require('../config/storage');
 const { generateDocumentKey } = require('../middleware/uploadMiddleware');
 const { validateDocumentBuffer } = require('../utils/fileSecurity');
+const { encrypt, decrypt } = require('../utils/fieldCrypto');
 const {
   validateMobile,
   validateAadhaar,
@@ -98,6 +99,14 @@ const getStudentProfile = async (req, res) => {
 
     const student = students[0];
 
+    // S10 fix: Decrypt sensitive identity attributes for authorized viewing
+    if (student.aadhaar_no) {
+      student.aadhaar_no = decrypt(student.aadhaar_no);
+    }
+    if (student.bank_acc_no) {
+      student.bank_acc_no = decrypt(student.bank_acc_no);
+    }
+
     // Fetch documents
     const [docs] = await pool.query(
       `SELECT id, doc_type, file_name, file_path, file_size, mime_type, uploaded_at 
@@ -129,9 +138,9 @@ const updateStudentDetails = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Check lock status
+    // Check lock status (B3 fix: select rejection_reason so state is preserved)
     const [existing] = await pool.query(
-      'SELECT id, is_locked, status FROM students WHERE id = ?',
+      'SELECT id, is_locked, status, rejection_reason FROM students WHERE id = ?',
       [studentId]
     );
 
@@ -177,8 +186,19 @@ const updateStudentDetails = async (req, res) => {
     if (d.altMobile && !validateMobile(d.altMobile)) {
       errors.altMobile = 'Alternate mobile number must be exactly 10 digits starting with 6-9.';
     }
-    if (d.email && !validateEmail(d.email)) {
-      errors.email = 'Please provide a valid email address.';
+    if (d.email) {
+      if (!validateEmail(d.email)) {
+        errors.email = 'Please provide a valid email address.';
+      } else {
+        // B6 fix: Ensure updated email is not already taken by another student
+        const [dupe] = await pool.query(
+          'SELECT id FROM students WHERE LOWER(email) = LOWER(?) AND id <> ?',
+          [String(d.email).trim(), studentId]
+        );
+        if (dupe.length > 0) {
+          errors.email = 'This email address is already in use by another account.';
+        }
+      }
     }
     if (d.parentsMobile && !validateMobile(d.parentsMobile)) {
       errors.parentsMobile = 'Parents mobile number must be exactly 10 digits.';
@@ -259,7 +279,7 @@ const updateStudentDetails = async (req, res) => {
       ['community', 'community', (v) => parseSafeString(v)],
       ['caste', 'caste', (v) => parseSafeString(v)],
       ['nationality', 'nationality', (v) => parseSafeString(v)],
-      ['aadhaarNo', 'aadhaar_no', (v) => parseSafeString(v)],
+      ['aadhaarNo', 'aadhaar_no', (v) => (v ? encrypt(parseSafeString(v)) : null)],
       ['motherTongue', 'mother_tongue', (v) => parseSafeString(v)],
 
       ['mobile', 'mobile', (v) => parseSafeString(v)],
@@ -311,7 +331,7 @@ const updateStudentDetails = async (req, res) => {
 
       ['bankAccHolder', 'bank_acc_holder', (v) => parseSafeString(v)],
       ['bankName', 'bank_name', (v) => parseSafeString(v)],
-      ['bankAccNo', 'bank_acc_no', (v) => parseSafeString(v)],
+      ['bankAccNo', 'bank_acc_no', (v) => (v ? encrypt(parseSafeString(v)) : null)],
       ['bankIfsc', 'bank_ifsc', () => (safeIfsc || null)],
       ['bankBranch', 'bank_branch', (v) => parseSafeString(v)],
     ];
@@ -553,45 +573,64 @@ const uploadDocument = async (req, res) => {
       fs.writeFileSync(path.join(localUploadsDir, key), req.file.buffer);
     }
 
-    // If uploading photo, update photo_path in students table
-    if (docType === 'photo') {
-      await pool.query(
-        'UPDATE students SET photo_path = ? WHERE id = ?',
-        [filePath, studentId]
-      );
-    }
-
-    // Check if docType already exists for this student, if so replace or update
-    const [existingDoc] = await pool.query(
-      'SELECT id, file_path FROM student_documents WHERE student_id = ? AND doc_type = ?',
-      [studentId, docType]
-    );
-
+    // B5 fix: Perform document record creation and student photo path update in an atomic transaction
+    const conn = await pool.getConnection();
     let docId;
     let oldKey = null;
 
-    if (existingDoc.length > 0) {
-      docId = existingDoc[0].id;
-      oldKey = path.basename(existingDoc[0].file_path);
+    try {
+      await conn.beginTransaction();
 
-      await pool.query(
-        `UPDATE student_documents SET 
-           file_name = ?, file_path = ?, file_size = ?, mime_type = ?, uploaded_at = NOW() 
-         WHERE id = ?`,
-        [req.file.originalname, filePath, req.file.size, req.file.mimetype, docId]
+      // Check if docType already exists for this student
+      const [existingDoc] = await conn.query(
+        'SELECT id, file_path FROM student_documents WHERE student_id = ? AND doc_type = ? FOR UPDATE',
+        [studentId, docType]
       );
-    } else {
-      const [insertResult] = await pool.query(
-        `INSERT INTO student_documents (student_id, doc_type, file_name, file_path, file_size, mime_type, uploaded_at)
-         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-        [studentId, docType, req.file.originalname, filePath, req.file.size, req.file.mimetype]
-      );
-      docId = insertResult.insertId;
+
+      if (existingDoc.length > 0) {
+        docId = existingDoc[0].id;
+        oldKey = path.basename(existingDoc[0].file_path);
+
+        await conn.query(
+          `UPDATE student_documents SET 
+             file_name = ?, file_path = ?, file_size = ?, mime_type = ?, uploaded_at = NOW() 
+           WHERE id = ?`,
+          [req.file.originalname, filePath, req.file.size, req.file.mimetype, docId]
+        );
+      } else {
+        const [insertResult] = await conn.query(
+          `INSERT INTO student_documents (student_id, doc_type, file_name, file_path, file_size, mime_type, uploaded_at)
+           VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+          [studentId, docType, req.file.originalname, filePath, req.file.size, req.file.mimetype]
+        );
+        docId = insertResult.insertId;
+      }
+
+      // If uploading photo, update photo_path in students table ONLY AFTER document row succeeds
+      if (docType === 'photo') {
+        await conn.query(
+          'UPDATE students SET photo_path = ? WHERE id = ?',
+          [filePath, studentId]
+        );
+      }
+
+      await conn.commit();
+    } catch (txErr) {
+      await conn.rollback();
+      // Remove newly uploaded orphaned file from storage on database failure
+      try { await deleteObject(key); } catch (e) {}
+      throw txErr;
+    } finally {
+      conn.release();
     }
 
-    // Clean up replaced old object after new upload and DB update succeed
+    // B4 fix: Clean up replaced old object safely so storage errors never fail a successful DB update
     if (oldKey && oldKey !== key) {
-      await deleteObject(oldKey);
+      try {
+        await deleteObject(oldKey);
+      } catch (cleanErr) {
+        console.warn('[Old file cleanup notice]:', oldKey, cleanErr.message);
+      }
       const oldDiskPath = path.join(__dirname, '..', 'uploads', oldKey);
       if (fs.existsSync(oldDiskPath)) {
         try { fs.unlinkSync(oldDiskPath); } catch (e) { /* ignore */ }
@@ -642,9 +681,13 @@ const deleteDocument = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Document not found.' });
     }
 
-    // Delete object from Cloudflare R2
+    // B4 fix: Safe object deletion from Cloudflare R2 / Supabase Storage
     const key = path.basename(doc[0].file_path);
-    await deleteObject(key);
+    try {
+      await deleteObject(key);
+    } catch (cleanErr) {
+      console.warn('[Delete Document Storage Cleanup Warning]:', key, cleanErr.message);
+    }
 
     // Delete fallback from disk if present
     const diskPath = path.join(__dirname, '..', 'uploads', key);

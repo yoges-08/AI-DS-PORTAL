@@ -2,15 +2,12 @@ const xlsx = require('xlsx');
 const PDFDocument = require('pdfkit');
 const { pool } = require('../config/db');
 const { maskAadhaar, maskBankAcc } = require('../utils/validators');
+const { decrypt } = require('../utils/fieldCrypto');
 const { logAdminAction } = require('../utils/auditLogger');
 
-// Helper to prevent Excel formula injection
-const sanitizeExcelValue = (val) => {
-  if (typeof val === 'string' && /^[=+\-@\t\r]/.test(val)) {
-    return `'${val}`;
-  }
-  return val;
-};
+// B7 fix: SheetJS writes string cells as typed text cells, avoiding formula execution.
+// Preserving raw values avoids corrupting strings starting with '+', '-', etc.
+const sanitizeExcelValue = (val) => val;
 
 const toSafeString = (v) => {
   if (typeof v === 'string') return v;
@@ -94,7 +91,7 @@ const exportExcel = async (req, res) => {
 
     const [rows] = await pool.query(query, params);
 
-    // Sanitize values against Excel formula injection and format NULLs safely
+    // Sanitize values and format NULLs safely
     const sanitizedRows = rows.map((row) => {
       const cleanRow = {};
       for (const [key, val] of Object.entries(row)) {
@@ -102,8 +99,11 @@ const exportExcel = async (req, res) => {
           cleanRow[key] = val !== null && val !== undefined ? val : 'Not set';
         } else if (key === 'Section') {
           cleanRow[key] = val ? val : 'Not set';
+        } else if (key === 'Bank Account No') {
+          const rawAcc = val ? decrypt(val) : '';
+          cleanRow[key] = rawAcc ? maskBankAcc(rawAcc) : 'Not provided';
         } else {
-          cleanRow[key] = sanitizeExcelValue(val);
+          cleanRow[key] = val !== null && val !== undefined ? sanitizeExcelValue(val) : '';
         }
       }
       return cleanRow;

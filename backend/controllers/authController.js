@@ -1,9 +1,4 @@
-let bcrypt;
-try {
-  bcrypt = require('bcrypt');
-} catch (e) {
-  bcrypt = require('bcryptjs');
-}
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/db');
 const { 
@@ -16,70 +11,32 @@ const {
 const { invalidateTokenCache } = require('../middleware/authMiddleware');
 const { JWT_SECRET, isProduction } = require('../config/secrets');
 const { logAdminAction } = require('../utils/auditLogger');
+const { isLocked, recordFailure, clearFailures } = require('../utils/lockout');
+const { checkPassword } = require('../utils/passwordPolicy');
 
+// Dummy bcrypt hash for timing attack mitigation (cost factor 12)
+const DUMMY_HASH = '$2b$12$cr1oA/k.M4Vhw16WcMib..0MuIGZshwoUFe3Rpmx7d9pAF/F6g.2a';
+
+// S4 fix: Same-origin cookie options with SameSite=Lax for security against CSRF
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProduction,
-  // 'none' allows cross-domain cookies between Vercel frontend and Render backend
-  sameSite: isProduction ? 'none' : 'lax',
-  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  sameSite: 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for students
+  path: '/'
 };
 
-// Per-register-number sliding failure tracker to prevent online DOB dictionary attacks (Requirement C)
-// Map<cleanRegNo, { failures: number, lockedUntil: number, firstAttempt: number }>
-const regNoLockouts = new Map();
-
-// Periodic cleanup of stale entries every 10 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [regNo, data] of regNoLockouts.entries()) {
-    if (now > data.lockedUntil && now - data.firstAttempt > 15 * 60 * 1000) {
-      regNoLockouts.delete(regNo);
-    }
-  }
-}, 10 * 60 * 1000).unref();
-
-/**
- * Handle verification failure counting and lockout logic
- */
-const handleVerificationFailure = async (req, res, cleanReg) => {
-  const now = Date.now();
-  const current = regNoLockouts.get(cleanReg) || { failures: 0, lockedUntil: 0, firstAttempt: now };
-  if (now - current.firstAttempt > 15 * 60 * 1000) {
-    current.failures = 0;
-    current.firstAttempt = now;
-  }
-  current.failures += 1;
-
-  if (current.failures >= 5) {
-    current.lockedUntil = now + 15 * 60 * 1000;
-    regNoLockouts.set(cleanReg, current);
-
-    // Log ONLY lockouts to audit log (Requirement C)
-    await logAdminAction({
-      adminUsername: 'SYSTEM',
-      action: 'VERIFICATION_LOCKOUT',
-      studentRegNo: cleanReg,
-      details: `Register number ${cleanReg} locked out for 15 minutes after 5 failed eligibility verification attempts.`,
-      ipAddress: req.ip
-    });
-
-    return res.status(429).json({
-      success: false,
-      status: 'RATE_LIMITED',
-      message: 'Too many verification attempts for this Register Number. Please try again after 15 minutes.'
-    });
-  }
-
-  regNoLockouts.set(cleanReg, current);
-  return res.json({
-    success: true,
-    status: 'NO_MATCH'
-  });
+// S13 fix: Shorter session lifetime (12h) for administrative privileges
+const ADMIN_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: 'lax',
+  maxAge: 12 * 60 * 60 * 1000, // 12 hours
+  path: '/'
 };
 
 /**
- * Live student eligibility verification against whitelist (Requirement C)
+ * Student eligibility verification against whitelist
  * POST /api/auth/student/verify-eligibility
  * Body: { registerNo, dob }
  */
@@ -96,9 +53,8 @@ const verifyStudentEligibility = async (req, res) => {
       });
     }
 
-    const now = Date.now();
-    const lockout = regNoLockouts.get(cleanReg);
-    if (lockout && now < lockout.lockedUntil) {
+    const lockKey = `verify:${cleanReg}`;
+    if (await isLocked(lockKey)) {
       return res.status(429).json({
         success: false,
         status: 'RATE_LIMITED',
@@ -108,7 +64,11 @@ const verifyStudentEligibility = async (req, res) => {
 
     // Age validation: plausible student age 15 to 40
     if (!validateStudentAge(normalizedDob, 15, 40)) {
-      return handleVerificationFailure(req, res, cleanReg);
+      await recordFailure(lockKey);
+      return res.json({
+        success: true,
+        status: 'NO_MATCH'
+      });
     }
 
     // Query whitelist
@@ -125,24 +85,30 @@ const verifyStudentEligibility = async (req, res) => {
 
     if (whitelistRows.length > 0) {
       const entry = whitelistRows[0];
+      // S8 fix: If already claimed or registered, return generic failure to prevent directory harvesting
       if (entry.is_claimed === 1 || entry.claimed_student_id !== null || studentRows.length > 0) {
-        regNoLockouts.delete(cleanReg);
+        await recordFailure(lockKey);
         return res.json({
           success: true,
-          status: 'ALREADY_REGISTERED'
+          status: 'NO_MATCH',
+          message: 'Registration details could not be verified or account already registered. Contact department administrator if you need assistance.'
         });
       }
 
       // Valid unclaimed match
-      regNoLockouts.delete(cleanReg);
+      await clearFailures(lockKey);
       return res.json({
         success: true,
         status: 'MATCH'
       });
     }
 
-    // No match: either wrong DOB or unknown register number (indistinguishable)
-    return handleVerificationFailure(req, res, cleanReg);
+    // No match: Record failure toward persistent lockout
+    await recordFailure(lockKey);
+    return res.json({
+      success: true,
+      status: 'NO_MATCH'
+    });
   } catch (error) {
     console.error('[verifyStudentEligibility Error]:', error);
     return res.status(500).json({
@@ -153,20 +119,29 @@ const verifyStudentEligibility = async (req, res) => {
 };
 
 /**
- * Student Self-Registration (Requirement D)
+ * Student Self-Registration
  * POST /api/auth/student/register
- * Body: { name, registerNo, dob, email, password }
+ * Body: { name, registerNo, dob, email, password, claimCode }
  */
 const registerStudent = async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { name, registerNo, dob, email, password } = req.body;
+    const { name, registerNo, dob, email, password, claimCode } = req.body;
 
     const trimmedName = String(name || '').trim();
     const cleanReg = cleanRegisterNo(registerNo);
     const normalizedDob = normalizeDob(dob);
     const cleanEmail = String(email || '').trim().toLowerCase();
     const rawPassword = String(password || '');
+
+    // S3 fix: Enforce per-register-number lockout check on registration
+    const lockKey = `verify:${cleanReg}`;
+    if (await isLocked(lockKey)) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many registration attempts for this Register Number. Please try again after 15 minutes.'
+      });
+    }
 
     // Validate inputs
     if (!trimmedName || trimmedName.length > 100) {
@@ -184,8 +159,11 @@ const registerStudent = async (req, res) => {
     if (!cleanEmail || !validateEmail(cleanEmail) || cleanEmail.length > 100) {
       return res.status(400).json({ success: false, message: 'A valid email address is required.' });
     }
-    if (!rawPassword || rawPassword.length < 6) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
+
+    // S7 fix: Strict institutional password policy
+    const pwError = checkPassword(rawPassword, { registerNo: cleanReg, dob: normalizedDob, minLength: 8 });
+    if (pwError) {
+      return res.status(400).json({ success: false, message: pwError });
     }
 
     // Begin atomic transaction
@@ -193,15 +171,16 @@ const registerStudent = async (req, res) => {
 
     // 1. Re-verify whitelist record with row lock FOR UPDATE
     const [whitelistRows] = await conn.query(
-      'SELECT id, is_claimed, claimed_student_id FROM student_whitelist WHERE register_no = ? AND dob = ? FOR UPDATE',
+      'SELECT id, is_claimed, claimed_student_id, claim_code_hash FROM student_whitelist WHERE register_no = ? AND dob = ? FOR UPDATE',
       [cleanReg, normalizedDob]
     );
 
     if (whitelistRows.length === 0) {
       await conn.rollback();
+      await recordFailure(lockKey);
       return res.status(400).json({
         success: false,
-        message: 'Register Number and Date of Birth do not match department records.'
+        message: 'Registration details could not be verified with department records.'
       });
     }
 
@@ -212,6 +191,20 @@ const registerStudent = async (req, res) => {
         success: false,
         message: 'An account has already been registered for this student. Please log in.'
       });
+    }
+
+    // S3 fix (Option 1): If whitelist record requires claim code, verify it
+    if (whitelistEntry.claim_code_hash) {
+      const userCode = String(claimCode || '').trim().toUpperCase();
+      const isClaimValid = await bcrypt.compare(userCode, whitelistEntry.claim_code_hash);
+      if (!isClaimValid) {
+        await conn.rollback();
+        await recordFailure(lockKey);
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid department one-time claim code. Please check with your department coordinator.'
+        });
+      }
     }
 
     // 2. Double-check students table for register number
@@ -240,8 +233,8 @@ const registerStudent = async (req, res) => {
       });
     }
 
-    // 4. Hash password with bcrypt
-    const hashedPassword = await bcrypt.hash(rawPassword, 10);
+    // 4. Hash password with bcrypt cost 12
+    const hashedPassword = await bcrypt.hash(rawPassword, 12);
 
     // 5. Insert new student account
     const [insertResult] = await conn.query(
@@ -259,6 +252,9 @@ const registerStudent = async (req, res) => {
 
     await conn.commit();
 
+    // S3 fix: Clear failures on successful registration
+    await clearFailures(lockKey);
+
     // 7. Audit log (Never log password!)
     await logAdminAction({
       adminUsername: 'SYSTEM',
@@ -269,7 +265,7 @@ const registerStudent = async (req, res) => {
       ipAddress: req.ip
     });
 
-    // 8. Generate JWT session and set cookie
+    // 8. Generate JWT session and set httpOnly cookie
     const token = jwt.sign(
       {
         id: newStudentId,
@@ -286,10 +282,10 @@ const registerStudent = async (req, res) => {
 
     res.cookie('token', token, COOKIE_OPTIONS);
 
+    // S4 fix: Do NOT return token in response payload
     return res.status(201).json({
       success: true,
       message: 'Account created successfully. Welcome to the Student Portal!',
-      token,
       user: {
         id: newStudentId,
         role: 'STUDENT',
@@ -322,7 +318,7 @@ const registerStudent = async (req, res) => {
 /**
  * Student Login
  * Username: Register Number
- * Password: User-chosen password (Requirement E)
+ * Password: User-chosen password
  */
 const loginStudent = async (req, res) => {
   try {
@@ -343,12 +339,24 @@ const loginStudent = async (req, res) => {
       });
     }
 
+    // S7 fix: Per-account lockout check
+    const lockKey = `login:student:${cleanReg}`;
+    if (await isLocked(lockKey)) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many failed login attempts for this account. Please try again after 15 minutes.'
+      });
+    }
+
     const [rows] = await pool.query(
       'SELECT id, register_no, name, dob, email, password, year, section, status, is_locked, token_version, must_change_password FROM students WHERE register_no = ?',
       [cleanReg]
     );
 
+    // S7 fix: Timing leak prevention using dummy bcrypt hash
     if (rows.length === 0) {
+      await bcrypt.compare(String(password), DUMMY_HASH);
+      await recordFailure(lockKey);
       return res.status(401).json({
         success: false,
         message: 'Invalid Register Number or Password.'
@@ -359,11 +367,15 @@ const loginStudent = async (req, res) => {
     const isMatch = await bcrypt.compare(String(password).trim(), student.password);
 
     if (!isMatch) {
+      await recordFailure(lockKey);
       return res.status(401).json({
         success: false,
         message: 'Invalid Register Number or Password.'
       });
     }
+
+    // S7 fix: Clear login failures on valid authentication
+    await clearFailures(lockKey);
 
     // Generate JWT
     const token = jwt.sign(
@@ -380,13 +392,13 @@ const loginStudent = async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Set cookie
+    // Set secure httpOnly cookie
     res.cookie('token', token, COOKIE_OPTIONS);
 
+    // S4 fix: Do NOT expose JWT token in JSON payload
     return res.json({
       success: true,
       message: 'Login successful.',
-      token, // Expose token for cross-domain Bearer authorization (e.g. Vercel -> Render)
       mustChangePassword: Boolean(student.must_change_password),
       user: {
         id: student.id,
@@ -403,26 +415,16 @@ const loginStudent = async (req, res) => {
     });
   } catch (error) {
     console.error('[loginStudent Error]:', error);
-    let message = 'An error occurred during student login. Please try again.';
-    if (error.code === 'ECONNREFUSED') {
-      message = 'Database connection failed: MySQL server is not running on localhost:3306. Please start MySQL (e.g. start MySQL in XAMPP or MySQL Service) and run: npm run seed';
-    } else if (error.code === 'ER_BAD_DB_ERROR') {
-      message = 'Database "aids_portal" does not exist in MySQL. Please run: npm run seed in backend folder.';
-    } else if (error.code === 'ER_NO_SUCH_TABLE') {
-      message = 'Database tables not found. Please run: npm run seed in backend folder.';
-    } else if (error.code === 'ER_ACCESS_DENIED_ERROR') {
-      message = 'MySQL access denied. Please verify DB_PASSWORD in backend/.env.';
-    }
+    // S11 fix: Mask database credentials and server internal details
     return res.status(500).json({
       success: false,
-      message
+      message: 'An unexpected error occurred during login. Please try again.'
     });
   }
 };
 
 /**
- * Admin Login
- * Username and Password
+ * Admin / Faculty Login
  */
 const loginAdmin = async (req, res) => {
   try {
@@ -435,12 +437,26 @@ const loginAdmin = async (req, res) => {
       });
     }
 
+    const cleanUsername = String(username).trim().toLowerCase();
+
+    // S7 fix: Account lockout on admin login
+    const lockKey = `login:admin:${cleanUsername}`;
+    if (await isLocked(lockKey)) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many failed login attempts for this administrative account. Please try again after 15 minutes.'
+      });
+    }
+
     const [rows] = await pool.query(
-      'SELECT id, username, password, name, email, department, token_version FROM admins WHERE LOWER(username) = LOWER(?)',
-      [username.trim()]
+      'SELECT id, username, password, name, email, department, token_version FROM admins WHERE LOWER(username) = ?',
+      [cleanUsername]
     );
 
+    // S7 fix: Timing leak prevention using dummy bcrypt hash
     if (rows.length === 0) {
+      await bcrypt.compare(String(password), DUMMY_HASH);
+      await recordFailure(lockKey);
       return res.status(401).json({
         success: false,
         message: 'Invalid Admin username or password.'
@@ -451,13 +467,17 @@ const loginAdmin = async (req, res) => {
     const isMatch = await bcrypt.compare(String(password).trim(), admin.password);
 
     if (!isMatch) {
+      await recordFailure(lockKey);
       return res.status(401).json({
         success: false,
         message: 'Invalid Admin username or password.'
       });
     }
 
-    // Generate JWT
+    // Clear failures on success
+    await clearFailures(lockKey);
+
+    // S13 fix: Admin token TTL restricted to 12 hours
     const token = jwt.sign(
       {
         id: admin.id,
@@ -468,15 +488,15 @@ const loginAdmin = async (req, res) => {
         tokenVersion: admin.token_version || 1
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '12h' }
     );
 
-    res.cookie('token', token, COOKIE_OPTIONS);
+    res.cookie('token', token, ADMIN_COOKIE_OPTIONS);
 
+    // S4 fix: Do NOT expose JWT token in JSON payload
     return res.json({
       success: true,
       message: 'Admin login successful.',
-      token, // Expose token for cross-domain Bearer authorization (e.g. Vercel -> Render)
       user: {
         id: admin.id,
         role: 'ADMIN',
@@ -488,26 +508,17 @@ const loginAdmin = async (req, res) => {
     });
   } catch (error) {
     console.error('[loginAdmin Error]:', error);
-    let message = 'An error occurred during admin login. Please try again.';
-    if (error.code === 'ECONNREFUSED') {
-      message = 'Database connection failed: MySQL server is not running on localhost:3306. Please start MySQL and run: npm run seed';
-    } else if (error.code === 'ER_BAD_DB_ERROR') {
-      message = 'Database "aids_portal" does not exist in MySQL. Please run: npm run seed in backend folder.';
-    } else if (error.code === 'ER_NO_SUCH_TABLE') {
-      message = 'Database tables not found. Please run: npm run seed in backend folder.';
-    } else if (error.code === 'ER_ACCESS_DENIED_ERROR') {
-      message = 'MySQL access denied. Please verify DB_PASSWORD in backend/.env.';
-    }
+    // S11 fix: Mask database credentials and server internal details
     return res.status(500).json({
       success: false,
-      message
+      message: 'An unexpected error occurred during admin login. Please try again.'
     });
   }
 };
 
 /**
  * Logout
- * Clears cookie and increments token_version to invalidate existing JWT sessions (SEC-03)
+ * Clears cookie and increments token_version to invalidate existing JWT sessions
  */
 const logout = async (req, res) => {
   try {
@@ -518,7 +529,7 @@ const logout = async (req, res) => {
     if (token) {
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        if (decoded?.id && decoded?.role) {
+        if (decoded?.id && decoded?.role && ['ADMIN', 'STUDENT'].includes(decoded.role)) {
           const table = decoded.role === 'ADMIN' ? 'admins' : 'students';
           await pool.query(
             `UPDATE ${table} SET token_version = COALESCE(token_version, 1) + 1 WHERE id = ?`,
@@ -615,14 +626,13 @@ const changePassword = async (req, res) => {
       });
     }
 
-    if (String(newPassword).length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'New password must be at least 6 characters long.'
-      });
-    }
-
     const { id, role } = req.user;
+
+    // S7 fix: Strict institutional password policy validation
+    const pwPolicyErr = checkPassword(newPassword, { minLength: role === 'ADMIN' ? 12 : 8 });
+    if (pwPolicyErr) {
+      return res.status(400).json({ success: false, message: pwPolicyErr });
+    }
 
     if (role === 'ADMIN') {
       const [admins] = await pool.query('SELECT password FROM admins WHERE id = ?', [id]);
@@ -633,7 +643,7 @@ const changePassword = async (req, res) => {
       if (!isMatch) {
         return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
       }
-      const hashed = await bcrypt.hash(String(newPassword).trim(), 10);
+      const hashed = await bcrypt.hash(String(newPassword).trim(), 12);
       await pool.query(
         'UPDATE admins SET password = ?, token_version = COALESCE(token_version, 1) + 1 WHERE id = ?',
         [hashed, id]
@@ -641,7 +651,7 @@ const changePassword = async (req, res) => {
       invalidateTokenCache('ADMIN', id);
       return res.json({ success: true, message: 'Password updated successfully. Existing sessions have been revoked.' });
     } else if (role === 'STUDENT') {
-      const [students] = await pool.query('SELECT password FROM students WHERE id = ?', [id]);
+      const [students] = await pool.query('SELECT password, register_no, dob FROM students WHERE id = ?', [id]);
       if (students.length === 0) {
         return res.status(404).json({ success: false, message: 'Student account not found.' });
       }
@@ -649,7 +659,18 @@ const changePassword = async (req, res) => {
       if (!isMatch) {
         return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
       }
-      const hashed = await bcrypt.hash(String(newPassword).trim(), 10);
+
+      // Check against student register number and dob
+      const studentPwErr = checkPassword(newPassword, {
+        registerNo: students[0].register_no,
+        dob: students[0].dob,
+        minLength: 8
+      });
+      if (studentPwErr) {
+        return res.status(400).json({ success: false, message: studentPwErr });
+      }
+
+      const hashed = await bcrypt.hash(String(newPassword).trim(), 12);
       await pool.query(
         'UPDATE students SET password = ?, token_version = COALESCE(token_version, 1) + 1, must_change_password = 0 WHERE id = ?',
         [hashed, id]

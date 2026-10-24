@@ -4,6 +4,7 @@ dotenv.config();
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
@@ -17,6 +18,12 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
+// S15: Security headers with Helmet
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: 'same-site' }
+}));
+
 // Trust proxy only when configured for reverse proxy environments (nginx, Render, Cloudflare, etc.)
 if (process.env.TRUST_PROXY) {
   const tp = process.env.TRUST_PROXY;
@@ -29,46 +36,29 @@ const tempDir = path.join(__dirname, 'uploads', 'temp');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
-// CORS Configuration: Whitelist CLIENT_URL (supports comma-separated list), Vercel deployments, same-host, and dev loopbacks
+// S1: Strict CORS Whitelist (Eliminates wildcard *.vercel.app and host-header spoofing)
 const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')
   .map(url => url.trim().replace(/\/$/, ''))
   .filter(Boolean);
 
-const vercelOriginRegex = /^https:\/\/([a-zA-Z0-9_\-]+\.)*vercel\.app$/;
 const localOriginRegex = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 app.use(cors((req, callback) => {
   const origin = req.headers.origin;
-  let allowed = false;
-
-  if (!origin) {
-    allowed = true; // Non-browser or same-origin requests
-  } else if (allowedOrigins.includes(origin)) {
-    allowed = true;
-  } else if (vercelOriginRegex.test(origin)) {
-    // Automatically allow Vercel production and preview domains
-    allowed = true;
-  } else if (process.env.NODE_ENV !== 'production' && localOriginRegex.test(origin)) {
-    allowed = true;
-  } else {
-    try {
-      // Same-site request (site opened at its own served address / host)
-      allowed = new URL(origin).host === req.headers.host;
-    } catch (e) {
-      allowed = false;
-    }
-  }
+  const allowed =
+    !origin || // Non-browser or same-origin requests
+    allowedOrigins.includes(origin) || // Explicitly whitelisted frontend origin(s)
+    (process.env.NODE_ENV !== 'production' && localOriginRegex.test(origin));
 
   callback(null, {
     origin: allowed,
     credentials: true,
-    maxAge: 86400, // Cache preflight OPTIONS response for 24 hours (eliminates duplicate round-trips)
+    maxAge: 86400,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
   });
 }));
-
 
 // API Request Logger (Development only)
 if (process.env.NODE_ENV !== 'production') {
@@ -83,9 +73,32 @@ if (process.env.NODE_ENV !== 'production') {
 // Global API rate limiter
 app.use('/api', apiLimiter);
 
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
-app.use(cookieParser(process.env.COOKIE_SECRET || 'department_cookie_secret_aids_2026'));
+// B8 fix: Limit JSON payload to 1MB to prevent memory exhaustion
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// S12 fix: Use validated COOKIE_SECRET imported from config/secrets
+app.use(cookieParser(COOKIE_SECRET));
+
+// S6 fix: CSRF Origin verification for state-changing HTTP requests
+const csrfOriginCheck = (req, res, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  const origin = req.headers.origin;
+  if (!origin) return next(); // non-browser clients (e.g. mobile, curl, server-to-server)
+  let originHost;
+  try {
+    originHost = new URL(origin).origin;
+  } catch {
+    return res.status(403).json({ success: false, message: 'Invalid origin header.' });
+  }
+  const isAllowed = allowedOrigins.includes(originHost) || 
+    (process.env.NODE_ENV !== 'production' && localOriginRegex.test(originHost));
+  if (!isAllowed) {
+    return res.status(403).json({ success: false, message: 'Cross-site request blocked.' });
+  }
+  next();
+};
+app.use('/api', csrfOriginCheck);
 
 /**
  * Authenticated & Authorized Document Serving
@@ -205,7 +218,7 @@ app.get('/api/health', async (req, res) => {
     dbStatus = {
       connected: false,
       mode: getDbMode(),
-      error: dbErr.message
+      error: process.env.NODE_ENV === 'production' ? 'Database service unavailable' : dbErr.message
     };
   }
 
@@ -262,9 +275,12 @@ app.use((err, req, res, next) => {
     });
   }
 
-  return res.status(err.status || 500).json({
+  const status = err.status && err.status < 500 ? err.status : 500;
+  return res.status(status).json({
     success: false,
-    message: err.message || 'Internal Server Error'
+    message: status === 500 && process.env.NODE_ENV === 'production'
+      ? 'Internal Server Error'
+      : (err.message || 'Internal Server Error')
   });
 });
 

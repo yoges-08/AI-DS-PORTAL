@@ -30,38 +30,46 @@ const authenticateToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+
+    // S13 fix: Require valid payload fields and whitelisted role
+    if (decoded.tokenVersion === undefined || !decoded.id || !decoded.role || !['ADMIN', 'STUDENT'].includes(decoded.role)) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid session structure. Please log in again.'
+      });
+    }
+
     req.user = decoded;
 
-    // SEC-03: Invalidate tokens upon password change or logout via token_version check
-    if (decoded.tokenVersion !== undefined && decoded.id && decoded.role) {
-      const cacheKey = `${decoded.role}:${decoded.id}`;
-      const now = Date.now();
-      let currentVersion;
+    // Invalidate tokens upon password change or logout via token_version check
+    const cacheKey = `${decoded.role}:${decoded.id}`;
+    const now = Date.now();
+    let currentVersion;
 
-      const cached = tokenVersionCache.get(cacheKey);
-      if (cached && (now - cached.cachedAt < 15000)) {
-        currentVersion = cached.version;
-      } else {
-        const table = decoded.role === 'ADMIN' ? 'admins' : 'students';
-        const [rows] = await pool.query(`SELECT token_version FROM ${table} WHERE id = ?`, [decoded.id]);
-        if (rows.length === 0) {
-          return res.status(401).json({ success: false, message: 'Account no longer exists.' });
-        }
-        currentVersion = rows[0].token_version || 1;
-        tokenVersionCache.set(cacheKey, { version: currentVersion, cachedAt: now });
+    const cached = tokenVersionCache.get(cacheKey);
+    if (cached && (now - cached.cachedAt < 5000)) { // 5s TTL
+      currentVersion = cached.version;
+    } else {
+      const table = decoded.role === 'ADMIN' ? 'admins' : 'students';
+      const [rows] = await pool.query(`SELECT token_version FROM ${table} WHERE id = ?`, [decoded.id]);
+      if (rows.length === 0) {
+        return res.status(401).json({ success: false, message: 'Account no longer exists.' });
       }
+      currentVersion = rows[0].token_version || 1;
+      tokenVersionCache.set(cacheKey, { version: currentVersion, cachedAt: now });
+    }
 
-      if (decoded.tokenVersion !== currentVersion) {
-        return res.status(401).json({
-          success: false,
-          message: 'Session has been invalidated due to a recent password change or logout. Please log in again.'
-        });
-      }
+    if (decoded.tokenVersion !== currentVersion) {
+      return res.status(401).json({
+        success: false,
+        message: 'Session has been invalidated due to a recent password change or logout. Please log in again.'
+      });
     }
 
     next();
   } catch (error) {
-    return res.status(403).json({
+    // B2 fix: Return 401 for expired or invalid authentication token
+    return res.status(401).json({
       success: false,
       message: 'Session expired or invalid token. Please log in again.'
     });

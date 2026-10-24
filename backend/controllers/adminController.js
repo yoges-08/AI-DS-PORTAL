@@ -26,6 +26,7 @@ const {
 const { logAdminAction } = require('../utils/auditLogger');
 const { validateSpreadsheetBuffer } = require('../utils/fileSecurity');
 const { invalidateTokenCache } = require('../middleware/authMiddleware');
+const { decrypt } = require('../utils/fieldCrypto');
 
 // Safe parsing helpers
 const toPositiveInt = (v, fallback) => {
@@ -218,8 +219,8 @@ const getStudents = async (req, res) => {
       is_locked: Boolean(s.is_locked),
       is_first_graduate: Boolean(s.is_first_graduate),
       is_pms: Boolean(s.is_pms),
-      aadhaar_no: maskAadhaar(s.aadhaar_no),
-      bank_acc_no: maskBankAcc(s.bank_acc_no)
+      aadhaar_no: maskAadhaar(s.aadhaar_no ? decrypt(s.aadhaar_no) : s.aadhaar_no),
+      bank_acc_no: maskBankAcc(s.bank_acc_no ? decrypt(s.bank_acc_no) : s.bank_acc_no)
     }));
 
     return res.json({
@@ -522,15 +523,33 @@ const bulkImportStudents = async (req, res) => {
     let skippedCount = 0;
     const errors = [...parsed.errors.map(e => e.error)];
 
-    for (const item of parsed.validRows) {
-      // Check if register number exists in student_whitelist
-      const [existingWl] = await conn.query(
-        'SELECT id, dob, is_claimed FROM student_whitelist WHERE register_no = ?',
-        [item.registerNo]
-      );
+    // B8 fix: Bulk fetch existing whitelist and student records in batches (prevents slow row-by-row queries)
+    const regNos = parsed.validRows.map(r => r.registerNo);
+    const existingWlMap = new Map();
+    const existingStudentMap = new Map();
+    const BATCH_SIZE = 500;
 
-      if (existingWl.length > 0) {
-        const wl = existingWl[0];
+    for (let i = 0; i < regNos.length; i += BATCH_SIZE) {
+      const chunk = regNos.slice(i, i + BATCH_SIZE);
+      const ph = chunk.map(() => '?').join(',');
+
+      const [wlRows] = await conn.query(
+        `SELECT id, register_no, dob, is_claimed FROM student_whitelist WHERE register_no IN (${ph})`,
+        chunk
+      );
+      wlRows.forEach(r => existingWlMap.set(r.register_no, r));
+
+      const [stRows] = await conn.query(
+        `SELECT id, register_no FROM students WHERE register_no IN (${ph})`,
+        chunk
+      );
+      stRows.forEach(r => existingStudentMap.set(r.register_no, r));
+    }
+
+    for (const item of parsed.validRows) {
+      const wl = existingWlMap.get(item.registerNo);
+
+      if (wl) {
         if (wl.is_claimed) {
           skippedCount++;
           continue;
@@ -547,17 +566,13 @@ const bulkImportStudents = async (req, res) => {
           skippedCount++;
         }
       } else {
-        // Check if student already registered in students table
-        const [existingStudent] = await conn.query(
-          'SELECT id FROM students WHERE register_no = ?',
-          [item.registerNo]
-        );
+        const existingStudent = existingStudentMap.get(item.registerNo);
 
-        if (existingStudent.length > 0) {
+        if (existingStudent) {
           await conn.query(
             `INSERT INTO student_whitelist (register_no, dob, is_claimed, claimed_student_id)
              VALUES (?, ?, 1, ?)`,
-            [item.registerNo, item.dob, existingStudent[0].id]
+            [item.registerNo, item.dob, existingStudent.id]
           );
           skippedCount++;
         } else {
@@ -1041,6 +1056,11 @@ const deleteStudent = async (req, res) => {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
+      // B1 fix: Reset whitelist claimed status so student can re-register if needed
+      await conn.query(
+        'UPDATE student_whitelist SET is_claimed = 0, claimed_student_id = NULL WHERE register_no = ?',
+        [student.register_no]
+      );
       await conn.query('DELETE FROM student_documents WHERE student_id = ?', [studentId]);
       await conn.query('DELETE FROM students WHERE id = ?', [studentId]);
       await conn.commit();
@@ -1341,7 +1361,14 @@ const bulkDeleteStudents = async (req, res) => {
 
       for (let i = 0; i < allIds.length; i += chunkSize) {
         const chunk = allIds.slice(i, i + chunkSize);
+        const chunkRegs = regList.slice(i, i + chunkSize);
         const placeholders = chunk.map(() => '?').join(',');
+        const regPlaceholders = chunkRegs.map(() => '?').join(',');
+        // B1 fix: Reset whitelist claimed status so deleted students can re-register
+        await conn.query(
+          `UPDATE student_whitelist SET is_claimed = 0, claimed_student_id = NULL WHERE register_no IN (${regPlaceholders})`,
+          chunkRegs
+        );
         await conn.query(`DELETE FROM student_documents WHERE student_id IN (${placeholders})`, chunk);
         await conn.query(`DELETE FROM students WHERE id IN (${placeholders})`, chunk);
       }

@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS `students` (
   `community` VARCHAR(20) NULL,
   `caste` VARCHAR(100) NULL,
   `nationality` VARCHAR(50) DEFAULT 'Indian',
-  `aadhaar_no` VARCHAR(12) NULL,
+  `aadhaar_no` VARCHAR(255) NULL COMMENT 'Encrypted AES-256-GCM',
   `mother_tongue` VARCHAR(50) NULL,
   `photo_path` VARCHAR(255) NULL,
   `photo_data` LONGBLOB NULL,
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS `students` (
   -- Step 6: Bank Details
   `bank_acc_holder` VARCHAR(100) NULL,
   `bank_name` VARCHAR(100) NULL,
-  `bank_acc_no` VARCHAR(30) NULL,
+  `bank_acc_no` VARCHAR(255) NULL COMMENT 'Encrypted AES-256-GCM',
   `bank_ifsc` VARCHAR(15) NULL,
   `bank_branch` VARCHAR(100) NULL,
 
@@ -149,6 +149,7 @@ CREATE TABLE IF NOT EXISTS `student_whitelist` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `register_no` VARCHAR(20) NOT NULL UNIQUE,
   `dob` VARCHAR(10) NOT NULL COMMENT 'Format: YYYY-MM-DD',
+  `claim_code_hash` VARCHAR(100) NULL COMMENT 'Bcrypt hash of one-time claim code',
   `is_claimed` TINYINT(1) NOT NULL DEFAULT 0,
   `claimed_student_id` INT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -156,4 +157,12 @@ CREATE TABLE IF NOT EXISTS `student_whitelist` (
   INDEX `idx_whitelist_reg_dob` (`register_no`, `dob`),
   INDEX `idx_whitelist_claimed` (`is_claimed`),
   CONSTRAINT `fk_whitelist_student` FOREIGN KEY (`claimed_student_id`) REFERENCES `students` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 6. Persistent Lockout Table (Brute-force protection)
+CREATE TABLE IF NOT EXISTS `auth_lockouts` (
+  `key_name` VARCHAR(150) PRIMARY KEY,
+  `failures` INT NOT NULL DEFAULT 0,
+  `first_attempt_ms` BIGINT NOT NULL,
+  `locked_until_ms` BIGINT NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

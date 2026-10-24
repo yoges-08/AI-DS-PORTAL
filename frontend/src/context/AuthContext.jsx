@@ -7,15 +7,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check initial session
+  // S4 fix: Pure httpOnly cookie session check on mount
   const checkSession = async () => {
-    // Skip remote check if no token exists in localStorage (renders login page instantly with 0ms delay)
-    if (typeof window !== 'undefined' && !localStorage.getItem('token')) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
     try {
       const data = await api.getCurrentUser();
       if (data.success && data.user) {

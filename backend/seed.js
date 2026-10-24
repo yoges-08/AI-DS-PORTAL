@@ -16,6 +16,11 @@ const DB_NAME = process.env.DB_NAME || 'aids_portal';
 const DB_PORT = parseInt(process.env.DB_PORT || '3306', 10);
 
 const seedDatabase = async () => {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('Seeding is strictly disabled in production mode.');
+    process.exit(1);
+  }
+
   console.log('====================================================');
   console.log('Department Student Information System - Setup & Seed');
   console.log('====================================================');
@@ -40,7 +45,7 @@ const seedDatabase = async () => {
     ) {
       connectionConfig.ssl = {
         minVersion: 'TLSv1.2',
-        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true'
+        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false'
       };
     }
 
@@ -194,8 +199,12 @@ const seedDatabase = async () => {
     // 3. Seed Admin
     console.log('\n[4/4] Seeding default administrator and 10 students...');
     const adminUsername = process.env.DEFAULT_ADMIN_USERNAME || 'admin';
-    const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'Admin@123';
-    const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
+    const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+    if (!adminPassword || adminPassword.length < 8) {
+      console.error('Error: Please provide DEFAULT_ADMIN_PASSWORD (min 8 chars) in environment to run seed.');
+      process.exit(1);
+    }
+    const hashedAdminPassword = await bcrypt.hash(adminPassword, 12);
 
     const [adminExists] = await connection.query(
       'SELECT id FROM admins WHERE username = ?',
@@ -216,13 +225,13 @@ const seedDatabase = async () => {
           'Artificial Intelligence & Data Science'
         ]
       );
-      console.log(` -> Admin (HOD) seeded: username="${adminUsername}", password="${adminPassword}"`);
+      console.log(` -> Admin (HOD) seeded: username="${adminUsername}"`);
     } else {
       await connection.query(
         'UPDATE admins SET name = ?, email = ? WHERE username = ?',
         ['Dr.G.NANTHAKUMAR', defaultEmail, adminUsername]
       );
-      console.log(` -> Admin "${adminUsername}" updated with HOD Dr.G.NANTHAKUMAR.`);
+      console.log(` -> Admin "${adminUsername}" verified.`);
     }
 
     // Seed Department Faculty Accounts
@@ -232,7 +241,8 @@ const seedDatabase = async () => {
       { username: 'selvarani.n', name: 'N.SELVARANI' },
       { username: 'jayanthi.k', name: 'JAYANTHI K' }
     ];
-    const defaultFacultyPassword = await bcrypt.hash('Faculty@123', 10);
+    const facultyPassword = process.env.DEFAULT_FACULTY_PASSWORD || adminPassword;
+    const defaultFacultyPassword = await bcrypt.hash(facultyPassword, 12);
 
     for (const fac of facultyList) {
       const [facExists] = await connection.query('SELECT id FROM admins WHERE username = ?', [fac.username]);
