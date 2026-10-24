@@ -12,6 +12,7 @@ const { pool } = require('../config/db');
 const { deleteObject, deleteObjects } = require('../config/storage');
 const {
   cleanRegisterNo,
+  isScientificNotation,
   validateRegisterNo,
   validateMobile,
   validateAadhaar,
@@ -354,7 +355,13 @@ const parseWhitelistSpreadsheet = (fileBuf, originalname) => {
     return { error: magicCheck.error };
   }
 
-  const workbook = xlsx.read(fileBuf, { type: 'buffer', cellDates: true });
+  const workbook = xlsx.read(fileBuf, {
+    type: 'buffer',
+    cellDates: true,
+    cellFormula: false,
+    cellHTML: false,
+    cellText: false
+  });
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) {
     return { error: 'Spreadsheet has no sheets.' };
@@ -443,8 +450,17 @@ const parseWhitelistSpreadsheet = (fileBuf, originalname) => {
     const rowNum = i + startRowNum;
 
     const rawRegNo = row[regCol];
-    const cleanRegNo = cleanRegisterNo(rawRegNo);
     const rawDob = row[dobCol];
+
+    if (isScientificNotation(rawRegNo)) {
+      errors.push({
+        row: rowNum,
+        error: `Row ${rowNum}: Register number "${rawRegNo}" is formatted in scientific notation (e.g. 8.20E+11). Please format the column as Text/Number without decimals in Excel before uploading.`
+      });
+      continue;
+    }
+
+    const cleanRegNo = cleanRegisterNo(rawRegNo);
 
     if (!cleanRegNo || rawDob === undefined || rawDob === '') {
       errors.push({ row: rowNum, error: `Row ${rowNum}: Missing Register Number or DOB.` });
@@ -737,9 +753,10 @@ const toggleLockStudent = async (req, res) => {
     const lockedBy = lock ? req.user.username : null;
 
     await pool.query(
-      'UPDATE students SET is_locked = ?, locked_at = ?, locked_by = ? WHERE id = ?',
-      [newLockState, lockedAt, lockedBy, studentId]
+      'UPDATE students SET is_locked = ?, locked_at = ?, locked_by = ?, token_version = token_version + ? WHERE id = ?',
+      [newLockState, lockedAt, lockedBy, lock ? 1 : 0, studentId]
     );
+    invalidateTokenCache('STUDENT', studentId);
 
     const action = lock ? 'LOCK' : 'UNLOCK';
     await logAdminAction({
@@ -1244,10 +1261,11 @@ const bulkLockStudents = async (req, res) => {
       const placeholders = chunk.map(() => '?').join(',');
       const [result] = await pool.query(
         `UPDATE students 
-         SET is_locked = ?, locked_at = ?, locked_by = ? 
+         SET is_locked = ?, locked_at = ?, locked_by = ?, token_version = token_version + ? 
          WHERE id IN (${placeholders})`,
-        [targetLockVal, lockedAt, lockedBy, ...chunk]
+        [targetLockVal, lockedAt, lockedBy, lock ? 1 : 0, ...chunk]
       );
+      chunk.forEach(id => invalidateTokenCache('STUDENT', id));
       affected += result.affectedRows || chunk.length;
     }
 

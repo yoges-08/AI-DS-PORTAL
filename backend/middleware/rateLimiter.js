@@ -1,17 +1,29 @@
 const rateLimit = require('express-rate-limit');
 
 /**
+ * Composite key generator combining client IP and targeted account identifier.
+ * Prevents NAT collateral denial-of-service on campus networks while preventing
+ * single-account distributed brute force.
+ */
+const makeCompositeKey = (req) => {
+  const id = req.body?.registerNo || req.body?.register_no || req.body?.username || req.body?.email || '';
+  const cleanId = String(id).trim().toLowerCase().slice(0, 50);
+  return `${req.ip}_${cleanId}`;
+};
+
+/**
  * Rate limiter for authentication endpoints to prevent brute-force attacks
- * Limits each IP to 15 login requests per 15-minute window
+ * Limits each IP/account combination to 15 login requests per 15-minute window
  */
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 15, // Limit each IP to 15 login requests per windowMs
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: makeCompositeKey,
   message: {
     success: false,
-    message: 'Too many login attempts from this IP address. Please try again after 15 minutes.'
+    message: 'Too many login attempts for this account or IP. Please try again after 15 minutes.'
   }
 });
 
@@ -47,31 +59,33 @@ const bulkActionLimiter = rateLimit({
 
 /**
  * Dedicated rate limiter for student live eligibility verification (Requirement C).
- * Strict 10 requests per 15-minute window per IP to prevent dictionary scanning.
+ * Strict 10 requests per 15-minute window per IP/account to prevent dictionary scanning.
  */
 const verifyEligibilityLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: makeCompositeKey,
   message: {
     success: false,
-    message: 'Too many verification attempts from this IP address. Please try again after 15 minutes.'
+    message: 'Too many verification attempts for this Register Number. Please try again after 15 minutes.'
   }
 });
 
 /**
  * Dedicated rate limiter for student self-registration endpoint (Requirement D).
- * Limits to 10 registration submissions per 15-minute window per IP.
+ * Limits to 10 registration submissions per 15-minute window per IP/account.
  */
 const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: makeCompositeKey,
   message: {
     success: false,
-    message: 'Too many registration attempts from this IP address. Please try again after 15 minutes.'
+    message: 'Too many registration attempts for this account. Please try again after 15 minutes.'
   }
 });
 

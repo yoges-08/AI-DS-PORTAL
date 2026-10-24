@@ -29,7 +29,7 @@ const authenticateToken = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
 
     // S13 fix: Require valid payload fields and whitelisted role
     if (decoded.tokenVersion === undefined || !decoded.id || !decoded.role || !['ADMIN', 'STUDENT'].includes(decoded.role)) {
@@ -45,18 +45,33 @@ const authenticateToken = async (req, res, next) => {
     const cacheKey = `${decoded.role}:${decoded.id}`;
     const now = Date.now();
     let currentVersion;
+    let isLocked = 0;
 
     const cached = tokenVersionCache.get(cacheKey);
     if (cached && (now - cached.cachedAt < 5000)) { // 5s TTL
       currentVersion = cached.version;
+      isLocked = cached.isLocked || 0;
     } else {
-      const table = decoded.role === 'ADMIN' ? 'admins' : 'students';
-      const [rows] = await pool.query(`SELECT token_version FROM ${table} WHERE id = ?`, [decoded.id]);
+      const [rows] = await pool.query(
+        decoded.role === 'STUDENT'
+          ? `SELECT token_version, is_locked FROM students WHERE id = ?`
+          : `SELECT token_version FROM admins WHERE id = ?`,
+        [decoded.id]
+      );
       if (rows.length === 0) {
         return res.status(401).json({ success: false, message: 'Account no longer exists.' });
       }
       currentVersion = rows[0].token_version || 1;
-      tokenVersionCache.set(cacheKey, { version: currentVersion, cachedAt: now });
+      isLocked = decoded.role === 'STUDENT' ? (rows[0].is_locked || 0) : 0;
+      tokenVersionCache.set(cacheKey, { version: currentVersion, isLocked, cachedAt: now });
+    }
+
+    // S4 fix: Immediate session revocation for administratively locked accounts
+    if (decoded.role === 'STUDENT' && isLocked === 1) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your student account has been locked. Please contact the department administrator.'
+      });
     }
 
     if (decoded.tokenVersion !== currentVersion) {

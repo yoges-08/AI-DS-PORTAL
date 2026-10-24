@@ -31,26 +31,21 @@ const validateEmail = (email) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim());
 };
 
+const isScientificNotation = (val) => {
+  if (!val && val !== 0) return false;
+  return /^[0-9]+(\.[0-9]+)?[eE]\+?[0-9]+$/i.test(String(val).trim());
+};
+
 const cleanRegisterNo = (regNo) => {
   if (!regNo && regNo !== 0) return '';
   let str = String(regNo).trim();
-  // Handle scientific notation from spreadsheets (e.g., 8.20E+11, 8.2E11)
-  if (/^[0-9]+(\.[0-9]+)?[eE]\+?[0-9]+$/i.test(str)) {
-    const num = Number(str);
-    if (Number.isFinite(num)) {
-      try {
-        str = BigInt(Math.round(num)).toString();
-      } catch (e) {
-        str = num.toFixed(0);
-      }
-    }
-  }
-  // Strip trailing float .0 from Excel (e.g. 71762305041.0)
+  // Strip trailing float .0 from Excel numbers formatted with decimals (e.g. 71762305041.0)
   str = str.replace(/\.0+$/, '').trim();
   return str;
 };
 
 const validateRegisterNo = (regNo) => {
+  if (isScientificNotation(regNo)) return false;
   const clean = cleanRegisterNo(regNo);
   if (!clean) return false;
   // Typically 5 to 20 alphanumeric characters
@@ -205,6 +200,7 @@ const validateStudentAge = (dobString, minAge = 15, maxAge = 40) => {
 
 module.exports = {
   cleanRegisterNo,
+  isScientificNotation,
   validateMobile,
   validateAadhaar,
   validateIfsc,
@@ -217,5 +213,3 @@ module.exports = {
   normalizeDob,
   validateStudentAge
 };
-
-

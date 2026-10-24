@@ -46,9 +46,18 @@ export const SignupStatus = ({ status, message, onSwitchToLogin }) => {
         <>
           <XCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
           <div>
-            <strong className="block text-rose-300">No Matching Record Found</strong>
+            <strong className="block text-rose-300">Verification Status</strong>
             <span className="text-[11px] text-rose-300/80">
               {message || 'Verify your Register Number and DOB with your department administrator.'}
+              {message && message.toLowerCase().includes('already registered') && onSwitchToLogin && (
+                <button
+                  type="button"
+                  onClick={onSwitchToLogin}
+                  className="block mt-1 font-bold underline text-rose-200 hover:text-white transition-colors"
+                >
+                  Already registered? Sign in here
+                </button>
+              )}
             </span>
           </div>
         </>

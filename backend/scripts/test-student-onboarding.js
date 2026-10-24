@@ -40,6 +40,10 @@ const mockReqRes = (body = {}, params = {}, user = { id: 1, username: 'admin' },
 };
 
 async function runTests() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('FATAL: test-student-onboarding.js cannot run in production.');
+    process.exit(1);
+  }
   console.log('--- Starting Student Onboarding Test Suite ---');
   await testConnection();
 

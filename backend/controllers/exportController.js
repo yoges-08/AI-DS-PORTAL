@@ -5,9 +5,16 @@ const { maskAadhaar, maskBankAcc } = require('../utils/validators');
 const { decrypt } = require('../utils/fieldCrypto');
 const { logAdminAction } = require('../utils/auditLogger');
 
-// B7 fix: SheetJS writes string cells as typed text cells, avoiding formula execution.
-// Preserving raw values avoids corrupting strings starting with '+', '-', etc.
-const sanitizeExcelValue = (val) => val;
+// S-12 fix: Escape potential formula injection triggers (=, @, or + / - followed by alphabet)
+const sanitizeExcelValue = (val) => {
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (/^[=@\t\r]/.test(trimmed) || /^[+\-][a-zA-Z]/.test(trimmed)) {
+      return `'${val}`;
+    }
+  }
+  return val;
+};
 
 const toSafeString = (v) => {
   if (typeof v === 'string') return v;

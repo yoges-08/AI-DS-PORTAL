@@ -62,12 +62,20 @@ const parseSafeString = (v) => {
   return typeof v === 'string' ? v.trim() : String(v).trim();
 };
 
+const getEffectiveStudentId = (req) => {
+  if (req.user && req.user.role === 'ADMIN' && req.params.id) {
+    const parsed = parseInt(req.params.id, 10);
+    return Number.isFinite(parsed) ? parsed : req.user.id;
+  }
+  return req.user.id;
+};
+
 /**
  * Get profile and documents of the student
  */
 const getStudentProfile = async (req, res) => {
   try {
-    const studentId = req.params.id ? parseInt(req.params.id, 10) : req.user.id;
+    const studentId = getEffectiveStudentId(req);
 
     // Student can only access their own profile unless admin
     if (req.user.role === 'STUDENT' && req.user.id !== studentId) {
@@ -131,7 +139,7 @@ const getStudentProfile = async (req, res) => {
  */
 const updateStudentDetails = async (req, res) => {
   try {
-    const studentId = req.params.id ? parseInt(req.params.id, 10) : req.user.id;
+    const studentId = getEffectiveStudentId(req);
 
     // Student can only update their own record unless admin
     if (req.user.role === 'STUDENT' && req.user.id !== studentId) {
@@ -380,7 +388,7 @@ const updateStudentDetails = async (req, res) => {
  */
 const submitStudentDetails = async (req, res) => {
   try {
-    const studentId = req.params.id ? parseInt(req.params.id, 10) : req.user.id;
+    const studentId = getEffectiveStudentId(req);
 
     if (req.user.role === 'STUDENT' && req.user.id !== studentId) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
@@ -482,7 +490,7 @@ const submitStudentDetails = async (req, res) => {
  */
 const uploadDocument = async (req, res) => {
   try {
-    const studentId = req.params.id ? parseInt(req.params.id, 10) : req.user.id;
+    const studentId = getEffectiveStudentId(req);
 
     if (req.user.role === 'STUDENT' && req.user.id !== studentId) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
@@ -567,6 +575,13 @@ const uploadDocument = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Failed to upload document to cloud storage.' });
       }
     } else {
+      if (process.env.NODE_ENV === 'production') {
+        console.error('[uploadDocument Fatal]: Cloud object storage (Supabase / R2) is required in production.');
+        return res.status(503).json({
+          success: false,
+          message: 'Persistent cloud storage is not configured on this server. Please contact system administrator.'
+        });
+      }
       // Local development fallback when storage is not configured
       const localUploadsDir = path.join(__dirname, '..', 'uploads');
       if (!fs.existsSync(localUploadsDir)) fs.mkdirSync(localUploadsDir, { recursive: true });
@@ -660,7 +675,7 @@ const uploadDocument = async (req, res) => {
  */
 const deleteDocument = async (req, res) => {
   try {
-    const studentId = req.params.id ? parseInt(req.params.id, 10) : req.user.id;
+    const studentId = getEffectiveStudentId(req);
     const docId = parseInt(req.params.docId, 10);
 
     if (req.user.role === 'STUDENT' && req.user.id !== studentId) {
