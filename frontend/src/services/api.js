@@ -12,9 +12,17 @@ const BASE_URL = `${API_HOST}/api`;
  * credentials: 'include' transmits secure session cookie with all API calls.
  */
 const apiFetch = async (url, options = {}) => {
+  const headers = new Headers(options.headers || {});
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+  }
+
   const finalOptions = {
     ...options,
-    headers: new Headers(options.headers || {}),
+    headers,
     credentials: 'include'
   };
 

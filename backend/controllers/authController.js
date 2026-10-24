@@ -17,11 +17,11 @@ const { checkPassword } = require('../utils/passwordPolicy');
 // Dummy bcrypt hash for timing attack mitigation (cost factor 12)
 const DUMMY_HASH = '$2b$12$cr1oA/k.M4Vhw16WcMib..0MuIGZshwoUFe3Rpmx7d9pAF/F6g.2a';
 
-// S4 fix: Same-origin cookie options with SameSite=Lax for security against CSRF
+// Cookie options: In production cross-domain setups (e.g. Vercel client -> Render API), SameSite='none' with Secure=true is required.
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: 'lax',
+  sameSite: isProduction ? 'none' : 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for students
   path: '/'
 };
@@ -30,7 +30,7 @@ const COOKIE_OPTIONS = {
 const ADMIN_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: 'lax',
+  sameSite: isProduction ? 'none' : 'lax',
   maxAge: 12 * 60 * 60 * 1000, // 12 hours
   path: '/'
 };
@@ -85,13 +85,25 @@ const verifyStudentEligibility = async (req, res) => {
 
     if (whitelistRows.length > 0) {
       const entry = whitelistRows[0];
-      // S8 fix: If already claimed or registered, return generic failure to prevent directory harvesting
-      if (entry.is_claimed === 1 || entry.claimed_student_id !== null || studentRows.length > 0) {
+
+      // Self-heal orphan claimed state: If the account was deleted from students table,
+      // reset whitelist claimed state so the student can re-register!
+      if (studentRows.length === 0 && (entry.is_claimed === 1 || entry.claimed_student_id !== null)) {
+        await pool.query(
+          'UPDATE student_whitelist SET is_claimed = 0, claimed_student_id = NULL WHERE id = ?',
+          [entry.id]
+        );
+        entry.is_claimed = 0;
+        entry.claimed_student_id = null;
+      }
+
+      // If active account exists in students table, notify user
+      if (studentRows.length > 0 || entry.is_claimed === 1 || entry.claimed_student_id !== null) {
         await recordFailure(lockKey);
         return res.json({
           success: true,
           status: 'NO_MATCH',
-          message: 'Registration details could not be verified or account already registered. Contact department administrator if you need assistance.'
+          message: 'An account is already registered for this Register Number. Please log in.'
         });
       }
 
@@ -186,11 +198,26 @@ const registerStudent = async (req, res) => {
 
     const whitelistEntry = whitelistRows[0];
     if (whitelistEntry.is_claimed === 1 || whitelistEntry.claimed_student_id !== null) {
-      await conn.rollback();
-      return res.status(409).json({
-        success: false,
-        message: 'An account has already been registered for this student. Please log in.'
-      });
+      // Check if student actually exists in students table
+      const [realStudent] = await conn.query(
+        'SELECT id FROM students WHERE LOWER(register_no) = LOWER(?)',
+        [cleanReg]
+      );
+      if (realStudent.length > 0) {
+        await conn.rollback();
+        return res.status(409).json({
+          success: false,
+          message: 'An account has already been registered for this student. Please log in.'
+        });
+      } else {
+        // Orphaned claim state from previously deleted student: reset whitelist entry
+        await conn.query(
+          'UPDATE student_whitelist SET is_claimed = 0, claimed_student_id = NULL WHERE id = ?',
+          [whitelistEntry.id]
+        );
+        whitelistEntry.is_claimed = 0;
+        whitelistEntry.claimed_student_id = null;
+      }
     }
 
     // S3 fix (Option 1): If whitelist record requires claim code, verify it
@@ -282,10 +309,11 @@ const registerStudent = async (req, res) => {
 
     res.cookie('token', token, COOKIE_OPTIONS);
 
-    // S4 fix: Do NOT return token in response payload
+    // Return token in payload for cross-domain Bearer auth fallback
     return res.status(201).json({
       success: true,
       message: 'Account created successfully. Welcome to the Student Portal!',
+      token,
       user: {
         id: newStudentId,
         role: 'STUDENT',
@@ -395,10 +423,11 @@ const loginStudent = async (req, res) => {
     // Set secure httpOnly cookie
     res.cookie('token', token, COOKIE_OPTIONS);
 
-    // S4 fix: Do NOT expose JWT token in JSON payload
+    // Return token in payload for cross-domain Bearer auth fallback
     return res.json({
       success: true,
       message: 'Login successful.',
+      token,
       mustChangePassword: Boolean(student.must_change_password),
       user: {
         id: student.id,
@@ -493,10 +522,11 @@ const loginAdmin = async (req, res) => {
 
     res.cookie('token', token, ADMIN_COOKIE_OPTIONS);
 
-    // S4 fix: Do NOT expose JWT token in JSON payload
+    // Return token in payload for cross-domain Bearer auth fallback
     return res.json({
       success: true,
       message: 'Admin login successful.',
+      token,
       user: {
         id: admin.id,
         role: 'ADMIN',
@@ -528,7 +558,7 @@ const logout = async (req, res) => {
     }
     if (token) {
       try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         if (decoded?.id && decoded?.role && ['ADMIN', 'STUDENT'].includes(decoded.role)) {
           const table = decoded.role === 'ADMIN' ? 'admins' : 'students';
           await pool.query(

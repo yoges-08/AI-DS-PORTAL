@@ -28,6 +28,7 @@ const { logAdminAction } = require('../utils/auditLogger');
 const { validateSpreadsheetBuffer } = require('../utils/fileSecurity');
 const { invalidateTokenCache } = require('../middleware/authMiddleware');
 const { decrypt } = require('../utils/fieldCrypto');
+const { clearFailures } = require('../utils/lockout');
 
 // Safe parsing helpers
 const toPositiveInt = (v, fallback) => {
@@ -272,9 +273,9 @@ const addStudent = async (req, res) => {
       });
     }
 
-    // Check if student already registered account
+    // Check if student already registered account in students table
     const [existingStudent] = await pool.query(
-      'SELECT id, name FROM students WHERE register_no = ?',
+      'SELECT id, name FROM students WHERE LOWER(register_no) = LOWER(?)',
       [regNo]
     );
     if (existingStudent.length > 0) {
@@ -286,44 +287,45 @@ const addStudent = async (req, res) => {
 
     // Check whitelist table
     const [existingWhitelist] = await pool.query(
-      'SELECT id, is_claimed FROM student_whitelist WHERE register_no = ?',
+      'SELECT id, is_claimed FROM student_whitelist WHERE LOWER(register_no) = LOWER(?)',
       [regNo]
     );
 
     if (existingWhitelist.length > 0) {
-      if (existingWhitelist[0].is_claimed === 1) {
-        return res.status(409).json({
-          success: false,
-          message: `Student with Register Number ${regNo} is already registered.`
-        });
-      }
-
-      // Update DOB for unclaimed record
+      // Re-enable candidate: update DOB and reset claimed state
       await pool.query(
-        'UPDATE student_whitelist SET dob = ?, updated_at = NOW() WHERE id = ?',
+        'UPDATE student_whitelist SET dob = ?, is_claimed = 0, claimed_student_id = NULL, updated_at = NOW() WHERE id = ?',
         [normalizedDob, existingWhitelist[0].id]
       );
+
+      // Clear any lockout records from previous verification failures
+      await clearFailures(`verify:${regNo}`);
+      await clearFailures(`login:student:${regNo}`);
 
       await logAdminAction({
         adminId: req.user.id,
         adminUsername: req.user.username,
         action: 'UPDATE_WHITELIST_STUDENT',
         studentRegNo: regNo,
-        details: `Updated whitelist eligibility DOB for candidate ${regNo}`,
+        details: `Reset whitelist eligibility and updated DOB (${normalizedDob}) for candidate ${regNo}`,
         ipAddress: req.ip
       });
 
       return res.json({
         success: true,
-        message: `Whitelist record for ${regNo} updated with new Date of Birth.`
+        message: `Student ${regNo} whitelist record updated with Date of Birth (${normalizedDob}). Candidate can now create their account.`
       });
     }
 
     // Insert new record into student_whitelist
-    const [result] = await pool.query(
+    await pool.query(
       'INSERT INTO student_whitelist (register_no, dob, is_claimed) VALUES (?, ?, 0)',
       [regNo, normalizedDob]
     );
+
+    // Clear any lockout records
+    await clearFailures(`verify:${regNo}`);
+    await clearFailures(`login:student:${regNo}`);
 
     await logAdminAction({
       adminId: req.user.id,
@@ -1075,12 +1077,14 @@ const deleteStudent = async (req, res) => {
       await conn.beginTransaction();
       // B1 fix: Reset whitelist claimed status so student can re-register if needed
       await conn.query(
-        'UPDATE student_whitelist SET is_claimed = 0, claimed_student_id = NULL WHERE register_no = ?',
-        [student.register_no]
+        'UPDATE student_whitelist SET is_claimed = 0, claimed_student_id = NULL WHERE LOWER(register_no) = LOWER(?) OR claimed_student_id = ?',
+        [student.register_no, studentId]
       );
       await conn.query('DELETE FROM student_documents WHERE student_id = ?', [studentId]);
       await conn.query('DELETE FROM students WHERE id = ?', [studentId]);
       await conn.commit();
+      await clearFailures(`verify:${student.register_no}`);
+      await clearFailures(`login:student:${student.register_no}`);
     } catch (dbErr) {
       await conn.rollback();
       throw dbErr;
@@ -1384,9 +1388,13 @@ const bulkDeleteStudents = async (req, res) => {
         const regPlaceholders = chunkRegs.map(() => '?').join(',');
         // B1 fix: Reset whitelist claimed status so deleted students can re-register
         await conn.query(
-          `UPDATE student_whitelist SET is_claimed = 0, claimed_student_id = NULL WHERE register_no IN (${regPlaceholders})`,
-          chunkRegs
+          `UPDATE student_whitelist SET is_claimed = 0, claimed_student_id = NULL WHERE register_no IN (${regPlaceholders}) OR claimed_student_id IN (${placeholders})`,
+          [...chunkRegs, ...chunk]
         );
+        for (const reg of chunkRegs) {
+          await clearFailures(`verify:${reg}`);
+          await clearFailures(`login:student:${reg}`);
+        }
         await conn.query(`DELETE FROM student_documents WHERE student_id IN (${placeholders})`, chunk);
         await conn.query(`DELETE FROM students WHERE id IN (${placeholders})`, chunk);
       }

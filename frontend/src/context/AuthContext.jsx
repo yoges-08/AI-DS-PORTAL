@@ -29,6 +29,9 @@ export const AuthProvider = ({ children }) => {
 
   const loginStudent = async (registerNo, password, { defer = false } = {}) => {
     const data = await api.loginStudent(registerNo, password);
+    if (data.success && data.token && typeof window !== 'undefined') {
+      localStorage.setItem('token', data.token);
+    }
     if (data.success && data.user && !defer) {
       setUser(data.user);
     }
@@ -37,6 +40,9 @@ export const AuthProvider = ({ children }) => {
 
   const registerStudent = async (payload, { defer = false } = {}) => {
     const data = await api.registerStudent(payload);
+    if (data.success && data.token && typeof window !== 'undefined') {
+      localStorage.setItem('token', data.token);
+    }
     if (data.success && data.user && !defer) {
       setUser(data.user);
     }
@@ -45,6 +51,9 @@ export const AuthProvider = ({ children }) => {
 
   const loginAdmin = async (username, password, { defer = false } = {}) => {
     const data = await api.loginAdmin(username, password);
+    if (data.success && data.token && typeof window !== 'undefined') {
+      localStorage.setItem('token', data.token);
+    }
     if (data.success && data.user && !defer) {
       setUser(data.user);
     }
