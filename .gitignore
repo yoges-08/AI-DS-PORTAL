@@ -26,6 +26,7 @@ backend/uploads/temp/*
 
 # Logs
 logs/
+!agents/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
