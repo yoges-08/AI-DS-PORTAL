@@ -304,6 +304,10 @@ const initSqliteFallback = async () => {
       if (!adminCols.some(c => c.name === 'token_version')) {
         sqliteDb.exec('ALTER TABLE admins ADD COLUMN token_version INTEGER DEFAULT 1;');
       }
+      const whitelistCols = sqliteDb.prepare("PRAGMA table_info(student_whitelist)").all();
+      if (!whitelistCols.some(c => c.name === 'claim_code_hash')) {
+        sqliteDb.exec('ALTER TABLE student_whitelist ADD COLUMN claim_code_hash TEXT;');
+      }
 
       // Backfill any existing students into student_whitelist as claimed
       const allStudents = sqliteDb.prepare('SELECT id, register_no, dob FROM students').all();

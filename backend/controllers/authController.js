@@ -102,7 +102,7 @@ const verifyStudentEligibility = async (req, res) => {
         await recordFailure(lockKey);
         return res.json({
           success: true,
-          status: 'NO_MATCH',
+          status: 'ALREADY_REGISTERED',
           message: 'An account is already registered for this Register Number. Please log in.'
         });
       }
@@ -116,7 +116,14 @@ const verifyStudentEligibility = async (req, res) => {
     }
 
     // No match: Record failure toward persistent lockout
-    await recordFailure(lockKey);
+    const failureRes = await recordFailure(lockKey);
+    if (failureRes && failureRes.locked) {
+      return res.status(429).json({
+        success: false,
+        status: 'RATE_LIMITED',
+        message: 'Too many verification attempts for this Register Number. Please try again after 15 minutes.'
+      });
+    }
     return res.json({
       success: true,
       status: 'NO_MATCH'

@@ -1,4 +1,5 @@
 const { pool, testConnection } = require('../config/db');
+const { clearFailures } = require('../utils/lockout');
 const {
   verifyStudentEligibility,
   registerStudent,
@@ -173,7 +174,9 @@ async function runTests() {
 
     // 10. Test Preview & Bulk Import with 2-column CSV sample
     {
-      const sampleCsvPath = path.join(__dirname, '..', '..', 'sample_student_bulk_import.csv');
+      const sampleCsvPath = fs.existsSync(path.join(__dirname, '..', '..', 'sample_student_bulk_import.csv'))
+        ? path.join(__dirname, '..', '..', 'sample_student_bulk_import.csv')
+        : path.join(__dirname, '..', '..', 'frontend', 'public', 'sample_student_bulk_import.csv');
       const sampleCsvCopy = path.join(__dirname, 'temp_sample_test.csv');
       fs.copyFileSync(sampleCsvPath, sampleCsvCopy);
 
@@ -206,6 +209,7 @@ async function runTests() {
     // 11. Lockout verification: 5 consecutive NO_MATCH on a register number locks it for 15 minutes
     {
       const lockReg = '71762305088';
+      await clearFailures('verify:' + lockReg);
       for (let i = 1; i <= 4; i++) {
         const { req, res, getStatus, getData } = mockReqRes({ registerNo: lockReg, dob: '2000-01-01' }, {}, {}, null, `127.0.0.${i}`);
         await verifyStudentEligibility(req, res);
