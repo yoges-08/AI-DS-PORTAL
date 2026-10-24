@@ -877,7 +877,7 @@ const seedDatabase = async () => {
             student.submissionDate || null
           ]
         );
-        console.log(` -> Seeded: ${student.registerNo} - ${student.name} (DOB: ${student.dob}, Default Password: ${pwd})`);
+        console.log(` -> Seeded: ${student.registerNo} - ${student.name} (DOB: ${student.dob}, )`);
       } else {
         console.log(` -> Student ${student.registerNo} already exists.`);
       }
@@ -886,8 +886,8 @@ const seedDatabase = async () => {
     console.log('\n====================================================');
     console.log('Setup and Seeding Completed Successfully!');
     console.log('Database Name: aids_portal');
-    console.log('Default Admin: admin / Admin@123');
-    console.log('Sample Student: 71762105001 / 14052003');
+    console.log('Admin accounts created via: node scripts/create-admin.js');
+    // Sample Student login via self-signup or admin reset
     console.log('====================================================\n');
     await connection.end();
     process.exit(0);

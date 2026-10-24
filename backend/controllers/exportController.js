@@ -22,6 +22,32 @@ const toSafeString = (v) => {
   return '';
 };
 
+// X-03 fix: Sanitize strings for PDFKit standard fonts (Helvetica) to prevent encoding crashes with Tamil/Unicode
+const toPdfSafeText = (val, fallback = '-') => {
+  if (val === undefined || val === null) return fallback;
+  const str = String(val).trim();
+  if (!str) return fallback;
+
+  const hasTamil = /[\u0B80-\u0BFF]/.test(str);
+  
+  // Keep characters in WinAnsi printable range (ASCII 32-126 and Latin-1 160-255)
+  let safe = '';
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if ((code >= 32 && code <= 126) || (code >= 160 && code <= 255)) {
+      safe += str[i];
+    }
+  }
+  const clean = safe.trim();
+  if (clean.length > 0) {
+    return clean;
+  }
+  if (hasTamil) {
+    return '[Regional Name / Tamil]';
+  }
+  return fallback;
+};
+
 /**
  * Export students data to Excel (.xlsx)
  */
@@ -272,15 +298,15 @@ const exportPdf = async (req, res) => {
       }
 
       doc.text(String(idx + 1), 35, y + 2, { width: 30 });
-      doc.text(s.register_no || '-', 70, y + 2, { width: 95 });
-      doc.text(s.name || '-', 170, y + 2, { width: 170 });
-      doc.text(s.dob || '-', 345, y + 2, { width: 75 });
+      doc.text(toPdfSafeText(s.register_no), 70, y + 2, { width: 95 });
+      doc.text(toPdfSafeText(s.name), 170, y + 2, { width: 170 });
+      doc.text(toPdfSafeText(s.dob), 345, y + 2, { width: 75 });
       const yearSec = (s.year || s.section) ? `${s.year ? `Y${s.year}` : '-'} / ${s.section ? `Sec ${s.section}` : '-'}` : '-';
-      doc.text(yearSec, 425, y + 2, { width: 60 });
-      doc.text(s.mobile || 'Not Updated', 490, y + 2, { width: 90 });
+      doc.text(toPdfSafeText(yearSec), 425, y + 2, { width: 60 });
+      doc.text(toPdfSafeText(s.mobile, 'Not Updated'), 490, y + 2, { width: 90 });
       doc.text(s.is_first_graduate ? 'Yes' : 'No', 585, y + 2, { width: 65 });
       doc.text(s.is_pms ? 'Yes' : 'No', 655, y + 2, { width: 50 });
-      doc.text(s.status || 'DRAFT', 710, y + 2, { width: 95 });
+      doc.text(toPdfSafeText(s.status, 'DRAFT'), 710, y + 2, { width: 95 });
 
       // Bottom line
       doc.strokeColor('#E2E8F0').lineWidth(0.5).moveTo(30, y + 17).lineTo(812, y + 17).stroke();

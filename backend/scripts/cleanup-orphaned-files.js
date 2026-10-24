@@ -16,7 +16,8 @@ const { createClient } = require('@supabase/supabase-js');
 // Load .env
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-const { pool, testConnection } = require('../config/db');
+const { pool, testConnection, getDbMode } = require('../config/db');
+const FORCE = process.argv.includes('--force');
 
 const BUCKET = process.env.SUPABASE_BUCKET || 'aids-portal-files';
 const DO_DELETE = process.argv.includes('--delete');
@@ -37,6 +38,14 @@ async function runCleanup() {
 
   // 1. Initialize database connection
   await testConnection();
+
+  // O5 fix: Guard against running cleanup when not connected to MySQL
+  if (getDbMode() !== 'mysql' && !FORCE) {
+    console.error('ABORT: Server is connected to local SQLite fallback, not production MySQL.');
+    console.error('Refusing to run cleanup against fallback database. Use --force if intentional.');
+    process.exit(1);
+  }
+
 
   const supabase = createClient(
     process.env.SUPABASE_URL,
@@ -62,7 +71,13 @@ async function runCleanup() {
     process.exit(1);
   }
 
-  console.log(`[DB] Found ${referencedKeys.size} distinct file reference(s) in active student records.`);
+  
+    if (referencedKeys.size === 0 && !FORCE) {
+      console.error('ABORT: 0 referenced files found in database. Aborting cleanup to prevent catastrophic bucket wipeout. Use --force if intentional.');
+      process.exit(1);
+    }
+
+    console.log(`[DB] Found ${referencedKeys.size} distinct file reference(s) in active student records.`);
 
   // 3. Paginate through all files stored in Supabase bucket
   console.log(`[Storage] Scanning Supabase bucket "${BUCKET}"...`);
@@ -127,6 +142,16 @@ async function runCleanup() {
   });
   if (orphans.length > 30) {
     console.log(`  ... and ${orphans.length - 30} more.`);
+  }
+
+  
+  // O5 fix: Abort if over 50% of the bucket would be wiped without explicit --force confirmation
+  const orphanRatio = bucketFiles.length > 0 ? orphans.length / bucketFiles.length : 0;
+  if (DO_DELETE && orphanRatio > 0.5 && !FORCE) {
+    console.error(`ABORT: Detected ${orphans.length} of ${bucketFiles.length} files (${(orphanRatio * 100).toFixed(1)}%) as orphans.`);
+    console.error('Deleting over 50% of storage files requires explicit confirmation. Re-run with --force if this is intentional:');
+    console.error('  node scripts/cleanup-orphaned-files.js --delete --force\n');
+    process.exit(1);
   }
 
   if (!DO_DELETE) {

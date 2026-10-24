@@ -10,6 +10,21 @@ const {
 const { authenticateToken, requireSelfOrAdmin } = require('../middleware/authMiddleware');
 const { documentUpload } = require('../middleware/uploadMiddleware');
 
+// Parameter validation for numeric IDs
+router.param('id', (req, res, next, id) => {
+  if (!/^\d+$/.test(id)) {
+    return res.status(400).json({ success: false, message: 'Invalid student ID parameter.' });
+  }
+  next();
+});
+
+router.param('docId', (req, res, next, docId) => {
+  if (!/^\d+$/.test(docId)) {
+    return res.status(400).json({ success: false, message: 'Invalid document ID parameter.' });
+  }
+  next();
+});
+
 // Student profile management
 router.get('/profile', authenticateToken, requireSelfOrAdmin, getStudentProfile);
 router.get('/profile/:id', authenticateToken, requireSelfOrAdmin, getStudentProfile);

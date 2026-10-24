@@ -832,6 +832,16 @@ const resetStudentPassword = async (req, res) => {
 /**
  * Verify or Reject student profile
  */
+const ALLOWED_STATUS_TRANSITIONS = {
+  DRAFT: ['SUBMITTED', 'REJECTED'],
+  SUBMITTED: ['VERIFIED', 'REJECTED', 'DRAFT'],
+  VERIFIED: ['REJECTED', 'SUBMITTED'],
+  REJECTED: ['DRAFT', 'SUBMITTED', 'VERIFIED']
+};
+
+/**
+ * Verify or Reject student profile
+ */
 const updateStudentStatus = async (req, res) => {
   try {
     const studentId = parseInt(req.params.id, 10);
@@ -841,10 +851,21 @@ const updateStudentStatus = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid status.' });
     }
 
-    const [rows] = await pool.query('SELECT register_no, name FROM students WHERE id = ?', [studentId]);
+    const [rows] = await pool.query('SELECT register_no, name, status FROM students WHERE id = ?', [studentId]);
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Student not found.' });
     }
+
+    const currentStatus = rows[0].status;
+    if (currentStatus !== status && (!ALLOWED_STATUS_TRANSITIONS[currentStatus] || !ALLOWED_STATUS_TRANSITIONS[currentStatus].includes(status))) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot transition student status from ${currentStatus} to ${status}.`
+      });
+    }
+
+    const boundedReason = typeof rejectionReason === 'string' ? rejectionReason.trim().slice(0, 500) : '';
+    const finalReason = status === 'REJECTED' ? (boundedReason || 'Information incomplete') : null;
 
     await pool.query(
       `UPDATE students SET 
@@ -856,7 +877,7 @@ const updateStudentStatus = async (req, res) => {
        WHERE id = ?`,
       [
         status,
-        status === 'REJECTED' ? rejectionReason || 'Information incomplete' : null,
+        finalReason,
         status,
         status,
         status,
@@ -870,7 +891,7 @@ const updateStudentStatus = async (req, res) => {
       action: status === 'VERIFIED' ? 'VERIFY' : (status === 'REJECTED' ? 'REJECT' : 'STATUS_UPDATE'),
       studentId,
       studentRegNo: rows[0].register_no,
-      details: `Status updated to ${status}${rejectionReason ? ` - Reason: ${rejectionReason}` : ''}`,
+      details: `Status updated from ${currentStatus} to ${status}${finalReason ? ` - Reason: ${finalReason}` : ''}`,
       ipAddress: req.ip
     });
 

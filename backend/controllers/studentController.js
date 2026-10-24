@@ -63,11 +63,14 @@ const parseSafeString = (v) => {
 };
 
 const getEffectiveStudentId = (req) => {
-  if (req.user && req.user.role === 'ADMIN' && req.params.id) {
-    const parsed = parseInt(req.params.id, 10);
-    return Number.isFinite(parsed) ? parsed : req.user.id;
+  if (req.user && req.user.role === 'ADMIN') {
+    if (req.params.id) {
+      const parsed = parseInt(req.params.id, 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+    return null;
   }
-  return req.user.id;
+  return req.user?.id || null;
 };
 
 /**
@@ -76,6 +79,9 @@ const getEffectiveStudentId = (req) => {
 const getStudentProfile = async (req, res) => {
   try {
     const studentId = getEffectiveStudentId(req);
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: 'Valid student ID is required.' });
+    }
 
     // Student can only access their own profile unless admin
     if (req.user.role === 'STUDENT' && req.user.id !== studentId) {
@@ -140,6 +146,9 @@ const getStudentProfile = async (req, res) => {
 const updateStudentDetails = async (req, res) => {
   try {
     const studentId = getEffectiveStudentId(req);
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: 'Valid student ID is required.' });
+    }
 
     // Student can only update their own record unless admin
     if (req.user.role === 'STUDENT' && req.user.id !== studentId) {
@@ -389,6 +398,9 @@ const updateStudentDetails = async (req, res) => {
 const submitStudentDetails = async (req, res) => {
   try {
     const studentId = getEffectiveStudentId(req);
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: 'Valid student ID is required.' });
+    }
 
     if (req.user.role === 'STUDENT' && req.user.id !== studentId) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
@@ -491,6 +503,9 @@ const submitStudentDetails = async (req, res) => {
 const uploadDocument = async (req, res) => {
   try {
     const studentId = getEffectiveStudentId(req);
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: 'Valid student ID is required.' });
+    }
 
     if (req.user.role === 'STUDENT' && req.user.id !== studentId) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
@@ -676,6 +691,9 @@ const uploadDocument = async (req, res) => {
 const deleteDocument = async (req, res) => {
   try {
     const studentId = getEffectiveStudentId(req);
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: 'Valid student ID is required.' });
+    }
     const docId = parseInt(req.params.docId, 10);
 
     if (req.user.role === 'STUDENT' && req.user.id !== studentId) {

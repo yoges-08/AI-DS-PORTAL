@@ -68,6 +68,14 @@ router.post('/students/bulk/preview', bulkActionLimiter, previewBulkStudents);
 router.patch('/students/bulk/lock', bulkActionLimiter, bulkLockStudents);
 router.delete('/students/bulk', bulkActionLimiter, bulkDeleteStudents);
 
+// Parameter validation for numeric IDs
+router.param('id', (req, res, next, id) => {
+  if (!/^\d+$/.test(id)) {
+    return res.status(400).json({ success: false, message: 'Invalid student ID parameter.' });
+  }
+  next();
+});
+
 router.patch('/students/:id/lock', toggleLockStudent);
 router.post('/students/:id/reset-password', resetStudentPassword);
 router.patch('/students/:id/status', updateStudentStatus);

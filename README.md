@@ -100,8 +100,7 @@ AI&DS PORTAL/
 ## User Roles & Credentials
 
 ### 1. Department Administrator
-- **Username:** `admin`
-- **Password:** `Admin@123`
+- **Account Creation:** Use `node scripts/create-admin.js <username> "<Full Name>" <email> <password>` to initialize administrator accounts with a strong institutional password.
 - **Access:** Complete management of all student cohorts, bulk imports, locking/unlocking records, resetting passwords to Date of Birth, verifying or rejecting submissions, and exporting official PDF/Excel reports.
 
 ### 2. Sample Students (10 pre-seeded across Years 1 to 4)
@@ -195,7 +194,10 @@ AI&DS PORTAL/
    npm install
    npm run seed
    ```
-   *The seed script creates the default admin (`admin` / `Admin@123`) and 10 realistic students.*
+   *Initialize the administrator account securely:*
+   ```bash
+   node scripts/create-admin.js admin "Dr.G.NANTHAKUMAR" aamecaidsskill@gmail.com "YourSecurePassword123!"
+   ```
 
 5. **Start Backend Server**:
    ```bash
@@ -233,10 +235,8 @@ AI&DS PORTAL/
    - Click **Print Profile Summary** to test the official printable student verification dossier.
 
 2. **Admin Workflow:**
-   - Switch to **Admin Login** tab.
-   - Login with:
-     - Username: `admin`
-     - Password: `Admin@123`
+   - Switch to **Faculty / Admin Login** tab.
+   - Login with the administrator credentials you created using `create-admin.js`.
    - View top summary metric cards (Total, Submitted, Pending, First Graduates, PMS, Locked).
    - Use search and filter bars (Year, Section, First Graduate, PMS, Status).
    - Click any student row to view full unmasked details, preview documents, lock/unlock record, or reset password to DOB.

@@ -8,6 +8,9 @@
     "dev": "node server.js",
     "seed": "node seed.js"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "keywords": [],
   "type": "commonjs",
   "dependencies": {

@@ -294,6 +294,7 @@ const initSqliteFallback = async () => {
       if (!docCols.some(c => c.name === 'file_data')) {
         sqliteDb.exec('ALTER TABLE student_documents ADD COLUMN file_data BLOB;');
       }
+      try { sqliteDb.exec('CREATE UNIQUE INDEX IF NOT EXISTS uq_student_doc ON student_documents(student_id, doc_type);'); } catch (e) {}
       if (!studentCols.some(c => c.name === 'token_version')) {
         sqliteDb.exec('ALTER TABLE students ADD COLUMN token_version INTEGER DEFAULT 1;');
       }
@@ -387,13 +388,48 @@ const pool = {
     if (dbMode === 'mysql') {
       return await mysqlPool.getConnection();
     }
-    // Transaction-safe shim for SQLite / mock connection
+    // Transaction-safe shim for SQLite fallback (X5 fix)
+    let inTransaction = false;
     return {
       query: (sql, params) => pool.query(sql, params),
-      beginTransaction: async () => {},
-      commit: async () => {},
-      rollback: async () => {},
-      release: () => {}
+      beginTransaction: async () => {
+        if (!inTransaction && sqliteDb) {
+          try {
+            sqliteDb.exec('BEGIN IMMEDIATE');
+            inTransaction = true;
+          } catch (e) {
+            // Ignore if transaction already active
+          }
+        }
+      },
+      commit: async () => {
+        if (inTransaction && sqliteDb) {
+          try {
+            sqliteDb.exec('COMMIT');
+          } finally {
+            inTransaction = false;
+          }
+        }
+      },
+      rollback: async () => {
+        if (inTransaction && sqliteDb) {
+          try {
+            sqliteDb.exec('ROLLBACK');
+          } catch (e) {
+            // Ignore rollback error if already terminated
+          } finally {
+            inTransaction = false;
+          }
+        }
+      },
+      release: () => {
+        if (inTransaction && sqliteDb) {
+          try {
+            sqliteDb.exec('ROLLBACK');
+          } catch (e) {}
+          inTransaction = false;
+        }
+      }
     };
   }
 };
@@ -401,6 +437,18 @@ const pool = {
 /**
  * Test Connection Helper
  */
+
+async function addColumnIfMissing(conn, table, column, ddl) {
+  try {
+    const [r] = await conn.query(
+      `SELECT 1 FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`, [table, column]);
+    if (r.length === 0) {
+      await conn.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${ddl}`);
+    }
+  } catch (err) {}
+}
+
 const testConnection = async () => {
   try {
     const conn = await mysqlPool.getConnection();
@@ -449,11 +497,7 @@ const testConnection = async () => {
     } catch (migErr) {
       // Ignore
     }
-    try {
-      await conn.query('ALTER TABLE `student_whitelist` ADD COLUMN IF NOT EXISTS `claim_code_hash` VARCHAR(100) NULL;');
-    } catch (migErr) {
-      // Ignore
-    }
+    await addColumnIfMissing(conn, 'student_whitelist', 'claim_code_hash', 'VARCHAR(100) NULL');
     try {
       await conn.query(`
         CREATE TABLE IF NOT EXISTS \`auth_lockouts\` (
@@ -472,18 +516,19 @@ const testConnection = async () => {
     } catch (migErr) {
       // Ignore
     }
-    try {
-      await conn.query('ALTER TABLE `students` ADD COLUMN IF NOT EXISTS `must_change_password` TINYINT(1) NOT NULL DEFAULT 0;');
-    } catch (migErr) {
-      // Ignore
-    }
+    await addColumnIfMissing(conn, 'students', 'must_change_password', 'TINYINT(1) NOT NULL DEFAULT 0');
 
-    // Ensure HOD Name & Email are up to date
+    // M8 fix: Preserves admin profile changes across boots
+
+    
     try {
-      await conn.query("UPDATE `admins` SET `name` = 'Dr.G.NANTHAKUMAR', `email` = 'aamecaidsskill@gmail.com' WHERE `username` = 'admin';");
-    } catch (e) {
-      // Ignore
-    }
+      const [idx] = await conn.query(
+        "SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'student_documents' AND INDEX_NAME = 'uq_student_doc'"
+      );
+      if (idx.length === 0) {
+        await conn.query('ALTER TABLE `student_documents` ADD UNIQUE KEY `uq_student_doc` (`student_id`, `doc_type`);');
+      }
+    } catch (e) {}
 
     conn.release();
     dbMode = 'mysql';

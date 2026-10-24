@@ -6,7 +6,7 @@
  */
 
 const supabaseProvider = require('./storage.supabase');
-const r2Provider = require('./storage.r2');
+const r2Provider = require('./r2');
 
 const getProvider = () => {
   const provider = (process.env.STORAGE_PROVIDER || 'supabase').toLowerCase().trim();

@@ -29,9 +29,6 @@ export const AuthProvider = ({ children }) => {
 
   const loginStudent = async (registerNo, password, { defer = false } = {}) => {
     const data = await api.loginStudent(registerNo, password);
-    if (data.success && data.token && typeof window !== 'undefined') {
-      localStorage.setItem('token', data.token);
-    }
     if (data.success && data.user && !defer) {
       setUser(data.user);
     }
@@ -40,9 +37,6 @@ export const AuthProvider = ({ children }) => {
 
   const registerStudent = async (payload, { defer = false } = {}) => {
     const data = await api.registerStudent(payload);
-    if (data.success && data.token && typeof window !== 'undefined') {
-      localStorage.setItem('token', data.token);
-    }
     if (data.success && data.user && !defer) {
       setUser(data.user);
     }
@@ -51,9 +45,6 @@ export const AuthProvider = ({ children }) => {
 
   const loginAdmin = async (username, password, { defer = false } = {}) => {
     const data = await api.loginAdmin(username, password);
-    if (data.success && data.token && typeof window !== 'undefined') {
-      localStorage.setItem('token', data.token);
-    }
     if (data.success && data.user && !defer) {
       setUser(data.user);
     }
@@ -64,12 +55,8 @@ export const AuthProvider = ({ children }) => {
   const completeLogin = (loggedInUser) => setUser(loggedInUser);
 
   const logout = async () => {
-    // Optimistic instant client logout (0ms delay)
+    // Optimistic instant client logout
     setUser(null);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-    }
-
     try {
       await api.logout();
     } catch (e) {
@@ -88,4 +75,10 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

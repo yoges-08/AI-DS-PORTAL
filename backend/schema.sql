@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS `student_documents` (
   `mime_type` VARCHAR(50) NOT NULL,
   `file_data` LONGBLOB NULL,
   `uploaded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_student_doc` (`student_id`, `doc_type`),
   CONSTRAINT `fk_docs_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

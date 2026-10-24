@@ -151,8 +151,8 @@ Render allows you to deploy Node.js web services directly from your GitHub repos
    | `JWT_SECRET` | *(any 32+ character random string)* | E.g. `9f8b7c6d5e4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c` |
    | `COOKIE_SECRET` | *(any 32+ character random string)* | E.g. `4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9f8b7c6d5e` |
    | `CLIENT_URL` | `https://your-service-name.onrender.com` | Your live Render URL |
-   | `DEFAULT_ADMIN_USERNAME` | `admin` | Initial admin username |
-   | `DEFAULT_ADMIN_PASSWORD` | `Admin@123` | Initial admin password (change immediately after first login) |
+   | `DEFAULT_ADMIN_USERNAME` | `admin` | Initial admin username (created via `node scripts/create-admin.js`) |
+   | `DEFAULT_ADMIN_PASSWORD` | *(Set strong password via CLI)* | Initial admin password created via `node scripts/create-admin.js` |
 
 5. **Database Options on Render:**
    - **Option A (Zero-Config SQLite):** If no MySQL variables are provided, the server automatically boots with the built-in SQLite database (`backend/aids_portal.sqlite`). *(Note: On Render Free tier, local disks reset on redeploy. For persistent SQLite, add a Render Persistent Disk mounted at `/opt/render/project/src/backend` or use MySQL below).*
@@ -300,7 +300,7 @@ sudo systemctl restart nginx
 
 ## Production Security & Maintenance Checklist
 
-- [ ] **Change Default Admin Password:** After first login, navigate to Profile or update password from `Admin@123` to a strong unique credential.
+- [ ] **Admin Credentials:** Create your initial administrative user using `node scripts/create-admin.js <username> "<Full Name>" <email> <password>`. Ensure a strong unique password is used.
 - [ ] **Production Secrets:** Ensure `JWT_SECRET` and `COOKIE_SECRET` are non-default 32+ character strings.
 - [ ] **Database Backups:** Set up an automated daily backup:
   ```bash

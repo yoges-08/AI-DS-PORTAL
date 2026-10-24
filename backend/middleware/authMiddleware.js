@@ -4,6 +4,12 @@ const { JWT_SECRET } = require('../config/secrets');
 
 // In-memory cache for token versions to avoid excessive database queries (TTL 15 seconds)
 const tokenVersionCache = new Map();
+const PASSWORD_CHANGE_ALLOWED = new Set([
+  '/api/auth/me',
+  '/api/auth/change-password',
+  '/api/auth/logout'
+]);
+
 
 function invalidateTokenCache(role, id) {
   tokenVersionCache.delete(`${role}:${id}`);
@@ -46,15 +52,17 @@ const authenticateToken = async (req, res, next) => {
     const now = Date.now();
     let currentVersion;
     let isLocked = 0;
+    let mustChangePassword = 0;
 
     const cached = tokenVersionCache.get(cacheKey);
     if (cached && (now - cached.cachedAt < 5000)) { // 5s TTL
       currentVersion = cached.version;
       isLocked = cached.isLocked || 0;
+      mustChangePassword = cached.mustChangePassword || 0;
     } else {
       const [rows] = await pool.query(
         decoded.role === 'STUDENT'
-          ? `SELECT token_version, is_locked FROM students WHERE id = ?`
+          ? `SELECT token_version, is_locked, must_change_password FROM students WHERE id = ?`
           : `SELECT token_version FROM admins WHERE id = ?`,
         [decoded.id]
       );
@@ -63,7 +71,8 @@ const authenticateToken = async (req, res, next) => {
       }
       currentVersion = rows[0].token_version || 1;
       isLocked = decoded.role === 'STUDENT' ? (rows[0].is_locked || 0) : 0;
-      tokenVersionCache.set(cacheKey, { version: currentVersion, isLocked, cachedAt: now });
+      mustChangePassword = decoded.role === 'STUDENT' ? (rows[0].must_change_password || 0) : 0;
+      tokenVersionCache.set(cacheKey, { version: currentVersion, isLocked, mustChangePassword, cachedAt: now });
     }
 
     // S4 fix: Immediate session revocation for administratively locked accounts
@@ -72,6 +81,18 @@ const authenticateToken = async (req, res, next) => {
         success: false,
         message: 'Your student account has been locked. Please contact the department administrator.'
       });
+    }
+
+    // O2 fix: Server-side enforcement of password change for reset/temporary credentials
+    if (decoded.role === 'STUDENT' && mustChangePassword === 1) {
+      const pathOnly = (req.originalUrl || req.url).split('?')[0];
+      if (!PASSWORD_CHANGE_ALLOWED.has(pathOnly)) {
+        return res.status(403).json({
+          success: false,
+          code: 'PASSWORD_CHANGE_REQUIRED',
+          message: 'You must change your temporary password before accessing portal features.'
+        });
+      }
     }
 
     if (decoded.tokenVersion !== currentVersion) {

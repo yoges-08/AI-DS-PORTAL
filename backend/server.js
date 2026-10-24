@@ -10,9 +10,10 @@ const path = require('path');
 const fs = require('fs');
 const { testConnection, pool, getDbMode } = require('./config/db');
 const { authenticateToken } = require('./middleware/authMiddleware');
-const { apiLimiter } = require('./middleware/rateLimiter');
+const { apiLimiter, documentDownloadLimiter } = require('./middleware/rateLimiter');
 const { downloadObject, isStorageConfigured, keepAlive, getStorageProvider } = require('./config/storage');
 const { JWT_SECRET, COOKIE_SECRET } = require('./config/secrets');
+const { logAdminAction } = require('./utils/auditLogger');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -104,7 +105,7 @@ app.use('/api', csrfOriginCheck);
  * Authenticated & Authorized Document Serving
  * Protects student Aadhaar, certificates, and passbook documents from unauthorized public access.
  */
-app.get('/uploads/:filename', authenticateToken, async (req, res) => {
+app.get('/uploads/:filename', documentDownloadLimiter, authenticateToken, async (req, res) => {
   try {
     const filename = path.basename(req.params.filename);
     const filePath = `/uploads/${filename}`;
@@ -146,6 +147,21 @@ app.get('/uploads/:filename', authenticateToken, async (req, res) => {
     }
 
     // Security headers to prevent content sniffing while allowing native Chrome/Edge PDF viewers
+    
+    // O3 fix: Audit admin document views
+    if (req.user && req.user.role === 'ADMIN') {
+      try {
+        await logAdminAction({
+          adminId: req.user.id,
+          adminUsername: req.user.username,
+          action: 'VIEW_DOCUMENT',
+          studentId: docRow?.student_id || null,
+          details: `Viewed document: ${docRow?.file_name || filename}`,
+          ipAddress: req.ip
+        });
+      } catch (logErr) {}
+    }
+
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'");
 
@@ -278,9 +294,7 @@ app.use((err, req, res, next) => {
   const status = err.status && err.status < 500 ? err.status : 500;
   return res.status(status).json({
     success: false,
-    message: status === 500 && process.env.NODE_ENV === 'production'
-      ? 'Internal Server Error'
-      : (err.message || 'Internal Server Error')
+    message: status === 500 ? 'Internal Server Error' : (err.message || 'Internal Server Error')
   });
 });
 
@@ -295,6 +309,13 @@ app.listen(PORT, '0.0.0.0', async () => {
 
   // Verify DB connection
   await testConnection();
+
+  // O8 fix: Boot-time storage health check in production
+  if (process.env.NODE_ENV === 'production' && !isStorageConfigured()) {
+    console.error('FATAL: Object storage (Supabase or Cloudflare R2) is not configured in production.');
+    process.exit(1);
+  }
+
 
   // Step 11: Free-plan keep-alive for Supabase Storage (prevents auto-pause from inactivity)
   if (getStorageProvider() === 'supabase' && isStorageConfigured()) {

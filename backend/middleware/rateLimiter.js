@@ -92,6 +92,22 @@ const registerLimiter = rateLimit({
 /**
  * General API rate limiter for other endpoints
  */
+
+/**
+ * Dedicated rate limiter for document file downloads (M5).
+ * 60 document requests per minute per IP to prevent storage bandwidth exhaustion.
+ */
+const documentDownloadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many document requests. Please wait a minute.'
+  }
+});
+
 const apiLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
   max: 200, // Limit each IP to 200 requests per 5 minutes
@@ -109,5 +125,6 @@ module.exports = {
   registerLimiter,
   exportLimiter,
   bulkActionLimiter,
+  documentDownloadLimiter,
   apiLimiter
 };

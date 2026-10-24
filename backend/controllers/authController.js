@@ -16,12 +16,20 @@ const { checkPassword } = require('../utils/passwordPolicy');
 
 // Dummy bcrypt hash for timing attack mitigation (cost factor 12)
 const DUMMY_HASH = '$2b$12$cr1oA/k.M4Vhw16WcMib..0MuIGZshwoUFe3Rpmx7d9pAF/F6g.2a';
+// O1 fix: Password verification helper supporting both raw and trimmed passwords
+const verifyPassword = async (input, hash) => {
+  const raw = String(input ?? '');
+  if (await bcrypt.compare(raw, hash)) return true;
+  const trimmed = raw.trim();
+  return trimmed !== raw ? bcrypt.compare(trimmed, hash) : false;
+};
+
 
 // Cookie options: In production cross-domain setups (e.g. Vercel client -> Render API), SameSite='none' with Secure=true is required.
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: isProduction ? 'none' : 'lax',
+  sameSite: 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for students
   path: '/'
 };
@@ -30,7 +38,7 @@ const COOKIE_OPTIONS = {
 const ADMIN_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: isProduction ? 'none' : 'lax',
+  sameSite: 'lax',
   maxAge: 12 * 60 * 60 * 1000, // 12 hours
   path: '/'
 };
@@ -320,7 +328,6 @@ const registerStudent = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Account created successfully. Welcome to the Student Portal!',
-      token,
       user: {
         id: newStudentId,
         role: 'STUDENT',
@@ -392,21 +399,18 @@ const loginStudent = async (req, res) => {
     if (rows.length === 0) {
       await bcrypt.compare(String(password), DUMMY_HASH);
       await recordFailure(lockKey);
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid Register Number or Password.'
-      });
+    await logAdminAction({ adminUsername: 'SYSTEM', action: 'STUDENT_LOGIN_FAILED', studentRegNo: cleanReg, details: 'Failed student login attempt', ipAddress: req.ip });
+    return res.status(401).json({ success: false, message: 'Invalid Register Number or Password.' });
     }
 
     const student = rows[0];
-    const isMatch = await bcrypt.compare(String(password).trim(), student.password);
+    if (Buffer.byteLength(String(password), 'utf8') > 72) return res.status(401).json({ success: false, message: 'Invalid Register Number or Password.' });
+    const isMatch = await verifyPassword(password, student.password);
 
     if (!isMatch) {
       await recordFailure(lockKey);
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid Register Number or Password.'
-      });
+    await logAdminAction({ adminUsername: 'SYSTEM', action: 'STUDENT_LOGIN_FAILED', studentRegNo: cleanReg, details: 'Failed student login attempt', ipAddress: req.ip });
+    return res.status(401).json({ success: false, message: 'Invalid Register Number or Password.' });
     }
 
     // S7 fix: Clear login failures on valid authentication
@@ -434,7 +438,6 @@ const loginStudent = async (req, res) => {
     return res.json({
       success: true,
       message: 'Login successful.',
-      token,
       mustChangePassword: Boolean(student.must_change_password),
       user: {
         id: student.id,
@@ -500,7 +503,8 @@ const loginAdmin = async (req, res) => {
     }
 
     const admin = rows[0];
-    const isMatch = await bcrypt.compare(String(password).trim(), admin.password);
+    if (Buffer.byteLength(String(password), 'utf8') > 72) return res.status(401).json({ success: false, message: 'Invalid administrative username or password.' });
+    const isMatch = await verifyPassword(password, admin.password);
 
     if (!isMatch) {
       await recordFailure(lockKey);
@@ -533,7 +537,6 @@ const loginAdmin = async (req, res) => {
     return res.json({
       success: true,
       message: 'Admin login successful.',
-      token,
       user: {
         id: admin.id,
         role: 'ADMIN',
@@ -676,11 +679,11 @@ const changePassword = async (req, res) => {
       if (admins.length === 0) {
         return res.status(404).json({ success: false, message: 'Admin account not found.' });
       }
-      const isMatch = await bcrypt.compare(String(currentPassword).trim(), admins[0].password);
+      const isMatch = await verifyPassword(currentPassword, admins[0].password);
       if (!isMatch) {
         return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
       }
-      const hashed = await bcrypt.hash(String(newPassword).trim(), 12);
+      const hashed = await bcrypt.hash(String(newPassword), 12);
       await pool.query(
         'UPDATE admins SET password = ?, token_version = COALESCE(token_version, 1) + 1 WHERE id = ?',
         [hashed, id]
@@ -692,7 +695,7 @@ const changePassword = async (req, res) => {
       if (students.length === 0) {
         return res.status(404).json({ success: false, message: 'Student account not found.' });
       }
-      const isMatch = await bcrypt.compare(String(currentPassword).trim(), students[0].password);
+      const isMatch = await verifyPassword(currentPassword, students[0].password);
       if (!isMatch) {
         return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
       }
@@ -707,7 +710,7 @@ const changePassword = async (req, res) => {
         return res.status(400).json({ success: false, message: studentPwErr });
       }
 
-      const hashed = await bcrypt.hash(String(newPassword).trim(), 12);
+      const hashed = await bcrypt.hash(String(newPassword), 12);
       await pool.query(
         'UPDATE students SET password = ?, token_version = COALESCE(token_version, 1) + 1, must_change_password = 0 WHERE id = ?',
         [hashed, id]

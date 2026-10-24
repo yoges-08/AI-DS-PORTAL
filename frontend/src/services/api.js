@@ -12,14 +12,6 @@ const BASE_URL = `${API_HOST}/api`;
  * credentials: 'include' transmits secure session cookie with all API calls.
  */
 const apiFetch = async (url, options = {}) => {
-  const headers = new Headers(options.headers || {});
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
-    if (token && !headers.has('Authorization')) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-  }
-
   const finalOptions = {
     ...options,
     headers,
@@ -117,7 +109,7 @@ export const api = {
   async logout() {
     try {
       const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const timeoutId = controller ? setTimeout(() => controller.abort(), 2500) : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 8000) : null;
 
       const res = await apiFetch(`${BASE_URL}/auth/logout`, {
         method: 'POST',
@@ -138,9 +130,7 @@ export const api = {
       });
       return await handleResponse(res);
     } catch (err) {
-      if (err.status === 401 && typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-      }
+      
       throw err;
     }
   },
@@ -379,17 +369,28 @@ export const api = {
       window.open(filePath, '_blank');
       return;
     }
-    const cleanPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
-    const url = `${API_HOST || ''}${cleanPath}`;
-    const res = await apiFetch(url, { credentials: 'include' });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Failed to open document. You may not have permission to view it.');
+    // X4 fix: Proactively open new tab before async call to prevent Safari/iOS popup blocking
+    const win = typeof window !== 'undefined' ? window.open('', '_blank') : null;
+    try {
+      const cleanPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+      const url = `${API_HOST || ''}${cleanPath}`;
+      const res = await apiFetch(url, { credentials: 'include' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to open document. You may not have permission to view it.');
+      }
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      if (win) {
+        win.location.href = blobUrl;
+      } else {
+        window.location.href = blobUrl;
+      }
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+    } catch (e) {
+      if (win) win.close();
+      throw e;
     }
-    const blob = await res.blob();
-    const blobUrl = window.URL.createObjectURL(blob);
-    window.open(blobUrl, '_blank');
-    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
   },
 
   // Export URLs (legacy references without query tokens)

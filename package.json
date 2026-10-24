@@ -10,7 +10,7 @@
     "start": "npm --prefix backend start"
   },
   "engines": {
-    "node": ">=18.0.0 <=22.x"
+    "node": ">=18.0.0"
   },
   "keywords": ["student-portal", "react", "express", "vite"],
   "author": "",

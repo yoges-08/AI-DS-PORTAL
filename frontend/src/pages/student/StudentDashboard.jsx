@@ -25,7 +25,7 @@ export const StudentDashboard = () => {
   const faqs = [
     {
       q: 'How do I log in and what is my password format?',
-      a: 'Your username is your university Register Number (e.g., 71762105001). Your default password is your Date of Birth in DDMMYYYY format with no spaces or symbols (for example, if your DOB is 14-May-2005, enter 14052005).'
+      a: 'Your username is your university Register Number (e.g., 71762105001). You choose your own password during account registration. If you forget your password, your department administrator can issue a temporary password which you must change upon login.'
     },
     {
       q: 'What file formats and sizes are permitted for document uploads?',
@@ -37,7 +37,7 @@ export const StudentDashboard = () => {
     },
     {
       q: 'Whom should I contact if I need help or a password reset?',
-      a: 'Contact the AI & DS Department Office via phone (+91 99448 23120) or email (aamecaidsskill@gmail.com). The department administrator can reset your password back to your Date of Birth or unlock your profile if necessary.'
+      a: 'Contact the AI & DS Department Office via phone (+91 99448 23120) or email (aamecaidsskill@gmail.com). The department administrator can issue a temporary password or unlock your profile if necessary.'
     }
   ];
 
