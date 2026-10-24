@@ -14,7 +14,7 @@ const BASE_URL = `${API_HOST}/api`;
 const apiFetch = async (url, options = {}) => {
   const finalOptions = {
     ...options,
-    headers,
+    headers: options.headers || {},
     credentials: 'include'
   };
 

@@ -62,16 +62,20 @@ const parseSafeString = (v) => {
   return typeof v === 'string' ? v.trim() : String(v).trim();
 };
 
-const getEffectiveStudentId = (req) => {
-  if (req.user && req.user.role === 'ADMIN') {
-    if (req.params.id) {
-      const parsed = parseInt(req.params.id, 10);
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-    }
-    return null;
+/**
+ * Resolve student ID securely:
+ * - Students always operate strictly on their own authenticated ID
+ * - Admins must explicitly provide a valid numeric student :id parameter (C2 fix)
+ */
+const resolveStudentId = (req) => {
+  if (req.user?.role === 'STUDENT') return req.user.id;
+  if (req.user?.role === 'ADMIN') {
+    const id = parseInt(req.params.id, 10);
+    return Number.isInteger(id) && id > 0 ? id : null;
   }
-  return req.user?.id || null;
+  return null;
 };
+const getEffectiveStudentId = resolveStudentId;
 
 /**
  * Get profile and documents of the student
@@ -388,6 +392,10 @@ const updateStudentDetails = async (req, res) => {
     });
   } catch (error) {
     console.error('[updateStudentDetails Error]:', error);
+    // C3 fix: Catch duplicate email constraint
+    if (error && (error.code === 'ER_DUP_ENTRY' || error.errno === 1062 || String(error.message).includes('UNIQUE constraint failed: students.email'))) {
+      return res.status(409).json({ success: false, message: 'That email address is already used by another account.' });
+    }
     return res.status(500).json({ success: false, message: 'Failed to update student details.' });
   }
 };

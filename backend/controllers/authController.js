@@ -346,6 +346,12 @@ const registerStudent = async (req, res) => {
       await conn.rollback();
     } catch (rbErr) {}
     console.error('[registerStudent Error]:', error);
+    if (error && (error.code === 'ER_DUP_ENTRY' || error.errno === 1062 || String(error.message).includes('UNIQUE constraint failed: students.email'))) {
+      return res.status(409).json({
+        success: false,
+        message: 'That email address is already used by another account.'
+      });
+    }
     return res.status(500).json({
       success: false,
       message: 'An unexpected error occurred during account creation. Please try again.'
@@ -434,6 +440,16 @@ const loginStudent = async (req, res) => {
     // Set secure httpOnly cookie
     res.cookie('token', token, COOKIE_OPTIONS);
 
+    // B2 fix: Log successful student login
+    await logAdminAction({
+      adminUsername: 'SYSTEM',
+      action: 'STUDENT_LOGIN',
+      studentId: student.id,
+      studentRegNo: student.register_no,
+      details: 'Student login successful',
+      ipAddress: req.ip
+    });
+
     // Return token in payload for cross-domain Bearer auth fallback
     return res.json({
       success: true,
@@ -496,6 +512,12 @@ const loginAdmin = async (req, res) => {
     if (rows.length === 0) {
       await bcrypt.compare(String(password), DUMMY_HASH);
       await recordFailure(lockKey);
+      await logAdminAction({
+        adminUsername: String(cleanUsername || '').slice(0, 50),
+        action: 'ADMIN_LOGIN_FAILED',
+        details: 'Failed admin login attempt (unknown username)',
+        ipAddress: req.ip
+      });
       return res.status(401).json({
         success: false,
         message: 'Invalid Admin username or password.'
@@ -508,6 +530,13 @@ const loginAdmin = async (req, res) => {
 
     if (!isMatch) {
       await recordFailure(lockKey);
+      await logAdminAction({
+        adminId: admin.id,
+        adminUsername: admin.username,
+        action: 'ADMIN_LOGIN_FAILED',
+        details: 'Failed admin login attempt (invalid password)',
+        ipAddress: req.ip
+      });
       return res.status(401).json({
         success: false,
         message: 'Invalid Admin username or password.'
@@ -532,6 +561,15 @@ const loginAdmin = async (req, res) => {
     );
 
     res.cookie('token', token, ADMIN_COOKIE_OPTIONS);
+
+    // B2 fix: Log successful admin login
+    await logAdminAction({
+      adminId: admin.id,
+      adminUsername: admin.username,
+      action: 'ADMIN_LOGIN',
+      details: `Admin ${admin.username} logged in successfully`,
+      ipAddress: req.ip
+    });
 
     // Return token in payload for cross-domain Bearer auth fallback
     return res.json({

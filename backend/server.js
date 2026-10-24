@@ -10,7 +10,7 @@ const path = require('path');
 const fs = require('fs');
 const { testConnection, pool, getDbMode } = require('./config/db');
 const { authenticateToken } = require('./middleware/authMiddleware');
-const { apiLimiter, documentDownloadLimiter } = require('./middleware/rateLimiter');
+const { apiLimiter, documentDownloadLimiter, uploadsLimiter } = require('./middleware/rateLimiter');
 const { downloadObject, isStorageConfigured, keepAlive, getStorageProvider } = require('./config/storage');
 const { JWT_SECRET, COOKIE_SECRET } = require('./config/secrets');
 const { logAdminAction } = require('./utils/auditLogger');
@@ -105,6 +105,9 @@ app.use('/api', csrfOriginCheck);
  * Authenticated & Authorized Document Serving
  * Protects student Aadhaar, certificates, and passbook documents from unauthorized public access.
  */
+// C1 fix: Dedicated rate limiting for /uploads routes (300 requests per 5 minutes)
+app.use('/uploads', uploadsLimiter);
+
 app.get('/uploads/:filename', documentDownloadLimiter, authenticateToken, async (req, res) => {
   try {
     const filename = path.basename(req.params.filename);
@@ -239,26 +242,10 @@ app.get('/api/health', async (req, res) => {
   }
 
   const statusCode = dbStatus.connected ? 200 : 503;
-  console.log(`[Health Ping] Received ping at ${new Date().toISOString()} from ${req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown'} (Status: ${dbStatus.connected ? 'OK' : 'ERR'})`);
+  console.log(`[Health Ping] Received ping at ${new Date().toISOString()} from ${req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown'} (Status: ${dbStatus.connected ? 'OK' : 'ERR'}) [DB: ${dbStatus.mode}/${dbStatus.database || 'default'}, Storage: ${getStorageProvider()}]`);
   res.status(statusCode).json({
     status: dbStatus.connected ? 'HEALTHY' : 'DEGRADED',
-    service: 'Department Student Information System API (AI & DS)',
-    database: dbStatus,
-    storage: {
-      provider: getStorageProvider(),
-      configured: isStorageConfigured()
-    },
     timestamp: new Date().toISOString()
-  });
-});
-
-// Diagnostic endpoint to inspect resolved client IP and reverse proxy headers (Render Log Analysis Item 3)
-app.get('/api/debug-ip', (req, res) => {
-  res.json({
-    ip: req.ip,
-    ips: req.ips,
-    forwardedFor: req.headers['x-forwarded-for'],
-    trustProxy: app.get('trust proxy') ?? null
   });
 });
 

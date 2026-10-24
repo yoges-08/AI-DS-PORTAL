@@ -833,10 +833,10 @@ const resetStudentPassword = async (req, res) => {
  * Verify or Reject student profile
  */
 const ALLOWED_STATUS_TRANSITIONS = {
-  DRAFT: ['SUBMITTED', 'REJECTED'],
   SUBMITTED: ['VERIFIED', 'REJECTED', 'DRAFT'],
-  VERIFIED: ['REJECTED', 'SUBMITTED'],
-  REJECTED: ['DRAFT', 'SUBMITTED', 'VERIFIED']
+  VERIFIED:  ['REJECTED', 'DRAFT', 'SUBMITTED'],
+  REJECTED:  ['DRAFT', 'SUBMITTED', 'VERIFIED'],
+  DRAFT:     ['DRAFT'] // a student must submit their own profile before verification
 };
 
 /**

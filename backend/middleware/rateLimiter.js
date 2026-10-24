@@ -119,6 +119,21 @@ const apiLimiter = rateLimit({
   }
 });
 
+/**
+ * Dedicated rate limiter for /uploads endpoint (C1 fix).
+ * 300 requests per 5 minutes per IP to protect static and document storage bandwidth.
+ */
+const uploadsLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many file requests. Please slow down.'
+  }
+});
+
 module.exports = {
   loginLimiter,
   verifyEligibilityLimiter,
@@ -126,5 +141,6 @@ module.exports = {
   exportLimiter,
   bulkActionLimiter,
   documentDownloadLimiter,
+  uploadsLimiter,
   apiLimiter
 };
