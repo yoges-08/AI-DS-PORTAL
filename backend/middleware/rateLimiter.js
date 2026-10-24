@@ -1,4 +1,4 @@
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 
 /**
  * Composite key generator combining client IP and targeted account identifier.
@@ -8,7 +8,7 @@ const rateLimit = require('express-rate-limit');
 const makeCompositeKey = (req) => {
   const id = req.body?.registerNo || req.body?.register_no || req.body?.username || req.body?.email || '';
   const cleanId = String(id).trim().toLowerCase().slice(0, 50);
-  return `${req.ip}_${cleanId}`;
+  return `${ipKeyGenerator(req.ip || '')}_${cleanId}`;
 };
 
 /**

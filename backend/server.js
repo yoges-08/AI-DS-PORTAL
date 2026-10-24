@@ -252,6 +252,16 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
+// Diagnostic endpoint to inspect resolved client IP and reverse proxy headers (Render Log Analysis Item 3)
+app.get('/api/debug-ip', (req, res) => {
+  res.json({
+    ip: req.ip,
+    ips: req.ips,
+    forwardedFor: req.headers['x-forwarded-for'],
+    trustProxy: app.get('trust proxy') ?? null
+  });
+});
+
 // Explicit 404 for unmatched API routes
 app.use('/api', (req, res) => {
   res.status(404).json({ success: false, message: 'API route not found' });
