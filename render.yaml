@@ -14,6 +14,8 @@ services:
         generateValue: true
       - key: COOKIE_SECRET
         generateValue: true
+      - key: FIELD_ENCRYPTION_KEY
+        generateValue: true
       - key: DEFAULT_ADMIN_USERNAME
         value: admin
       - key: DEFAULT_ADMIN_PASSWORD
