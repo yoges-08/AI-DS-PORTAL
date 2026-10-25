@@ -98,32 +98,32 @@ export const api = {
     return await handleResponse(res);
   },
 
-  async verifyEmail(studentId, code) {
+  async verifyEmail(studentId, code, registerNo) {
     const res = await apiFetch(`${BASE_URL}/auth/student/verify-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ studentId, code })
+      body: JSON.stringify({ studentId, code, registerNo })
     });
     return await handleResponse(res);
   },
 
-  async resendVerificationCode(studentId) {
+  async resendVerificationCode(studentId, registerNo) {
     const res = await apiFetch(`${BASE_URL}/auth/student/resend-code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ studentId })
+      body: JSON.stringify({ studentId, registerNo })
     });
     return await handleResponse(res);
   },
 
-  async changePendingEmail(studentId, newEmail) {
+  async changePendingEmail(studentId, newEmail, registerNo) {
     const res = await apiFetch(`${BASE_URL}/auth/student/change-pending-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ studentId, newEmail })
+      body: JSON.stringify({ studentId, newEmail, registerNo })
     });
     return await handleResponse(res);
   },

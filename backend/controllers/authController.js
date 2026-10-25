@@ -454,14 +454,10 @@ const loginStudent = async (req, res) => {
     // S7 fix: Clear login failures on valid authentication
     await clearFailures(lockKey);
 
-    if (student.email_verified === 0 && process.env.REQUIRE_EMAIL_VERIFICATION !== 'false' && mailEnabled()) {
-      return res.status(403).json({
-        success: false,
-        code: 'EMAIL_NOT_VERIFIED',
-        message: 'Your email address has not been verified yet. Please enter the verification code sent to your email.',
-        studentId: student.id,
-        emailMasked: maskEmail(student.email)
-      });
+    // Auto-mark account verified on authenticated login with chosen password (no OTP block on login)
+    if (student.email_verified === 0) {
+      await pool.query('UPDATE students SET email_verified = 1 WHERE id = ?', [student.id]);
+      student.email_verified = 1;
     }
 
     // Generate JWT
@@ -814,12 +810,27 @@ const changePassword = async (req, res) => {
  */
 const verifyEmail = async (req, res) => {
   try {
-    const { studentId, code } = req.body;
-    if (!studentId || !code) {
-      return res.status(400).json({ success: false, message: 'Student ID and verification code are required.' });
+    const { studentId, registerNo, email, code } = req.body;
+    if (!code) {
+      return res.status(400).json({ success: false, message: 'Verification code is required.' });
     }
 
-    const result = await checkCode(studentId, code);
+    let targetStudentId = studentId;
+    if (!targetStudentId) {
+      const cleanReg = registerNo ? cleanRegisterNo(registerNo) : '';
+      const cleanEm = email ? String(email).trim().toLowerCase() : '';
+      const [lookup] = await pool.query(
+        'SELECT id FROM students WHERE (register_no = ? AND ? != "") OR (LOWER(email) = ? AND ? != "") ORDER BY id DESC LIMIT 1',
+        [cleanReg, cleanReg, cleanEm, cleanEm]
+      );
+      if (lookup.length > 0) targetStudentId = lookup[0].id;
+    }
+
+    if (!targetStudentId) {
+      return res.status(400).json({ success: false, message: 'Student identification is required.' });
+    }
+
+    const result = await checkCode(targetStudentId, code);
     if (!result.valid) {
       return res.status(400).json({
         success: false,
@@ -832,7 +843,7 @@ const verifyEmail = async (req, res) => {
     // Code verified! Fetch student to issue session token
     const [rows] = await pool.query(
       'SELECT id, register_no, name, dob, email, year, section, status, is_locked, token_version, must_change_password FROM students WHERE id = ?',
-      [studentId]
+      [targetStudentId]
     );
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Student record not found.' });
@@ -905,14 +916,25 @@ const verifyEmail = async (req, res) => {
  */
 const resendVerificationCode = async (req, res) => {
   try {
-    const { studentId } = req.body;
-    if (!studentId) {
-      return res.status(400).json({ success: false, message: 'Student ID is required.' });
+    const { studentId, registerNo, email } = req.body;
+    let targetStudentId = studentId;
+    if (!targetStudentId) {
+      const cleanReg = registerNo ? cleanRegisterNo(registerNo) : '';
+      const cleanEm = email ? String(email).trim().toLowerCase() : '';
+      const [lookup] = await pool.query(
+        'SELECT id FROM students WHERE (register_no = ? AND ? != "") OR (LOWER(email) = ? AND ? != "") ORDER BY id DESC LIMIT 1',
+        [cleanReg, cleanReg, cleanEm, cleanEm]
+      );
+      if (lookup.length > 0) targetStudentId = lookup[0].id;
+    }
+
+    if (!targetStudentId) {
+      return res.status(400).json({ success: false, message: 'Student identification is required.' });
     }
 
     const [rows] = await pool.query(
       'SELECT id, name, email, email_verified FROM students WHERE id = ?',
-      [studentId]
+      [targetStudentId]
     );
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Student record not found.' });
@@ -963,18 +985,33 @@ const resendVerificationCode = async (req, res) => {
  */
 const changePendingEmail = async (req, res) => {
   try {
-    const { studentId, newEmail } = req.body;
-    if (!studentId || !newEmail) {
-      return res.status(400).json({ success: false, message: 'Student ID and new email address are required.' });
+    const { studentId, registerNo, email, newEmail } = req.body;
+    if (!newEmail) {
+      return res.status(400).json({ success: false, message: 'New email address is required.' });
     }
     const cleanEmail = String(newEmail).trim().toLowerCase();
     if (!validateEmail(cleanEmail) || cleanEmail.length > 100) {
       return res.status(400).json({ success: false, message: 'A valid email address is required.' });
     }
 
+    let targetStudentId = studentId;
+    if (!targetStudentId) {
+      const cleanReg = registerNo ? cleanRegisterNo(registerNo) : '';
+      const cleanEm = email ? String(email).trim().toLowerCase() : '';
+      const [lookup] = await pool.query(
+        'SELECT id FROM students WHERE (register_no = ? AND ? != "") OR (LOWER(email) = ? AND ? != "") ORDER BY id DESC LIMIT 1',
+        [cleanReg, cleanReg, cleanEm, cleanEm]
+      );
+      if (lookup.length > 0) targetStudentId = lookup[0].id;
+    }
+
+    if (!targetStudentId) {
+      return res.status(400).json({ success: false, message: 'Student identification is required.' });
+    }
+
     const [rows] = await pool.query(
       'SELECT id, name, email, email_verified FROM students WHERE id = ?',
-      [studentId]
+      [targetStudentId]
     );
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Student record not found.' });
@@ -988,14 +1025,14 @@ const changePendingEmail = async (req, res) => {
     // Check if new email is in use
     const [dupRows] = await pool.query(
       'SELECT id FROM students WHERE LOWER(email) = LOWER(?) AND id != ?',
-      [cleanEmail, studentId]
+      [cleanEmail, targetStudentId]
     );
     if (dupRows.length > 0) {
       return res.status(409).json({ success: false, message: 'This email address is already in use by another student.' });
     }
 
     // Update email on student record
-    await pool.query('UPDATE students SET email = ? WHERE id = ?', [cleanEmail, studentId]);
+    await pool.query('UPDATE students SET email = ? WHERE id = ?', [cleanEmail, targetStudentId]);
 
     // Issue new code
     const issueRes = await issueCode(student.id, cleanEmail);

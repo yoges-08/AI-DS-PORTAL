@@ -432,7 +432,7 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
     try {
       setLoading(true);
       if (setActiveField) setActiveField('loading');
-      const res = await verifyEmail(pendingStudentId, code, { defer: true });
+      const res = await verifyEmail(pendingStudentId, code, signupRegNo || studentRegNo, { defer: true });
       if (res?.success && res.user) {
         playWelcomeThenEnter(res.user);
       }
@@ -450,7 +450,7 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
     setCodeSuccessMsg('');
     try {
       setLoading(true);
-      const res = await api.resendVerificationCode(pendingStudentId);
+      const res = await api.resendVerificationCode(pendingStudentId, signupRegNo || studentRegNo);
       if (res.success) {
         setCodeSuccessMsg('A new 6-digit code has been sent to your email.');
         setResendCooldown(60);
@@ -473,7 +473,7 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
     setCodeSuccessMsg('');
     try {
       setLoading(true);
-      const res = await api.changePendingEmail(pendingStudentId, cleanEmail);
+      const res = await api.changePendingEmail(pendingStudentId, cleanEmail, signupRegNo || studentRegNo);
       if (res.success) {
         setPendingEmailMasked(res.emailMasked);
         setIsChangingEmail(false);

@@ -46,8 +46,8 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const verifyEmail = async (studentId, code, { defer = false } = {}) => {
-    const data = await api.verifyEmail(studentId, code);
+  const verifyEmail = async (studentId, code, registerNo, { defer = false } = {}) => {
+    const data = await api.verifyEmail(studentId, code, registerNo);
     if (data.success && data.user && !defer) {
       setUser(data.user);
     }
