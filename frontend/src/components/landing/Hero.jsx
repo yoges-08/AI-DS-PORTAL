@@ -1,9 +1,8 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useAuthModal } from '../../context/AuthModalContext';
 import { HeroRobot } from './HeroRobot';
-import { AiNeuralScene3D } from './AiNeuralScene3D';
 import '../../styles/heroStage.css';
 import { 
   ShieldCheck, 
@@ -12,13 +11,7 @@ import {
   Sparkles, 
   CheckCircle, 
   Lock, 
-  UserPlus,
-  Cpu,
-  Boxes,
-  Activity,
-  Bot,
-  Zap,
-  Award
+  UserPlus
 } from 'lucide-react';
 
 if (typeof window !== 'undefined') {
@@ -29,7 +22,6 @@ export const Hero = () => {
   const { openLogin } = useAuthModal();
   const heroRef = useRef(null);
   const leftColRef = useRef(null);
-  const rightColRef = useRef(null);
   const badgeRef = useRef(null);
   const titleRef = useRef(null);
   const descRef = useRef(null);
@@ -42,12 +34,9 @@ export const Hero = () => {
   const giantBackRef = useRef(null);
   const giantFrontRef = useRef(null);
   const robotWrapRef = useRef(null);
-  const cardTiltRef = useRef(null);
+  const dossierRef = useRef(null);
 
-  const [tiltStyle, setTiltStyle] = useState({});
-  const [activeView, setActiveView] = useState('ROBOT'); // 'ROBOT' | 'QUANTUM' | 'DOSSIER'
-
-  // 1. Mouse-driven stereoscopic parallax for the voxel hills
+  // 1. Mouse-driven subtle parallax for voxel hills
   useEffect(() => {
     const el = heroRef.current;
     if (!el || typeof window === 'undefined') return undefined;
@@ -57,6 +46,7 @@ export const Hero = () => {
     ) {
       return undefined;
     }
+
     let raf = 0;
     const onMove = (e) => {
       if (raf) return;
@@ -66,6 +56,7 @@ export const Hero = () => {
         el.style.setProperty('--px', px.toFixed(3));
       });
     };
+
     el.addEventListener('pointermove', onMove, { passive: true });
     return () => {
       el.removeEventListener('pointermove', onMove);
@@ -73,18 +64,18 @@ export const Hero = () => {
     };
   }, []);
 
-  // 2. High-Caliber GSAP ScrollTrigger 3D Orchestration
+  // 2. High-Caliber GSAP ScrollTrigger 3D Stereoscopic Experience
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Intro timeline
+      // Intro entrance timeline
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
       tl.fromTo(badgeRef.current, { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 })
-        .fromTo(titleRef.current, { y: 35, opacity: 0, rotationX: 12, transformPerspective: 800 }, { y: 0, opacity: 1, rotationX: 0, duration: 0.8 }, '-=0.4')
-        .fromTo(descRef.current, { y: 22, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 }, '-=0.5')
-        .fromTo(ctaRef.current, { y: 20, opacity: 0, scale: 0.96 }, { y: 0, opacity: 1, scale: 1, duration: 0.6 }, '-=0.4')
+        .fromTo(titleRef.current, { y: 35, opacity: 0, rotationX: 14, transformPerspective: 900 }, { y: 0, opacity: 1, rotationX: 0, duration: 0.85 }, '-=0.4')
+        .fromTo(descRef.current, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.65 }, '-=0.5')
+        .fromTo(ctaRef.current, { y: 20, opacity: 0, scale: 0.95 }, { y: 0, opacity: 1, scale: 1, duration: 0.6 }, '-=0.4')
         .fromTo(trustRef.current, { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, '-=0.3')
-        .fromTo(rightColRef.current, { scale: 0.88, opacity: 0, y: 35 }, { scale: 1, opacity: 1, y: 0, duration: 1, ease: 'back.out(1.2)' }, '-=0.8');
+        .fromTo(robotWrapRef.current, { scale: 0.85, opacity: 0, y: 40 }, { scale: 1, opacity: 1, y: 0, duration: 1.1, ease: 'back.out(1.25)' }, '-=0.8');
 
       // ScrollTrigger 3D Stereoscopic Parallax Scrub
       // Left Column Content: Smooth perspective lift and fade
@@ -110,8 +101,8 @@ export const Hero = () => {
             end: 'bottom top',
             scrub: 1.4
           },
-          y: 70,
-          x: -40,
+          y: 75,
+          x: -45,
           ease: 'none'
         });
       }
@@ -125,13 +116,13 @@ export const Hero = () => {
             end: 'bottom top',
             scrub: 1
           },
-          y: 130,
-          x: 45,
+          y: 140,
+          x: 50,
           ease: 'none'
         });
       }
 
-      // Giant Typography "AI" (Back): Drifts up & left
+      // Giant Typography "AI" (Back): Drifts up & left in 3D depth
       if (giantBackRef.current) {
         gsap.to(giantBackRef.current, {
           scrollTrigger: {
@@ -140,14 +131,14 @@ export const Hero = () => {
             end: 'bottom top',
             scrub: 1.3
           },
-          x: -100,
-          y: -130,
-          opacity: 0.25,
+          x: -110,
+          y: -140,
+          opacity: 0.2,
           ease: 'none'
         });
       }
 
-      // Giant Typography "DS" (Front): Drifts down & right
+      // Giant Typography "DS" (Front): Drifts down & right in 3D depth
       if (giantFrontRef.current) {
         gsap.to(giantFrontRef.current, {
           scrollTrigger: {
@@ -156,15 +147,15 @@ export const Hero = () => {
             end: 'bottom top',
             scrub: 1
           },
-          x: 90,
-          y: 110,
-          scale: 1.08,
+          x: 95,
+          y: 115,
+          scale: 1.1,
           opacity: 0.45,
           ease: 'none'
         });
       }
 
-      // 3D Robot / Showcase Mascot: Ascends as if levitating towards viewer
+      // 3D Robot Mascot: Ascends gracefully towards viewer on scroll
       if (robotWrapRef.current) {
         gsap.to(robotWrapRef.current, {
           scrollTrigger: {
@@ -173,9 +164,25 @@ export const Hero = () => {
             end: 'bottom top',
             scrub: 1
           },
-          y: -75,
-          scale: 1.04,
-          rotationZ: 3,
+          y: -85,
+          scale: 1.05,
+          rotationZ: 3.5,
+          ease: 'none'
+        });
+      }
+
+      // Compact Dossier Card: Slides smoothly
+      if (dossierRef.current) {
+        gsap.to(dossierRef.current, {
+          scrollTrigger: {
+            trigger: heroRef.current,
+            start: 'top top',
+            end: 'bottom top',
+            scrub: 1.1
+          },
+          y: -50,
+          x: -25,
+          opacity: 0.2,
           ease: 'none'
         });
       }
@@ -184,38 +191,11 @@ export const Hero = () => {
     return () => ctx.revert();
   }, []);
 
-  // 3. Interactive 3D Card Tilt Physics for Dossier View
-  const handleCardMouseMove = (e) => {
-    const card = cardTiltRef.current;
-    if (!card) return;
-    const rect = card.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-
-    const rotateX = ((y - centerY) / centerY) * -12;
-    const rotateY = ((x - centerX) / centerX) * 12;
-
-    setTiltStyle({
-      transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`,
-      transition: 'transform 0.08s ease-out'
-    });
-  };
-
-  const handleCardMouseLeave = () => {
-    setTiltStyle({
-      transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
-      transition: 'transform 0.5s ease-out'
-    });
-  };
-
   return (
     <section 
       ref={heroRef} 
       id="hero" 
-      className="hero-stage pt-10 pb-16 sm:pt-16 sm:pb-24 relative overflow-hidden"
+      className="hero-stage pt-12 pb-16 sm:pt-20 sm:pb-24 relative overflow-hidden"
     >
       
       {/* Voxel Hills Background with Stereoscopic Parallax */}
@@ -248,24 +228,7 @@ export const Hero = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        
-        {/* Top Executive Micro Telemetry Stream */}
-        <div className="flex items-center justify-center lg:justify-start mb-6">
-          <div className="inline-flex items-center gap-2 sm:gap-3 px-3.5 py-1.5 rounded-full bg-slate-900/80 border border-white/20 text-white shadow-lg backdrop-blur-md text-[10.5px] sm:text-xs font-mono">
-            <span className="flex items-center gap-1.5 text-emerald-300 font-bold">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>SYS: ONLINE</span>
-            </span>
-            <span className="text-white/20">&bull;</span>
-            <span className="text-cyan-200 hidden min-[400px]:inline">AICTE #7176-AIDS</span>
-            <span className="text-white/20 hidden sm:inline">&bull;</span>
-            <span className="text-amber-200 hidden sm:inline">ANNA UNIV. REG 2021</span>
-            <span className="text-white/20">&bull;</span>
-            <span className="text-sky-300 font-semibold">AES-256 VAULT</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-6 items-center">
 
           {/* Left Column: Headline, Description & CTAs (6 cols on lg) */}
           <div 
@@ -275,16 +238,16 @@ export const Hero = () => {
             
             {/* Pill Badge */}
             <div ref={badgeRef}>
-              <div className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-full bg-white/12 border border-white/25 text-white text-xs font-bold tracking-wide uppercase max-w-full backdrop-blur-md">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                <span className="truncate">Official Department Portal &bull; Anna University</span>
+              <div className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-full bg-white/12 border border-white/25 text-white text-xs font-bold tracking-wide uppercase max-w-full backdrop-blur-md shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+                <span className="truncate">Official Departmental Portal &bull; Anna University</span>
               </div>
             </div>
 
             {/* Main Title with Executive Sunset High-Contrast Gradient */}
             <h1 
               ref={titleRef}
-              className="text-[2.2rem] min-[400px]:text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.1]"
+              className="text-[2rem] min-[400px]:text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.1]"
             >
               Department Student <br className="hidden sm:inline" />
               <span className="bg-gradient-to-r from-sky-200 via-white to-amber-200 bg-clip-text text-transparent drop-shadow-md">
@@ -295,19 +258,19 @@ export const Hero = () => {
             {/* Subtitle */}
             <p 
               ref={descRef}
-              className="text-base sm:text-lg text-white/90 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal"
+              className="text-base sm:text-lg text-white/85 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal"
             >
-              A confidential academic registry and dossier repository for students, faculty, and administrators of the <strong className="text-white font-bold">Department of Artificial Intelligence &amp; Data Science</strong> at Anjalai Ammal Mahalingam Engineering College.
+              A confidential academic registry and dossier repository for students, faculty, and administrators of the <strong className="text-white">Department of Artificial Intelligence &amp; Data Science</strong> at Anjalai Ammal Mahalingam Engineering College.
             </p>
 
-            {/* Action Buttons */}
+            {/* Action Buttons with High-Class Contrast */}
             <div 
               ref={ctaRef}
               className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5 pt-2"
             >
               <button
                 onClick={() => openLogin('STUDENT')}
-                className="w-full sm:w-auto btn-shiny inline-flex items-center justify-center gap-2.5 px-6 py-3.5 min-h-[48px] rounded-2xl bg-white text-[#14205a] hover:bg-amber-50 font-bold text-sm shadow-xl shadow-black/25 transition-all transform active:scale-95 hover:-translate-y-0.5 cursor-pointer group"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 min-h-[48px] rounded-2xl bg-white text-[#14205a] hover:bg-amber-50 font-bold text-sm shadow-xl shadow-black/20 transition-all transform active:scale-95 hover:-translate-y-0.5 cursor-pointer group"
               >
                 <GraduationCap className="w-5 h-5 shrink-0" />
                 <span>Student &amp; Faculty Sign In</span>
@@ -316,7 +279,7 @@ export const Hero = () => {
 
               <button
                 onClick={() => openLogin('SIGNUP')}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] rounded-2xl bg-white/12 hover:bg-white/20 text-white font-bold text-sm border border-white/35 backdrop-blur-md transition-all transform active:scale-95 hover:-translate-y-0.5 cursor-pointer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/35 backdrop-blur-md transition-all transform active:scale-95 hover:-translate-y-0.5 cursor-pointer"
               >
                 <UserPlus className="w-4 h-4 text-amber-200 shrink-0" />
                 <span>First-Time Registration</span>
@@ -326,205 +289,96 @@ export const Hero = () => {
             {/* Trust & Compliance Micro-Badges */}
             <div 
               ref={trustRef}
-              className="pt-4 flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 text-xs text-white/85 font-medium"
+              className="pt-4 flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 text-xs text-white/80 font-medium"
             >
               <div className="inline-flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-300" />
                 <span>AES-256 Encrypted Records</span>
               </div>
               <div className="inline-flex items-center gap-1.5">
-                <CheckCircle className="w-4 h-4 text-sky-200" />
+                <CheckCircle className="w-4 h-4 text-sky-300" />
                 <span>Anna University Gazette Formats</span>
               </div>
               <div className="inline-flex items-center gap-1.5">
-                <Lock className="w-4 h-4 text-amber-200" />
+                <Lock className="w-4 h-4 text-indigo-200" />
                 <span>Private Dossier Vault</span>
               </div>
             </div>
 
           </div>
 
-          {/* Right Column: 3D Stage with Robot, Giant 3D Typography & Quantum Toggle */}
-          <div 
-            ref={rightColRef}
-            className="lg:col-span-6 min-w-0 flex flex-col items-center justify-center relative"
-          >
+          {/* Right Column: 3D Robot Mascot Stage with Giant 3D Layered Typography */}
+          <div className="lg:col-span-6 min-w-0 relative overflow-visible min-h-[380px] sm:min-h-[480px] lg:min-h-[600px] flex items-center justify-center">
             
-            {/* View Switcher Controls (Robot vs 3D Quantum Field vs Dossier) */}
-            <div className="flex items-center p-1 bg-white/15 backdrop-blur-xl rounded-2xl border border-white/30 shadow-lg mb-4 self-center z-20">
-              <button
-                onClick={() => setActiveView('ROBOT')}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeView === 'ROBOT'
-                    ? 'bg-white text-[#14205a] shadow-md font-extrabold'
-                    : 'text-white/80 hover:text-white'
-                }`}
-              >
-                <Bot className="w-3.5 h-3.5" />
-                <span>3D AI Mascot</span>
-              </button>
-
-              <button
-                onClick={() => setActiveView('QUANTUM')}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeView === 'QUANTUM'
-                    ? 'bg-white text-[#14205a] shadow-md font-extrabold'
-                    : 'text-white/80 hover:text-white'
-                }`}
-              >
-                <Cpu className="w-3.5 h-3.5" />
-                <span>Quantum Field</span>
-              </button>
-
-              <button
-                onClick={() => setActiveView('DOSSIER')}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeView === 'DOSSIER'
-                    ? 'bg-white text-[#14205a] shadow-md font-extrabold'
-                    : 'text-white/80 hover:text-white'
-                }`}
-              >
-                <Boxes className="w-3.5 h-3.5" />
-                <span>Academic Dossier</span>
-              </button>
+            {/* Giant 3D Layered Typography "AI" (Behind Robot) */}
+            <div 
+              ref={giantBackRef}
+              className="hero-giant hero-giant--back" 
+              aria-hidden="true"
+            >
+              AI
             </div>
 
-            {/* Container for the 3D Stage */}
-            <div className="relative w-full min-h-[380px] sm:min-h-[460px] lg:min-h-[580px] flex items-center justify-center">
+            {/* 3D Cursor-Interactive Robot Mascot */}
+            <div 
+              ref={robotWrapRef}
+              className="relative z-[2] w-full"
+            >
+              <HeroRobot trackRef={heroRef} />
+            </div>
 
-              {/* View 1: 3D Robot Mascot sandwiched between giant 3D AI and DS letters */}
-              {activeView === 'ROBOT' && (
-                <div className="w-full relative flex items-center justify-center">
-                  
-                  {/* Giant 3D Layered Typography "AI" (Behind Robot) */}
-                  <div 
-                    ref={giantBackRef}
-                    className="hero-giant hero-giant--back" 
-                    aria-hidden="true"
-                  >
-                    AI
+            {/* Giant 3D Layered Typography "DS" (In Front of Robot) */}
+            <div 
+              ref={giantFrontRef}
+              className="hero-giant hero-giant--front" 
+              aria-hidden="true"
+            >
+              DS
+            </div>
+
+            {/* Compact Floating Glass Academic Dossier Card */}
+            <div 
+              ref={dossierRef}
+              className="hero-dossier hidden lg:block absolute z-[5] left-0 bottom-10 w-64 p-4 space-y-3 text-xs shadow-2xl"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center text-white">
+                    <GraduationCap className="w-4 h-4" />
                   </div>
-
-                  {/* 3D Cursor-Interactive Robot Mascot */}
-                  <div 
-                    ref={robotWrapRef}
-                    className="relative z-[2] w-full"
-                  >
-                    <HeroRobot trackRef={heroRef} />
+                  <div>
+                    <p className="font-bold text-white leading-tight">Academic Dossier</p>
+                    <p className="text-[11px] text-white/70">Live registry sample</p>
                   </div>
-
-                  {/* Giant 3D Layered Typography "DS" (In front of Robot) */}
-                  <div 
-                    ref={giantFrontRef}
-                    className="hero-giant hero-giant--front" 
-                    aria-hidden="true"
-                  >
-                    DS
-                  </div>
-
-                  {/* Compact floating Academic Dossier preview card */}
-                  <div className="hero-dossier hidden sm:block absolute z-[5] left-0 bottom-4 w-60 p-4 space-y-3 text-xs">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center">
-                          <GraduationCap className="w-4 h-4 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-white leading-tight">Academic Dossier</p>
-                          <p className="text-[11px] text-white/70">Live registry sample</p>
-                        </div>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400 text-emerald-950">VERIFIED</span>
-                    </div>
-                    <div className="space-y-1.5 text-white/90">
-                      <div className="flex justify-between"><span>Register No.</span><span className="font-mono font-bold text-white">71762305041</span></div>
-                      <div className="flex justify-between"><span>Year &amp; Section</span><span className="font-bold text-white">II &bull; A</span></div>
-                      <div className="flex justify-between"><span>Document Vault</span><span className="font-bold text-white">8 files</span></div>
-                    </div>
-                  </div>
-
                 </div>
-              )}
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400 text-emerald-950 shadow-xs">
+                  VERIFIED
+                </span>
+              </div>
 
-              {/* View 2: 1,200-Particle 3D Quantum AI Tensor Field */}
-              {activeView === 'QUANTUM' && (
-                <div className="w-full h-[460px] sm:h-[520px] rounded-3xl bg-slate-950/90 backdrop-blur-xl border border-white/20 shadow-2xl overflow-hidden relative">
-                  <AiNeuralScene3D className="w-full h-full" interactive={true} />
+              <div className="space-y-1.5 text-white/90">
+                <div className="flex justify-between">
+                  <span className="text-white/70">Register No.</span>
+                  <span className="font-mono font-bold text-white">71762305041</span>
                 </div>
-              )}
-
-              {/* View 3: Full-Size 3D Tilt Academic Dossier Card */}
-              {activeView === 'DOSSIER' && (
-                <div
-                  ref={cardTiltRef}
-                  onMouseMove={handleCardMouseMove}
-                  onMouseLeave={handleCardMouseLeave}
-                  style={tiltStyle}
-                  className="w-full max-w-md relative hero-dossier p-6 sm:p-7 space-y-4 rounded-3xl shadow-2xl transition-shadow bg-white/15"
-                >
-                  <div className="flex items-center justify-between pb-3 border-b border-white/20">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-2xl bg-white text-[#14205a] flex items-center justify-center font-bold shadow-md">
-                        <GraduationCap className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-white leading-tight">Academic Dossier</h3>
-                        <p className="text-[11px] text-white/70">Official SIS Registry Record</p>
-                      </div>
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-[10.5px] font-bold bg-emerald-400 text-emerald-950 shadow-sm">
-                      VERIFIED &bull; DOTE
-                    </span>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-black/25 border border-white/15 space-y-2 text-xs">
-                    <div className="flex justify-between items-center">
-                      <span className="text-white/70">Register Number</span>
-                      <span className="font-mono font-bold text-white bg-white/10 px-2 py-0.5 rounded-lg border border-white/20">
-                        71762305041
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-white/70">Department</span>
-                      <span className="font-bold text-amber-200">B.Tech AI &amp; DS</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-white/70">Year &amp; Section</span>
-                      <span className="font-bold text-white">Year II &bull; Section A</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-white/70">First Graduate (FG)</span>
-                      <span className="font-bold text-emerald-300">Eligible (Verified)</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                    <div className="p-2.5 rounded-xl bg-white/10 border border-white/15">
-                      <div className="text-[10px] uppercase font-bold text-white/60">Document Vault</div>
-                      <div className="font-bold text-white mt-0.5">8 Files Stored</div>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-white/10 border border-white/15">
-                      <div className="text-[10px] uppercase font-bold text-white/60">Verification</div>
-                      <div className="font-bold text-emerald-300 mt-0.5">DOTE Approved</div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => openLogin('STUDENT')}
-                    className="w-full py-3 min-h-[44px] rounded-xl bg-white text-[#14205a] hover:bg-amber-50 text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-95 cursor-pointer"
-                  >
-                    <span>Sign In to Access Your Records</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                <div className="flex justify-between">
+                  <span className="text-white/70">Department</span>
+                  <span className="font-bold text-amber-200">B.Tech AI &amp; DS</span>
                 </div>
-              )}
-
+                <div className="flex justify-between">
+                  <span className="text-white/70">Year &amp; Section</span>
+                  <span className="font-bold text-white">II &bull; A</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/70">Document Vault</span>
+                  <span className="font-bold text-emerald-300">8 files stored</span>
+                </div>
+              </div>
             </div>
 
           </div>
 
         </div>
-
       </div>
     </section>
   );
