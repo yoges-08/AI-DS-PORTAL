@@ -1,6 +1,7 @@
 import React from 'react';
 import { LandingNavbar } from './LandingNavbar';
 import { Hero } from './Hero';
+import { AccreditationTicker } from './AccreditationTicker';
 import { FeaturesGrid } from './FeaturesGrid';
 import { AboutDepartment } from './AboutDepartment';
 import { ContactSection } from './ContactSection';
@@ -19,6 +20,7 @@ export const LandingPage = () => {
       {/* Main Page Content */}
       <main className="flex-1">
         <Hero />
+        <AccreditationTicker />
         <FeaturesGrid />
         <AboutDepartment />
         <ContactSection />

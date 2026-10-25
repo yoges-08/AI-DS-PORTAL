@@ -5,7 +5,11 @@ import {
   BookOpen, 
   Sparkles, 
   CheckCircle2, 
-  ExternalLink 
+  ExternalLink,
+  Cpu,
+  Layers,
+  Server,
+  ShieldCheck
 } from 'lucide-react';
 
 if (typeof window !== 'undefined') {
@@ -16,6 +20,7 @@ export const AboutDepartment = () => {
   const sectionRef = useRef(null);
   const headerRef = useRef(null);
   const statsRef = useRef([]);
+  const labsRef = useRef([]);
   const highlightsRef = useRef([]);
 
   const departmentStats = [
@@ -25,22 +30,34 @@ export const AboutDepartment = () => {
     { label: 'Placement Record', value: '95%+', desc: 'In Product & AI Enterprises' },
   ];
 
-  const highlights = [
+  const flagshipLabs = [
     {
-      title: 'Industry-Aligned Curriculum',
-      desc: 'Specialized coursework covering Supervised/Unsupervised Learning, Deep Neural Networks, Natural Language Processing, Computer Vision, and Big Data Engineering.'
+      title: 'CUDA GPU Deep Learning Cluster',
+      specs: 'NVIDIA RTX & A-Series Tensor Workstations',
+      desc: 'Hardware-accelerated parallel computing suite configured for multi-layer perception, Transformer architectures, and generative adversarial models.',
+      icon: Cpu,
+      color: 'text-blue-600 bg-blue-50 border-blue-200'
     },
     {
-      title: 'State-of-the-Art Computing Lab',
-      desc: 'Equipped with dedicated workstation clusters, CUDA-accelerated hardware, and modern containerized sandbox environments for student projects and research.'
+      title: 'Distributed Cloud & MLOps Sandbox',
+      specs: 'Kubernetes, Docker, Apache Spark & Kafka',
+      desc: 'Production-grade distributed computing testbed where students orchestrate continuous integration, model versioning, and high-throughput data pipelines.',
+      icon: Server,
+      color: 'text-indigo-600 bg-indigo-50 border-indigo-200'
     },
     {
-      title: 'Ethical & Responsible AI',
-      desc: 'Emphasis on data privacy, algorithmic fairness, governance, and transparent machine learning practices aligned with global standards.'
+      title: 'Autonomous Systems & Edge AI Hub',
+      specs: 'NVIDIA Jetson Nano, LiDAR & Sensory Arrays',
+      desc: 'Embedded compute laboratory for real-time robotic vision, drone navigation, edge intelligence, and IoT sensor fusion.',
+      icon: Layers,
+      color: 'text-emerald-600 bg-emerald-50 border-emerald-200'
     },
     {
-      title: 'Live Hackathons & Research Output',
-      desc: 'Active student participation in national hackathons, IEEE conferences, open-source repositories, and intellectual property publications.'
+      title: 'Ethical AI & Governance Sandbox',
+      specs: 'Explainable AI (XAI) & Fairness Frameworks',
+      desc: 'Rigorous testing suite dedicated to bias mitigation, algorithmic transparency, differential data privacy, and compliance with statutory standards.',
+      icon: ShieldCheck,
+      color: 'text-sky-600 bg-sky-50 border-sky-200'
     }
   ];
 
@@ -85,15 +102,15 @@ export const AboutDepartment = () => {
         );
       }
 
-      // 3. Highlight cards slide-in
-      const validHighlights = highlightsRef.current.filter(Boolean);
-      if (validHighlights.length > 0) {
+      // 3. Flagship Labs reveal
+      const validLabs = labsRef.current.filter(Boolean);
+      if (validLabs.length > 0) {
         gsap.fromTo(
-          validHighlights,
-          { y: 40, opacity: 0 },
+          validLabs,
+          { y: 45, opacity: 0 },
           {
             scrollTrigger: {
-              trigger: validHighlights[0],
+              trigger: validLabs[0],
               start: 'top 85%',
               toggleActions: 'play none none reverse'
             },
@@ -114,7 +131,7 @@ export const AboutDepartment = () => {
     <section 
       ref={sectionRef} 
       id="about" 
-      className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative scroll-mt-20"
+      className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative scroll-mt-20 overflow-hidden"
     >
       {/* Background ambient glow */}
       <div className="absolute top-1/2 left-0 -translate-y-1/2 w-80 h-80 bg-blue-100/50 rounded-full blur-3xl pointer-events-none -z-10" />
@@ -124,7 +141,7 @@ export const AboutDepartment = () => {
         ref={headerRef}
         className="max-w-3xl mx-auto text-center mb-16"
       >
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/60 text-blue-700 text-xs font-semibold uppercase tracking-wider mb-3">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-50 border border-blue-200/60 text-blue-700 text-xs font-semibold uppercase tracking-wider mb-3">
           <BookOpen className="w-3.5 h-3.5" />
           <span>Academic Excellence &bull; Department of AI &amp; DS</span>
         </div>
@@ -137,12 +154,12 @@ export const AboutDepartment = () => {
       </div>
 
       {/* Stats Counter Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-12 sm:mb-16">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-16">
         {departmentStats.map((stat, i) => (
           <div 
             key={i}
             ref={(el) => (statsRef.current[i] = el)}
-            className="p-3.5 sm:p-5 rounded-2xl bg-white border border-gray-200/80 shadow-xs hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 text-center"
+            className="p-4 sm:p-5 rounded-2xl bg-white border border-gray-200/90 shadow-xs hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 text-center"
           >
             <div className="text-lg min-[380px]:text-xl sm:text-3xl font-black text-blue-600 tracking-tight truncate">
               {stat.value}
@@ -157,36 +174,55 @@ export const AboutDepartment = () => {
         ))}
       </div>
 
-      {/* Highlights Grid */}
-      <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
-        {highlights.map((item, index) => (
-          <div 
-            key={index}
-            ref={(el) => (highlightsRef.current[index] = el)}
-            className="p-6 sm:p-8 rounded-3xl bg-white border border-gray-200/70 shadow-xs hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 space-y-3"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-4 h-4" />
+      {/* Flagship Infrastructure Section Title */}
+      <div className="mb-8 text-center sm:text-left">
+        <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
+          Cutting-Edge Facilities
+        </span>
+        <h3 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">
+          Flagship AI &amp; High-Performance Computing Labs
+        </h3>
+      </div>
+
+      {/* Flagship Labs Grid */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {flagshipLabs.map((lab, idx) => {
+          const Icon = lab.icon;
+          return (
+            <div 
+              key={idx}
+              ref={(el) => (labsRef.current[idx] = el)}
+              className="p-6 sm:p-7 rounded-3xl bg-white/95 border border-slate-200/90 shadow-xs hover:shadow-xl hover:shadow-blue-900/5 transition-all duration-300 transform hover:-translate-y-1.5 space-y-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border shrink-0 ${lab.color}`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-slate-900 leading-tight">
+                    {lab.title}
+                  </h4>
+                  <span className="text-[11px] font-mono text-blue-600 font-semibold">
+                    {lab.specs}
+                  </span>
+                </div>
               </div>
-              <h3 className="text-base sm:text-lg font-bold text-[#0B1B3A]">
-                {item.title}
-              </h3>
+
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed pt-1">
+                {lab.desc}
+              </p>
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed pl-11">
-              {item.desc}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Institutional Link Footer */}
-      <div className="mt-12 text-center">
+      <div className="mt-14 text-center">
         <a 
           href="https://aamec.edu.in" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white hover:bg-gray-50 border border-gray-200 text-sm font-semibold text-[#0B1B3A] shadow-xs hover:shadow-sm transition-all transform active:scale-95 hover:-translate-y-0.5"
+          className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-white hover:bg-gray-50 border border-gray-200 text-sm font-semibold text-[#0B1B3A] shadow-xs hover:shadow-md transition-all transform active:scale-95 hover:-translate-y-0.5"
         >
           <span>Visit Official College Website (AAMEC)</span>
           <ExternalLink className="w-4 h-4 text-gray-400" />
