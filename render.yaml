@@ -17,13 +17,13 @@ services:
       - key: COOKIE_SECRET
         generateValue: true
       - key: FIELD_ENCRYPTION_KEY
-        generateValue: true
+        sync: false
       - key: DEFAULT_ADMIN_USERNAME
         value: admin
       - key: DEFAULT_ADMIN_PASSWORD
         sync: false
       - key: DEFAULT_ADMIN_EMAIL
-        value: aamecaidsskill@gmail.com
+        sync: false
       - key: STORAGE_PROVIDER
         value: supabase
       - key: SUPABASE_URL

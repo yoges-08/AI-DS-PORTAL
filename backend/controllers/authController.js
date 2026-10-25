@@ -35,7 +35,7 @@ const createPendingToken = (studentId) => {
   return jwt.sign(
     { purpose: 'email-verify', sid: studentId },
     JWT_SECRET + ':email-verify',
-    { expiresIn: '30m' }
+    { algorithm: 'HS256', expiresIn: '30m' }
   );
 };
 
@@ -43,7 +43,7 @@ const readPendingToken = (req) => {
   try {
     const rawToken = req.body?.pendingToken || req.headers['x-pending-token'];
     if (!rawToken || typeof rawToken !== 'string') return null;
-    const decoded = jwt.verify(rawToken.trim(), JWT_SECRET + ':email-verify');
+    const decoded = jwt.verify(rawToken.trim(), JWT_SECRET + ':email-verify', { algorithms: ['HS256'] });
     return decoded && decoded.purpose === 'email-verify' && decoded.sid ? decoded.sid : null;
   } catch {
     return null;
