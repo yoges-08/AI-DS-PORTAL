@@ -224,6 +224,24 @@ async function generateStudentFormPdf(student, photoBuffer = null) {
         { label: 'Mode of Admission', value: student.mode_of_admission }
       ], yPos + 4);
 
+      let arrearSummary = 'None (All Clear)';
+      if (student.has_arrears) {
+        let details = student.arrear_details;
+        if (typeof details === 'string') {
+          try { details = JSON.parse(details); } catch (e) { details = []; }
+        }
+        if (Array.isArray(details) && details.length > 0) {
+          arrearSummary = details.map(d => `${d.subjectCode || ''} (Sem ${d.semester || '?'})`).join(', ');
+        } else {
+          arrearSummary = 'Yes (Subjects Declared)';
+        }
+      }
+
+      yPos = drawGridRow([
+        { label: 'Standing Arrears', value: student.has_arrears ? 'YES' : 'NO (Clear)' },
+        { label: 'Arrear Subject(s)', value: arrearSummary }
+      ], yPos + 4);
+
       // 5. Scholarship & Category
       yPos = drawSectionHeader('5. Scholarship & Category Details', yPos + 4);
       yPos = drawGridRow([

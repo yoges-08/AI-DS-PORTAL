@@ -74,6 +74,8 @@ CREATE TABLE IF NOT EXISTS `students` (
   `hsc_percentage` DECIMAL(5, 2) NULL,
   `current_semester` INT DEFAULT 1,
   `mode_of_admission` VARCHAR(50) NULL,
+  `has_arrears` TINYINT(1) DEFAULT 0,
+  `arrear_details` LONGTEXT NULL,
 
   -- Step 5: Scholarship and Category Details
   `is_first_graduate` TINYINT(1) DEFAULT 0,

@@ -17,7 +17,10 @@ import {
   ArrowLeft,
   ArrowUp,
   X,
-  ShieldAlert
+  ShieldAlert,
+  Plus,
+  Trash2,
+  BookOpen
 } from 'lucide-react';
 
 export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
@@ -90,6 +93,8 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
     hscYear: '',
     hscPercentage: '',
     modeOfAdmission: 'Government Quota',
+    hasArrears: false,
+    arrearDetails: [],
 
     // Step 5: Scholarship
     isFirstGraduate: false,
@@ -171,6 +176,12 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
           hscPercentage: s.hsc_percentage || '',
           currentSemester: s.current_semester || 1,
           modeOfAdmission: s.mode_of_admission || 'Government Quota',
+          hasArrears: Boolean(s.has_arrears),
+          arrearDetails: Array.isArray(s.arrear_details)
+            ? s.arrear_details
+            : (typeof s.arrear_details === 'string'
+                ? (() => { try { return JSON.parse(s.arrear_details); } catch (e) { return []; } })()
+                : []),
 
           isFirstGraduate: Boolean(s.is_first_graduate),
           isPms: Boolean(s.is_pms),
@@ -358,6 +369,24 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
       if (!formData.modeOfAdmission || !String(formData.modeOfAdmission).trim()) {
         errs.modeOfAdmission = 'Mode of Admission is mandatory.';
       }
+
+      // Arrear validations
+      if (formData.hasArrears) {
+        if (!formData.arrearDetails || formData.arrearDetails.length === 0) {
+          errs.arrears = 'Please add at least one subject with standing or cleared arrear, or select "No Arrears".';
+        } else {
+          formData.arrearDetails.forEach((arr, idx) => {
+            if (!arr.subjectCode || !String(arr.subjectCode).trim()) {
+              errs[`arrear_${idx}_code`] = 'Subject code is required (e.g. CS3351).';
+              if (!errs.arrears) errs.arrears = 'Please enter subject code and subject name for all arrear rows.';
+            }
+            if (!arr.subjectName || !String(arr.subjectName).trim()) {
+              errs[`arrear_${idx}_name`] = 'Subject name is required.';
+              if (!errs.arrears) errs.arrears = 'Please enter subject code and subject name for all arrear rows.';
+            }
+          });
+        }
+      }
     }
 
     // STEP 5: SCHOLARSHIP DETAILS
@@ -473,7 +502,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
       );
     }
     if (currentStep === 4) {
-      return Boolean(
+      const basic = Boolean(
         formData.modeOfAdmission && String(formData.modeOfAdmission).trim() &&
         formData.sslcSchool && String(formData.sslcSchool).trim() &&
         formData.sslcBoard && String(formData.sslcBoard).trim() &&
@@ -484,6 +513,15 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
         formData.hscYear &&
         formData.hscPercentage && !isNaN(formData.hscPercentage)
       );
+      if (!basic) return false;
+      if (formData.hasArrears) {
+        if (!formData.arrearDetails || formData.arrearDetails.length === 0) return false;
+        for (const arr of formData.arrearDetails) {
+          if (!arr.subjectCode || !String(arr.subjectCode).trim()) return false;
+          if (!arr.subjectName || !String(arr.subjectName).trim()) return false;
+        }
+      }
+      return true;
     }
     if (currentStep === 5) {
       if (formData.isPms) {
@@ -519,6 +557,65 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
   const isCurrentStepComplete = useMemo(() => {
     return checkCurrentStepComplete();
   }, [formData, currentStep]);
+
+
+  // Arrear handlers
+  const handleArrearToggle = (hasArrearsBool) => {
+    setFormData((prev) => {
+      const next = { ...prev, hasArrears: hasArrearsBool };
+      if (hasArrearsBool && (!prev.arrearDetails || prev.arrearDetails.length === 0)) {
+        next.arrearDetails = [
+          { subjectCode: '', subjectName: '', semester: prev.currentSemester || 1, status: 'Standing' }
+        ];
+      }
+      return next;
+    });
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.arrears;
+      Object.keys(next).forEach((k) => {
+        if (k.startsWith('arrear_')) delete next[k];
+      });
+      return next;
+    });
+  };
+
+  const handleAddArrearSubject = () => {
+    setFormData((prev) => ({
+      ...prev,
+      arrearDetails: [
+        ...(prev.arrearDetails || []),
+        { subjectCode: '', subjectName: '', semester: prev.currentSemester || 1, status: 'Standing' }
+      ]
+    }));
+  };
+
+  const handleRemoveArrearSubject = (index) => {
+    setFormData((prev) => {
+      const updated = (prev.arrearDetails || []).filter((_, idx) => idx !== index);
+      return {
+        ...prev,
+        arrearDetails: updated
+      };
+    });
+  };
+
+  const handleArrearFieldChange = (index, field, value) => {
+    setFormData((prev) => {
+      const updated = [...(prev.arrearDetails || [])];
+      if (updated[index]) {
+        updated[index] = { ...updated[index], [field]: value };
+      }
+      return { ...prev, arrearDetails: updated };
+    });
+    // Clear field-specific error if corrected
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (field === 'subjectCode') delete next[`arrear_${index}_code`];
+      if (field === 'subjectName') delete next[`arrear_${index}_name`];
+      return next;
+    });
+  };
 
   // Save current step data as draft - LOCKED until mandatory fields are filled
   const handleSaveDraft = async () => {
@@ -1604,6 +1701,223 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                 </div>
               </div>
             </div>
+
+            {/* Arrear Details Section */}
+            <div className="border border-gray-200 rounded p-3.5 mt-4 bg-white shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-200 pb-2.5 mb-3.5">
+                <div>
+                  <h3 className="text-xs font-bold text-gov-navy uppercase tracking-wide flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-blue-700" />
+                    <span>Academic Standing & Arrear Particulars</span>
+                    <span className="text-red-600">*</span>
+                  </h3>
+                  <p className="text-[11.5px] text-gray-500 mt-0.5">
+                    Do you have any standing or cleared arrears in Anna University / Autonomous semester examinations?
+                  </p>
+                </div>
+                {formData.hasArrears && (
+                  <span className="inline-flex items-center text-[11px] font-semibold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                    {(formData.arrearDetails || []).length} Subject{(formData.arrearDetails || []).length !== 1 ? 's' : ''} Listed
+                  </span>
+                )}
+              </div>
+
+              {/* Toggle Cards: No Arrears vs Yes Arrears */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <label
+                  onClick={() => !isLocked && handleArrearToggle(false)}
+                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                    !formData.hasArrears
+                      ? 'border-emerald-500 bg-emerald-50/50 shadow-xs ring-1 ring-emerald-500/20'
+                      : 'border-gray-200 hover:border-gray-300 bg-gray-50/50'
+                  } ${isLocked ? 'pointer-events-none opacity-80' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="hasArrearsChoice"
+                    checked={!formData.hasArrears}
+                    onChange={() => handleArrearToggle(false)}
+                    disabled={isLocked}
+                    className="mt-0.5 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                  />
+                  <div>
+                    <span className="block text-xs font-bold text-gray-900">
+                      No - All Cleared / No Arrears
+                    </span>
+                    <span className="block text-[11px] text-gray-500 mt-0.5">
+                      Clean academic standing with 0 standing arrear papers across all semesters.
+                    </span>
+                  </div>
+                </label>
+
+                <label
+                  onClick={() => !isLocked && handleArrearToggle(true)}
+                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                    formData.hasArrears
+                      ? 'border-amber-500 bg-amber-50/50 shadow-xs ring-1 ring-amber-500/20'
+                      : 'border-gray-200 hover:border-gray-300 bg-gray-50/50'
+                  } ${isLocked ? 'pointer-events-none opacity-80' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="hasArrearsChoice"
+                    checked={formData.hasArrears}
+                    onChange={() => handleArrearToggle(true)}
+                    disabled={isLocked}
+                    className="mt-0.5 text-amber-600 focus:ring-amber-500 h-4 w-4"
+                  />
+                  <div>
+                    <span className="block text-xs font-bold text-gray-900">
+                      Yes - I have Arrear(s)
+                    </span>
+                    <span className="block text-[11px] text-gray-500 mt-0.5">
+                      Declare subject code, title, and semester for official department records.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* Dynamic Arrear Subjects */}
+              {formData.hasArrears && (
+                <div className="bg-amber-50/30 border border-amber-200 rounded-lg p-3 sm:p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-gov-navy uppercase tracking-wide">
+                        Arrear Subject Particulars
+                      </h4>
+                      <p className="text-[11px] text-gray-600">
+                        Enter each arrear subject below. Click &quot;+ Add Subject Arrear&quot; to append additional papers.
+                      </p>
+                    </div>
+                  </div>
+
+                  {errors.arrears && (
+                    <div className="p-2.5 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                      <span>{errors.arrears}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-2.5">
+                    {(formData.arrearDetails || []).map((subject, index) => (
+                      <div
+                        key={index}
+                        className="bg-white border border-gray-200 rounded-lg p-3 shadow-xs relative hover:border-gray-300 transition-all"
+                      >
+                        <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-gray-100">
+                          <span className="text-[11px] font-bold text-gov-navy uppercase flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 text-[10px] flex items-center justify-center font-bold">
+                              {index + 1}
+                            </span>
+                            Subject #{index + 1}
+                          </span>
+                          {(formData.arrearDetails || []).length > 1 && !isLocked && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveArrearSubject(index)}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 hover:text-red-800 px-2 py-0.5 rounded hover:bg-red-50 transition-colors"
+                              title="Remove this subject"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Remove</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                          {/* Subject Code */}
+                          <div className="sm:col-span-3">
+                            <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                              Subject Code <span className="text-red-600">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={subject.subjectCode || ''}
+                              onChange={(e) => handleArrearFieldChange(index, 'subjectCode', e.target.value.toUpperCase())}
+                              disabled={isLocked}
+                              placeholder="e.g. CS3351"
+                              className={`w-full px-2.5 py-1.5 border rounded text-xs uppercase font-mono ${
+                                errors[`arrear_${index}_code`] ? 'border-red-500 bg-red-50/30' : 'border-gray-300'
+                              } focus:border-gov-navy focus:outline-none`}
+                            />
+                            {errors[`arrear_${index}_code`] && (
+                              <p className="text-[10px] text-red-600 mt-0.5">{errors[`arrear_${index}_code`]}</p>
+                            )}
+                          </div>
+
+                          {/* Subject Name */}
+                          <div className="sm:col-span-5">
+                            <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                              Subject Name / Title <span className="text-red-600">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={subject.subjectName || ''}
+                              onChange={(e) => handleArrearFieldChange(index, 'subjectName', e.target.value)}
+                              disabled={isLocked}
+                              placeholder="e.g. Digital Principles & System Design"
+                              className={`w-full px-2.5 py-1.5 border rounded text-xs ${
+                                errors[`arrear_${index}_name`] ? 'border-red-500 bg-red-50/30' : 'border-gray-300'
+                              } focus:border-gov-navy focus:outline-none`}
+                            />
+                            {errors[`arrear_${index}_name`] && (
+                              <p className="text-[10px] text-red-600 mt-0.5">{errors[`arrear_${index}_name`]}</p>
+                            )}
+                          </div>
+
+                          {/* Semester */}
+                          <div className="sm:col-span-2">
+                            <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                              Semester <span className="text-red-600">*</span>
+                            </label>
+                            <select
+                              value={subject.semester || 1}
+                              onChange={(e) => handleArrearFieldChange(index, 'semester', Number(e.target.value))}
+                              disabled={isLocked}
+                              className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-xs focus:border-gov-navy focus:outline-none bg-white"
+                            >
+                              {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                                <option key={s} value={s}>Sem {s}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Status */}
+                          <div className="sm:col-span-2">
+                            <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                              Status
+                            </label>
+                            <select
+                              value={subject.status || 'Standing'}
+                              onChange={(e) => handleArrearFieldChange(index, 'status', e.target.value)}
+                              disabled={isLocked}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:border-gov-navy focus:outline-none bg-white"
+                            >
+                              <option value="Standing">Standing Arrear</option>
+                              <option value="Cleared">Cleared in Attempt</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* + Add Subject button */}
+                  {!isLocked && (
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={handleAddArrearSubject}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gov-navy hover:bg-gov-navy/90 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Subject Arrear</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -2175,6 +2489,29 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   <div><span className="text-gray-500">12th Percentage:</span> <strong className="text-gray-800">{formData.hscPercentage ? `${formData.hscPercentage}%` : '-'}</strong></div>
                   <div><span className="text-gray-500">Current Semester:</span> <strong className="text-gray-800">Sem {formData.currentSemester}</strong></div>
                   <div><span className="text-gray-500">Mode of Adm:</span> <strong className="text-gray-800">{formData.modeOfAdmission}</strong></div>
+                </div>
+
+                {/* Arrear Summary in Review */}
+                <div className="mt-2.5 pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-[11.5px]">
+                  <div>
+                    <span className="text-gray-500 font-semibold mr-2">Standing Arrears:</span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
+                      formData.hasArrears
+                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                        : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    }`}>
+                      {formData.hasArrears ? `YES (${(formData.arrearDetails || []).length} Subject${(formData.arrearDetails || []).length !== 1 ? 's' : ''})` : 'NO / ALL CLEARED'}
+                    </span>
+                  </div>
+                  {formData.hasArrears && (formData.arrearDetails || []).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {(formData.arrearDetails || []).map((arr, idx) => (
+                        <span key={idx} className="bg-gray-100 text-gray-800 border border-gray-200 px-2 py-0.5 rounded text-[10.5px]">
+                          <strong>{arr.subjectCode || 'N/A'}</strong> ({arr.subjectName ? arr.subjectName.slice(0, 22) + (arr.subjectName.length > 22 ? '...' : '') : ''} - Sem {arr.semester || '?'})
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

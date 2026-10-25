@@ -100,7 +100,7 @@ const getStudentProfile = async (req, res) => {
               is_same_address, district, state, pincode,
               father_name, mother_name, guardian_name, parents_occupation, parents_mobile, annual_income,
               sslc_school, sslc_board, sslc_year, sslc_percentage,
-              hsc_school, hsc_board, hsc_year, hsc_percentage, current_semester, mode_of_admission,
+              hsc_school, hsc_board, hsc_year, hsc_percentage, current_semester, mode_of_admission, has_arrears, arrear_details,
               is_first_graduate, is_pms, pms_application_no, pms_status,
               other_scholarship_name, other_scholarship_amount, other_scholarship_status,
               community_cert_no, community_cert_issuer, community_cert_date,
@@ -124,6 +124,17 @@ const getStudentProfile = async (req, res) => {
     }
     if (student.bank_acc_no) {
       student.bank_acc_no = decrypt(student.bank_acc_no);
+    }
+
+    student.has_arrears = Boolean(student.has_arrears);
+    if (typeof student.arrear_details === 'string') {
+      try {
+        student.arrear_details = JSON.parse(student.arrear_details);
+      } catch (e) {
+        student.arrear_details = [];
+      }
+    } else if (!Array.isArray(student.arrear_details)) {
+      student.arrear_details = [];
     }
 
     // Fetch documents
@@ -349,6 +360,12 @@ const updateStudentDetails = async (req, res) => {
       ['hscPercentage', 'hsc_percentage', (v) => parseSafeDecimal(v, 0, 100, 2)],
       ['currentSemester', 'current_semester', (v) => parseSafeInt(v)],
       ['modeOfAdmission', 'mode_of_admission', (v) => parseSafeString(v)],
+      ['hasArrears', 'has_arrears', (v) => parseSafeBoolean(v)],
+      ['arrearDetails', 'arrear_details', (v) => {
+        if (v === undefined || v === null) return null;
+        if (typeof v === 'string') return v;
+        try { return JSON.stringify(v); } catch (e) { return null; }
+      }],
 
       ['isFirstGraduate', 'is_first_graduate', (v) => parseSafeBoolean(v)],
       ['isPms', 'is_pms', (v) => parseSafeBoolean(v)],
@@ -384,7 +401,8 @@ const updateStudentDetails = async (req, res) => {
     for (const [key, col, parser] of fieldDefinitions) {
       if (shouldUpdateField(key)) {
         setClauses.push(`${col} = ?`);
-        values.push(parser(d[key]));
+        const rawVal = d[key] !== undefined ? d[key] : (key === 'hasArrears' ? d.has_arrears : (key === 'arrearDetails' ? d.arrear_details : undefined));
+        values.push(parser(rawVal));
       }
     }
 

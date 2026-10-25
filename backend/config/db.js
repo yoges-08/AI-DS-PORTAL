@@ -118,6 +118,8 @@ const initSqliteFallback = async () => {
         hsc_percentage REAL,
         current_semester INTEGER DEFAULT 1,
         mode_of_admission TEXT,
+        has_arrears INTEGER DEFAULT 0,
+        arrear_details TEXT,
         is_first_graduate INTEGER DEFAULT 0,
         is_pms INTEGER DEFAULT 0,
         pms_application_no TEXT,
@@ -325,6 +327,12 @@ const initSqliteFallback = async () => {
       }
             if (!studentCols.some(c => c.name === 'email_verified')) {
         sqliteDb.exec('ALTER TABLE students ADD COLUMN email_verified INTEGER DEFAULT 1;');
+      }
+      if (!studentCols.some(c => c.name === 'has_arrears')) {
+        sqliteDb.exec('ALTER TABLE students ADD COLUMN has_arrears INTEGER DEFAULT 0;');
+      }
+      if (!studentCols.some(c => c.name === 'arrear_details')) {
+        sqliteDb.exec('ALTER TABLE students ADD COLUMN arrear_details TEXT;');
       }
       if (!studentCols.some(c => c.name === 'must_change_password')) {
         sqliteDb.exec('ALTER TABLE students ADD COLUMN must_change_password INTEGER DEFAULT 0;');
@@ -548,6 +556,8 @@ const testConnection = async () => {
     } catch (migErr) {
       // Ignore
     }
+    await addColumnIfMissing(conn, 'students', 'has_arrears', 'TINYINT(1) NOT NULL DEFAULT 0');
+    await addColumnIfMissing(conn, 'students', 'arrear_details', 'LONGTEXT NULL');
     await addColumnIfMissing(conn, 'students', 'must_change_password', 'TINYINT(1) NOT NULL DEFAULT 0');
 
     await addColumnIfMissing(conn, 'students', 'email_verified', 'TINYINT(1) NOT NULL DEFAULT 1');

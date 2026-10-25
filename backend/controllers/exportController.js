@@ -107,6 +107,8 @@ const exportExcel = async (req, res) => {
         sslc_percentage AS 'SSLC %',
         hsc_percentage AS 'HSC %',
         mode_of_admission AS 'Mode of Admission',
+        CASE WHEN has_arrears = 1 THEN 'YES' ELSE 'NO' END AS 'Has Arrears',
+        arrear_details AS 'Arrear Particulars',
         CASE WHEN is_first_graduate = 1 THEN 'YES' ELSE 'NO' END AS 'First Graduate',
         CASE WHEN is_pms = 1 THEN 'YES' ELSE 'NO' END AS 'PMS Beneficiary',
         pms_application_no AS 'PMS Application No',
@@ -133,6 +135,21 @@ const exportExcel = async (req, res) => {
           cleanRow[key] = val !== null && val !== undefined ? val : 'Not set';
         } else if (key === 'Section') {
           cleanRow[key] = val ? val : 'Not set';
+        } else if (key === 'Arrear Particulars') {
+          if (!val) {
+            cleanRow[key] = 'None / Nil';
+          } else {
+            try {
+              const list = typeof val === 'string' ? JSON.parse(val) : val;
+              if (Array.isArray(list) && list.length > 0) {
+                cleanRow[key] = list.map(item => (item.subjectCode || '-') + ': ' + (item.subjectName || '-') + ' (Sem ' + (item.semester || '?') + ')').join('; ');
+              } else {
+                cleanRow[key] = 'None / Nil';
+              }
+            } catch (e) {
+              cleanRow[key] = String(val);
+            }
+          }
         } else if (key === 'Bank Account No') {
           const rawAcc = val ? decrypt(val) : '';
           cleanRow[key] = rawAcc ? maskBankAcc(rawAcc) : 'Not provided';

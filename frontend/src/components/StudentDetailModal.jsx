@@ -421,6 +421,47 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
                   <div><span className="text-outline block text-[11px]">12th / Diploma:</span> <strong className="text-on-surface">{student.hsc_percentage ? `${student.hsc_percentage}% (${student.hsc_school || ''})` : '-'}</strong></div>
                   <div><span className="text-outline block text-[11px]">Current Semester:</span> <strong className="text-primary font-semibold">Semester {student.current_semester || 1}</strong></div>
                 </div>
+
+                {/* Arrear Standing & Subject Details */}
+                <div className="mt-4 pt-3 border-t border-outline-variant/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-outline">
+                      Academic Arrear Standing:
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      student.has_arrears 
+                        ? 'bg-amber-100 text-amber-800 border border-amber-300' 
+                        : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    }`}>
+                      {student.has_arrears ? 'HAS STANDING ARREARS' : 'ALL CLEARED / NIL ARREARS'}
+                    </span>
+                  </div>
+                  {student.has_arrears && (() => {
+                    let list = student.arrear_details;
+                    if (typeof list === 'string') {
+                      try { list = JSON.parse(list); } catch (e) { list = []; }
+                    }
+                    if (Array.isArray(list) && list.length > 0) {
+                      return (
+                        <div className="space-y-1.5 mt-2">
+                          {list.map((arr, idx) => (
+                            <div key={idx} className="flex flex-wrap items-center justify-between bg-surface-container/60 px-3 py-1.5 rounded-lg border border-outline-variant/20 text-xs gap-1.5">
+                              <div>
+                                <span className="font-bold text-primary mr-2">{arr.subjectCode || 'N/A'}</span>
+                                <span className="text-on-surface">{arr.subjectName || '-'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] bg-secondary-container text-secondary px-2 py-0.5 rounded font-medium">Sem {arr.semester || 1}</span>
+                                <span className="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded font-medium border border-amber-200">{arr.status || 'Standing'}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return <p className="text-xs text-outline italic">No specific subject records listed.</p>;
+                  })()}
+                </div>
               </div>
 
               {/* Scholarship & Bank Particulars */}
