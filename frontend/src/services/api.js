@@ -4,7 +4,19 @@
  * and Bearer token synchronization for cross-domain Vercel -> Render deployments.
  */
 
-const API_HOST = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).replace(/\/$/, '') : '';
+// S4 fix: Force same-origin relative '/api' on production deployments (Vercel, Render)
+// so that HttpOnly SameSite=Lax session cookies are reliably transmitted through the proxy rewrite
+// without being blocked by browser third-party cross-origin cookie policies.
+const isLocalhost = typeof window !== 'undefined' && (
+  window.location.hostname === 'localhost' || 
+  window.location.hostname === '127.0.0.1' ||
+  window.location.hostname.startsWith('192.168.')
+);
+
+const API_HOST = isLocalhost 
+  ? (import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).replace(/\/$/, '') : '')
+  : '';
+
 const BASE_URL = `${API_HOST}/api`;
 
 /**
