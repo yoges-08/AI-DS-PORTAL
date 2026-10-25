@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
-  const { loginStudent, registerStudent, loginAdmin, completeLogin } = useAuth();
+  const { loginStudent, registerStudent, verifyEmail, loginAdmin, completeLogin } = useAuth();
   const { setActiveField, setErrorMessage, speak } = useRobert();
 
   // Navigation & morph animation phase states
@@ -55,6 +55,32 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
   // General form feedback states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+
+  // Email verification view state
+  const [pendingStudentId, setPendingStudentId] = useState(null);
+  const [pendingEmailMasked, setPendingEmailMasked] = useState('');
+  const [codeDigits, setCodeDigits] = useState(['', '', '', '', '', '']);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
+  const [newEmailInput, setNewEmailInput] = useState('');
+  const [codeSuccessMsg, setCodeSuccessMsg] = useState('');
+  const digit0Ref = useRef(null);
+  const digit1Ref = useRef(null);
+  const digit2Ref = useRef(null);
+  const digit3Ref = useRef(null);
+  const digit4Ref = useRef(null);
+  const digit5Ref = useRef(null);
+  const digitRefs = [digit0Ref, digit1Ref, digit2Ref, digit3Ref, digit4Ref, digit5Ref];
+
+  // Resend cooldown timer effect
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   // Post-login welcome animation state
   const [showWelcome, setShowWelcome] = useState(false);
@@ -329,6 +355,110 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
       setError(msg);
       if (setErrorMessage) setErrorMessage(msg);
       if (setActiveField) setActiveField('error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  // Digit change with paste handling
+  const handleDigitChange = (index, val) => {
+    setError('');
+    setCodeSuccessMsg('');
+    const rawVal = val.replace(/\D/g, '');
+
+    // Multi-digit paste (e.g. 6 digits at once)
+    if (rawVal.length > 1) {
+      const digits = rawVal.slice(0, 6).split('');
+      const newDigits = [...codeDigits];
+      digits.forEach((d, i) => {
+        if (i < 6) newDigits[i] = d;
+      });
+      setCodeDigits(newDigits);
+      const nextFocus = Math.min(digits.length, 5);
+      digitRefs[nextFocus]?.current?.focus();
+      return;
+    }
+
+    const newDigits = [...codeDigits];
+    newDigits[index] = rawVal.slice(-1);
+    setCodeDigits(newDigits);
+
+    if (rawVal && index < 5) {
+      digitRefs[index + 1]?.current?.focus();
+    }
+  };
+
+  const handleDigitKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !codeDigits[index] && index > 0) {
+      digitRefs[index - 1]?.current?.focus();
+    }
+  };
+
+  const handleVerifySubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setCodeSuccessMsg('');
+    const code = codeDigits.join('').trim();
+    if (code.length !== 6) {
+      setError('Please enter the full 6-digit verification code.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      if (setActiveField) setActiveField('loading');
+      const res = await verifyEmail(pendingStudentId, code, { defer: true });
+      if (res?.success && res.user) {
+        playWelcomeThenEnter(res.user);
+      }
+    } catch (err) {
+      setError(err.message || 'Verification failed. Please check the code.');
+      if (setActiveField) setActiveField('error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (resendCooldown > 0 || !pendingStudentId) return;
+    setError('');
+    setCodeSuccessMsg('');
+    try {
+      setLoading(true);
+      const res = await api.resendVerificationCode(pendingStudentId);
+      if (res.success) {
+        setCodeSuccessMsg('A new 6-digit code has been sent to your email.');
+        setResendCooldown(60);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to resend verification code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangeEmailSubmit = async (e) => {
+    e.preventDefault();
+    const cleanEmail = newEmailInput.trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    setError('');
+    setCodeSuccessMsg('');
+    try {
+      setLoading(true);
+      const res = await api.changePendingEmail(pendingStudentId, cleanEmail);
+      if (res.success) {
+        setPendingEmailMasked(res.emailMasked);
+        setIsChangingEmail(false);
+        setCodeSuccessMsg('Email updated! A new code was sent to ' + res.emailMasked);
+        setResendCooldown(60);
+        setCodeDigits(['', '', '', '', '', '']);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to update email address.');
     } finally {
       setLoading(false);
     }

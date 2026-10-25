@@ -9,6 +9,7 @@ const xlsx = require('xlsx');
 const fs = require('fs');
 const path = require('path');
 const { pool } = require('../config/db');
+const { sendStatusEmail, sendLockEmail } = require('../utils/emailEvents');
 const { deleteObject, deleteObjects } = require('../config/storage');
 const {
   cleanRegisterNo,
@@ -771,6 +772,11 @@ const toggleLockStudent = async (req, res) => {
       ipAddress: req.ip
     });
 
+    // E6/E7: Send lock/unlock email notification in background
+    sendLockEmail(studentId, lock).catch(err => {
+      console.error('[EmailEvents] sendLockEmail failed:', err.message);
+    });
+
     return res.json({
       success: true,
       message: `Student record has been ${lock ? 'LOCKED' : 'UNLOCKED'} successfully.`,
@@ -894,6 +900,13 @@ const updateStudentStatus = async (req, res) => {
       details: `Status updated from ${currentStatus} to ${status}${finalReason ? ` - Reason: ${finalReason}` : ''}`,
       ipAddress: req.ip
     });
+
+    // E4/E5: Send status verified or rejected email in background
+    if (status === 'VERIFIED' || status === 'REJECTED') {
+      sendStatusEmail(studentId, status, finalReason).catch(err => {
+        console.error('[EmailEvents] sendStatusEmail failed:', err.message);
+      });
+    }
 
     return res.json({
       success: true,
@@ -1305,6 +1318,15 @@ const bulkLockStudents = async (req, res) => {
       details: `${action}: ${affected} updated, ${skipped} skipped (already in state). Filters: ${JSON.stringify(filters || {})}. Register numbers: [${regSummary}]`,
       ipAddress: req.ip
     });
+
+    // E6/E7: Send bulk lock/unlock emails in background
+    if (Array.isArray(studentsToUpdate) && studentsToUpdate.length > 0) {
+      studentsToUpdate.forEach(s => {
+        sendLockEmail(s.id, lock).catch(err => {
+          console.error('[EmailEvents] bulk sendLockEmail failed for student ' + s.id, err.message);
+        });
+      });
+    }
 
     return res.json({
       success: true,

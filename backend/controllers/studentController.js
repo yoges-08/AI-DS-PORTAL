@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { pool } = require('../config/db');
+const { sendSubmissionEmail } = require('../utils/emailEvents');
 const { uploadObject, deleteObject, isStorageConfigured } = require('../config/storage');
 const { generateDocumentKey } = require('../middleware/uploadMiddleware');
 const { validateDocumentBuffer } = require('../utils/fileSecurity');
@@ -161,7 +162,7 @@ const updateStudentDetails = async (req, res) => {
 
     // Check lock status (B3 fix: select rejection_reason so state is preserved)
     const [existing] = await pool.query(
-      'SELECT id, is_locked, status, rejection_reason FROM students WHERE id = ?',
+      'SELECT id, is_locked, status, rejection_reason, email, email_verified FROM students WHERE id = ?',
       [studentId]
     );
 
@@ -493,6 +494,11 @@ const submitStudentDetails = async (req, res) => {
        WHERE id = ?`,
       [studentId]
     );
+
+    // E3: Send confirmation email with PDF and documents in background (never blocks response)
+    sendSubmissionEmail(studentId).catch(err => {
+      console.error('[EmailEvents] sendSubmissionEmail failed:', err.message);
+    });
 
     return res.json({
       success: true,

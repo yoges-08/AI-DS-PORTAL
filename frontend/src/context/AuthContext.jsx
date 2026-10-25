@@ -37,6 +37,17 @@ export const AuthProvider = ({ children }) => {
 
   const registerStudent = async (payload, { defer = false } = {}) => {
     const data = await api.registerStudent(payload);
+    if (data.requiresVerification) {
+      return data;
+    }
+    if (data.success && data.user && !defer) {
+      setUser(data.user);
+    }
+    return data;
+  };
+
+  const verifyEmail = async (studentId, code, { defer = false } = {}) => {
+    const data = await api.verifyEmail(studentId, code);
     if (data.success && data.user && !defer) {
       setUser(data.user);
     }
@@ -69,7 +80,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginStudent, registerStudent, loginAdmin, completeLogin, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, loginStudent, registerStudent, verifyEmail, loginAdmin, completeLogin, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

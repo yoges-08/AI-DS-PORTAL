@@ -134,7 +134,28 @@ const uploadsLimiter = rateLimit({
   }
 });
 
+
+/**
+ * Dedicated rate limiter for email verification code submissions and resends.
+ * 15 requests per 15-minute window per IP/account.
+ */
+const emailCodeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const id = req.body?.studentId || req.body?.email || '';
+    return `${ipKeyGenerator(req.ip || '')}_${String(id).trim().slice(0, 50)}`;
+  },
+  message: {
+    success: false,
+    message: 'Too many verification code attempts. Please wait a few minutes before trying again.'
+  }
+});
+
 module.exports = {
+  emailCodeLimiter,
   loginLimiter,
   verifyEligibilityLimiter,
   registerLimiter,

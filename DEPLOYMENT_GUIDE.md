@@ -332,3 +332,37 @@ The backend is built with a swappable storage adapter in `backend/config/storage
    The migration tool will detect `STORAGE_PROVIDER=r2` and copy all objects to Cloudflare R2 automatically and idempotently.
 4. **Redeploy:**
    No frontend code or database changes are required because all file access goes through the authenticated `GET /uploads/:filename` route via `config/storage.js`.
+
+
+---
+
+## Email Automation Setup (Brevo HTTPS REST API)
+
+The portal uses Brevo's HTTPS REST API (`https://api.brevo.com/v3/smtp/email`) for transactional email automation (Render free tier blocks traditional outbound SMTP ports 25, 465, and 587).
+
+### Automated Email Triggers:
+- **E1:** 6-digit email verification code on self-registration
+- **E2:** Account activated welcome email upon successful verification
+- **E3:** Profile submitted notification with generated application PDF + uploaded certificates attached (up to 3MB)
+- **E4:** Profile verified & approved notification
+- **E5:** Profile revision requested (includes reviewer comments)
+- **E6:** Account locked notification
+- **E7:** Account unlocked notification
+
+### Render / Production Environment Variables:
+```env
+# Enable email automation
+MAIL_ENABLED=true
+REQUIRE_EMAIL_VERIFICATION=true
+
+# Brevo Configuration
+BREVO_API_KEY=xkeysib-your_brevo_api_key_here
+MAIL_FROM_EMAIL=no-reply@aamec.edu.in
+MAIL_FROM_NAME="AI & DS Portal - AAMEC"
+MAIL_DAILY_LIMIT=250
+```
+
+### Safety Features:
+- **Safe Fallback:** If `MAIL_ENABLED=false` or `BREVO_API_KEY` is omitted, the system logs `SKIPPED` in `email_logs` without throwing errors or interrupting user actions.
+- **Privacy Masking:** Plaintext passwords, unmasked Aadhaar numbers, and bank account numbers are never exposed in email bodies or server logs.
+- **Background Queue:** Status changes and dossier submission emails are dispatched via a background concurrency queue (max 2 concurrent) so student submissions and admin clicks respond immediately.

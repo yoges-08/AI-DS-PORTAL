@@ -11,6 +11,9 @@ const {
 const { invalidateTokenCache } = require('../middleware/authMiddleware');
 const { JWT_SECRET, isProduction } = require('../config/secrets');
 const { logAdminAction } = require('../utils/auditLogger');
+const { sendNow, sendInBackground, maskEmail, mailEnabled } = require('../utils/mailer');
+const { verificationCode, accountCreated } = require('../utils/emailTemplates');
+const { issueCode, checkCode } = require('../utils/emailVerification');
 const { isLocked, recordFailure, clearFailures } = require('../utils/lockout');
 const { checkPassword } = require('../utils/passwordPolicy');
 
@@ -278,11 +281,13 @@ const registerStudent = async (req, res) => {
     // 4. Hash password with bcrypt cost 12
     const hashedPassword = await bcrypt.hash(rawPassword, 12);
 
+    const needVerify = process.env.REQUIRE_EMAIL_VERIFICATION !== 'false' && mailEnabled();
+
     // 5. Insert new student account
     const [insertResult] = await conn.query(
-      `INSERT INTO students (register_no, name, dob, email, password, status, is_locked, token_version, must_change_password)
-       VALUES (?, ?, ?, ?, ?, 'DRAFT', 0, 1, 0)`,
-      [cleanReg, trimmedName, normalizedDob, cleanEmail, hashedPassword]
+      `INSERT INTO students (register_no, name, dob, email, password, status, is_locked, token_version, must_change_password, email_verified)
+       VALUES (?, ?, ?, ?, ?, 'DRAFT', 0, 1, 0, ?)`,
+      [cleanReg, trimmedName, normalizedDob, cleanEmail, hashedPassword, needVerify ? 0 : 1]
     );
     const newStudentId = insertResult.insertId;
 
@@ -303,11 +308,38 @@ const registerStudent = async (req, res) => {
       action: 'STUDENT_SELF_REGISTER',
       studentId: newStudentId,
       studentRegNo: cleanReg,
-      details: `Student ${trimmedName} (${cleanReg}) self-registered successfully.`,
+      details: `Student ${trimmedName} (${cleanReg}) self-registered successfully. Verification required: ${needVerify}`,
       ipAddress: req.ip
     });
 
-    // 8. Generate JWT session and set httpOnly cookie
+    if (needVerify) {
+      // Issue 6-digit code and send E1 synchronously
+      const issueRes = await issueCode(newStudentId, cleanEmail);
+      let emailSent = false;
+      if (issueRes.code) {
+        const tpl = verificationCode({ name: trimmedName, code: issueRes.code, validMinutes: 10 });
+        const emailRes = await sendNow({
+          toEmail: cleanEmail,
+          toName: trimmedName,
+          subject: tpl.subject,
+          htmlContent: tpl.html,
+          studentId: newStudentId,
+          template: 'verificationCode'
+        });
+        emailSent = Boolean(emailRes.success);
+      }
+
+      return res.status(201).json({
+        success: true,
+        requiresVerification: true,
+        message: 'Registration successful! A 6-digit verification code has been sent to your email address.',
+        studentId: newStudentId,
+        emailMasked: maskEmail(cleanEmail),
+        emailSent
+      });
+    }
+
+    // 8. Generate JWT session and set httpOnly cookie (when verification is skipped)
     const token = jwt.sign(
       {
         id: newStudentId,
@@ -397,7 +429,7 @@ const loginStudent = async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      'SELECT id, register_no, name, dob, email, password, year, section, status, is_locked, token_version, must_change_password FROM students WHERE register_no = ?',
+      'SELECT id, register_no, name, dob, email, password, year, section, status, is_locked, token_version, must_change_password, email_verified FROM students WHERE register_no = ?',
       [cleanReg]
     );
 
@@ -421,6 +453,16 @@ const loginStudent = async (req, res) => {
 
     // S7 fix: Clear login failures on valid authentication
     await clearFailures(lockKey);
+
+    if (student.email_verified === 0 && process.env.REQUIRE_EMAIL_VERIFICATION !== 'false' && mailEnabled()) {
+      return res.status(403).json({
+        success: false,
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Your email address has not been verified yet. Please enter the verification code sent to your email.',
+        studentId: student.id,
+        emailMasked: maskEmail(student.email)
+      });
+    }
 
     // Generate JWT
     const token = jwt.sign(
@@ -764,7 +806,235 @@ const changePassword = async (req, res) => {
   }
 };
 
+
+/**
+ * Verify Student Email with 6-Digit Code
+ * POST /api/auth/student/verify-email
+ * Body: { studentId, code }
+ */
+const verifyEmail = async (req, res) => {
+  try {
+    const { studentId, code } = req.body;
+    if (!studentId || !code) {
+      return res.status(400).json({ success: false, message: 'Student ID and verification code are required.' });
+    }
+
+    const result = await checkCode(studentId, code);
+    if (!result.valid) {
+      return res.status(400).json({
+        success: false,
+        code: result.error,
+        message: result.message,
+        remainingAttempts: result.remainingAttempts
+      });
+    }
+
+    // Code verified! Fetch student to issue session token
+    const [rows] = await pool.query(
+      'SELECT id, register_no, name, dob, email, year, section, status, is_locked, token_version, must_change_password FROM students WHERE id = ?',
+      [studentId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Student record not found.' });
+    }
+    const student = rows[0];
+
+    // Issue JWT session cookie
+    const token = jwt.sign(
+      {
+        id: student.id,
+        role: 'STUDENT',
+        registerNo: student.register_no,
+        name: student.name,
+        year: student.year !== null && student.year !== undefined ? student.year : null,
+        section: student.section || null,
+        tokenVersion: student.token_version || 1
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.cookie('token', token, COOKIE_OPTIONS);
+
+    // Send E2 ("Account Created / Activated") in background
+    const tpl = accountCreated({ name: student.name, registerNo: student.register_no });
+    sendInBackground({
+      toEmail: student.email,
+      toName: student.name,
+      subject: tpl.subject,
+      htmlContent: tpl.html,
+      studentId: student.id,
+      template: 'accountCreated'
+    });
+
+    await logAdminAction({
+      adminUsername: 'SYSTEM',
+      action: 'STUDENT_EMAIL_VERIFIED',
+      studentId: student.id,
+      studentRegNo: student.register_no,
+      details: 'Student email verified and session activated.',
+      ipAddress: req.ip
+    });
+
+    return res.json({
+      success: true,
+      message: 'Email verified successfully! Welcome to the Student Portal.',
+      user: {
+        id: student.id,
+        role: 'STUDENT',
+        registerNo: student.register_no,
+        name: student.name,
+        email: student.email || null,
+        year: student.year !== null && student.year !== undefined ? student.year : null,
+        section: student.section || null,
+        status: student.status,
+        isLocked: Boolean(student.is_locked),
+        mustChangePassword: Boolean(student.must_change_password)
+      }
+    });
+  } catch (error) {
+    console.error('[verifyEmail Error]:', error);
+    return res.status(500).json({ success: false, message: 'Failed to verify code. Please try again.' });
+  }
+};
+
+/**
+ * Resend 6-Digit Email Verification Code
+ * POST /api/auth/student/resend-code
+ * Body: { studentId }
+ */
+const resendVerificationCode = async (req, res) => {
+  try {
+    const { studentId } = req.body;
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: 'Student ID is required.' });
+    }
+
+    const [rows] = await pool.query(
+      'SELECT id, name, email, email_verified FROM students WHERE id = ?',
+      [studentId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Student record not found.' });
+    }
+    const student = rows[0];
+
+    if (student.email_verified === 1) {
+      return res.status(400).json({ success: false, message: 'This student email is already verified. Please log in.' });
+    }
+
+    const issueRes = await issueCode(student.id, student.email);
+    if (issueRes.error) {
+      return res.status(429).json({
+        success: false,
+        code: issueRes.error,
+        message: issueRes.message,
+        waitSeconds: issueRes.waitSeconds
+      });
+    }
+
+    // Send email E1 synchronously
+    const tpl = verificationCode({ name: student.name, code: issueRes.code, validMinutes: 10 });
+    const emailRes = await sendNow({
+      toEmail: student.email,
+      toName: student.name,
+      subject: tpl.subject,
+      htmlContent: tpl.html,
+      studentId: student.id,
+      template: 'verificationCode'
+    });
+
+    return res.json({
+      success: true,
+      message: 'A new 6-digit verification code has been sent to your email.',
+      emailMasked: maskEmail(student.email),
+      emailSent: Boolean(emailRes.success)
+    });
+  } catch (error) {
+    console.error('[resendVerificationCode Error]:', error);
+    return res.status(500).json({ success: false, message: 'Failed to resend verification code. Please try again.' });
+  }
+};
+
+/**
+ * Change Pending Registration Email
+ * POST /api/auth/student/change-pending-email
+ * Body: { studentId, newEmail }
+ */
+const changePendingEmail = async (req, res) => {
+  try {
+    const { studentId, newEmail } = req.body;
+    if (!studentId || !newEmail) {
+      return res.status(400).json({ success: false, message: 'Student ID and new email address are required.' });
+    }
+    const cleanEmail = String(newEmail).trim().toLowerCase();
+    if (!validateEmail(cleanEmail) || cleanEmail.length > 100) {
+      return res.status(400).json({ success: false, message: 'A valid email address is required.' });
+    }
+
+    const [rows] = await pool.query(
+      'SELECT id, name, email, email_verified FROM students WHERE id = ?',
+      [studentId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Student record not found.' });
+    }
+    const student = rows[0];
+
+    if (student.email_verified === 1) {
+      return res.status(400).json({ success: false, message: 'Cannot change email for an already-verified account.' });
+    }
+
+    // Check if new email is in use
+    const [dupRows] = await pool.query(
+      'SELECT id FROM students WHERE LOWER(email) = LOWER(?) AND id != ?',
+      [cleanEmail, studentId]
+    );
+    if (dupRows.length > 0) {
+      return res.status(409).json({ success: false, message: 'This email address is already in use by another student.' });
+    }
+
+    // Update email on student record
+    await pool.query('UPDATE students SET email = ? WHERE id = ?', [cleanEmail, studentId]);
+
+    // Issue new code
+    const issueRes = await issueCode(student.id, cleanEmail);
+    if (issueRes.error) {
+      return res.status(429).json({
+        success: false,
+        code: issueRes.error,
+        message: issueRes.message,
+        waitSeconds: issueRes.waitSeconds
+      });
+    }
+
+    // Send email E1 synchronously
+    const tpl = verificationCode({ name: student.name, code: issueRes.code, validMinutes: 10 });
+    const emailRes = await sendNow({
+      toEmail: cleanEmail,
+      toName: student.name,
+      subject: tpl.subject,
+      htmlContent: tpl.html,
+      studentId: student.id,
+      template: 'verificationCode'
+    });
+
+    return res.json({
+      success: true,
+      message: 'Email updated successfully and a new verification code has been sent.',
+      emailMasked: maskEmail(cleanEmail),
+      emailSent: Boolean(emailRes.success)
+    });
+  } catch (error) {
+    console.error('[changePendingEmail Error]:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update email. Please try again.' });
+  }
+};
+
 module.exports = {
+  verifyEmail,
+  resendVerificationCode,
+  changePendingEmail,
   loginStudent,
   loginAdmin,
   logout,

@@ -192,6 +192,30 @@ const initSqliteFallback = async () => {
         first_attempt_ms INTEGER NOT NULL,
         locked_until_ms INTEGER NOT NULL DEFAULT 0
       );
+    
+      CREATE TABLE IF NOT EXISTS email_verifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER UNIQUE NOT NULL,
+        email TEXT NOT NULL,
+        code_hash TEXT NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        expires_at INTEGER NOT NULL,
+        last_sent_at INTEGER NOT NULL,
+        resend_count INTEGER NOT NULL DEFAULT 0,
+        resend_window_start INTEGER NOT NULL,
+        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS email_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER,
+        to_email TEXT,
+        template TEXT NOT NULL,
+        status TEXT NOT NULL,
+        provider_message_id TEXT,
+        error TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Safe migration: ensure existing SQLite students table allows NULL for student-chosen year and section
@@ -297,6 +321,9 @@ const initSqliteFallback = async () => {
       try { sqliteDb.exec('CREATE UNIQUE INDEX IF NOT EXISTS uq_student_doc ON student_documents(student_id, doc_type);'); } catch (e) {}
       if (!studentCols.some(c => c.name === 'token_version')) {
         sqliteDb.exec('ALTER TABLE students ADD COLUMN token_version INTEGER DEFAULT 1;');
+      }
+            if (!studentCols.some(c => c.name === 'email_verified')) {
+        sqliteDb.exec('ALTER TABLE students ADD COLUMN email_verified INTEGER DEFAULT 1;');
       }
       if (!studentCols.some(c => c.name === 'must_change_password')) {
         sqliteDb.exec('ALTER TABLE students ADD COLUMN must_change_password INTEGER DEFAULT 0;');
@@ -517,6 +544,46 @@ const testConnection = async () => {
       // Ignore
     }
     await addColumnIfMissing(conn, 'students', 'must_change_password', 'TINYINT(1) NOT NULL DEFAULT 0');
+
+    await addColumnIfMissing(conn, 'students', 'email_verified', 'TINYINT(1) NOT NULL DEFAULT 1');
+    try {
+      await conn.query(`
+        CREATE TABLE IF NOT EXISTS \`email_verifications\` (
+          \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+          \`student_id\` INT NOT NULL,
+          \`email\` VARCHAR(100) NOT NULL,
+          \`code_hash\` VARCHAR(100) NOT NULL,
+          \`attempts\` INT NOT NULL DEFAULT 0,
+          \`expires_at\` BIGINT NOT NULL,
+          \`last_sent_at\` BIGINT NOT NULL,
+          \`resend_count\` INT NOT NULL DEFAULT 0,
+          \`resend_window_start\` BIGINT NOT NULL,
+          UNIQUE KEY \`uq_ev_student\` (\`student_id\`),
+          CONSTRAINT \`fk_ev_student\` FOREIGN KEY (\`student_id\`) REFERENCES \`students\` (\`id\`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+    } catch (migErr) {
+      // Ignore
+    }
+    try {
+      await conn.query(`
+        CREATE TABLE IF NOT EXISTS \`email_logs\` (
+          \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+          \`student_id\` INT NULL,
+          \`to_email\` VARCHAR(100) NULL,
+          \`template\` VARCHAR(50) NOT NULL,
+          \`status\` VARCHAR(10) NOT NULL COMMENT 'SENT | FAILED | SKIPPED',
+          \`provider_message_id\` VARCHAR(100) NULL,
+          \`error\` VARCHAR(255) NULL,
+          \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX \`idx_el_student\` (\`student_id\`),
+          INDEX \`idx_el_created\` (\`created_at\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+    } catch (migErr) {
+      // Ignore
+    }
+
 
     // M8 fix: Preserves admin profile changes across boots
 

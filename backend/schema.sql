@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS `students` (
   `declaration_accepted` TINYINT(1) DEFAULT 0,
   `token_version` INT NOT NULL DEFAULT 1,
   `must_change_password` TINYINT(1) NOT NULL DEFAULT 0,
+  `email_verified` TINYINT(1) NOT NULL DEFAULT 1,
 
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -166,4 +167,34 @@ CREATE TABLE IF NOT EXISTS `auth_lockouts` (
   `failures` INT NOT NULL DEFAULT 0,
   `first_attempt_ms` BIGINT NOT NULL,
   `locked_until_ms` BIGINT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 7. Email Verifications Table (6-digit registration codes)
+CREATE TABLE IF NOT EXISTS `email_verifications` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `student_id` INT NOT NULL,
+  `email` VARCHAR(100) NOT NULL,
+  `code_hash` VARCHAR(100) NOT NULL,
+  `attempts` INT NOT NULL DEFAULT 0,
+  `expires_at` BIGINT NOT NULL,
+  `last_sent_at` BIGINT NOT NULL,
+  `resend_count` INT NOT NULL DEFAULT 0,
+  `resend_window_start` BIGINT NOT NULL,
+  UNIQUE KEY `uq_ev_student` (`student_id`),
+  CONSTRAINT `fk_ev_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 8. Email Logs Audit Ledger
+CREATE TABLE IF NOT EXISTS `email_logs` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `student_id` INT NULL,
+  `to_email` VARCHAR(100) NULL,
+  `template` VARCHAR(50) NOT NULL,
+  `status` VARCHAR(10) NOT NULL COMMENT 'SENT | FAILED | SKIPPED',
+  `provider_message_id` VARCHAR(100) NULL,
+  `error` VARCHAR(255) NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_el_student` (`student_id`),
+  INDEX `idx_el_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -15,6 +15,7 @@ const { apiLimiter, documentDownloadLimiter, uploadsLimiter } = require('./middl
 const { downloadObject, isStorageConfigured, keepAlive, getStorageProvider } = require('./config/storage');
 const { JWT_SECRET, COOKIE_SECRET } = require('./config/secrets');
 const { logAdminAction } = require('./utils/auditLogger');
+const { startPeriodicCleanup } = require('./utils/cleanupJob');
 
 const app = express();
 
