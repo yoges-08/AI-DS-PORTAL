@@ -17,7 +17,11 @@ import {
   Lock,
   Mail,
   User,
-  Calendar
+  Calendar,
+  ArrowLeft,
+  RefreshCw,
+  CheckCircle2,
+  Edit3
 } from 'lucide-react';
 
 export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
@@ -249,6 +253,17 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
         playWelcomeThenEnter(res.user);
       }
     } catch (err) {
+      if (err.code === 'EMAIL_NOT_VERIFIED' || err.data?.code === 'EMAIL_NOT_VERIFIED' || String(err.message).toLowerCase().includes('not been verified')) {
+        const studentId = err.studentId || err.data?.studentId;
+        const emailMasked = err.emailMasked || err.data?.emailMasked;
+        setPendingStudentId(studentId);
+        setPendingEmailMasked(emailMasked);
+        setView('verify-email');
+        setCodeDigits(['', '', '', '', '', '']);
+        setResendCooldown(0);
+        setError('Please enter the 6-digit verification code sent to your email.');
+        return;
+      }
       const msg = err.message || 'Student sign in failed. Please check your credentials.';
       setError(msg);
       if (setErrorMessage) setErrorMessage(msg);
@@ -316,6 +331,15 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
       };
 
       const res = await registerStudent(payload, { defer: true });
+      if (res?.requiresVerification) {
+        setPendingStudentId(res.studentId);
+        setPendingEmailMasked(res.emailMasked);
+        setView('verify-email');
+        setCodeDigits(['', '', '', '', '', '']);
+        setResendCooldown(60);
+        setCodeSuccessMsg('Verification code sent to ' + (res.emailMasked || 'your email'));
+        return;
+      }
       if (res?.success && res.user) {
         playWelcomeThenEnter(res.user);
       }
@@ -801,6 +825,130 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
                 className="font-bold text-[#1E4FD8] hover:text-blue-700 underline underline-offset-2 transition-colors ml-1 cursor-pointer"
               >
                 Sign In
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* EMAIL VERIFICATION VIEW                                      */}
+        {/* ============================================================ */}
+        {view === 'verify-email' && (
+          <div className="space-y-4">
+            <header className="space-y-1 text-center">
+              <div className="w-12 h-12 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-[#1E4FD8]">
+                <Mail className="w-6 h-6" />
+              </div>
+              <h1 className="text-xl sm:text-[24px] font-bold tracking-tight text-[#0B1B3A]">
+                Verify Your <span className="text-[#1E4FD8]">Email</span>
+              </h1>
+              <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                We sent a 6-digit verification code to{' '}
+                <strong className="text-slate-700 font-semibold">{pendingEmailMasked || 'your email'}</strong>
+              </p>
+            </header>
+
+            {codeSuccessMsg && (
+              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{codeSuccessMsg}</span>
+              </div>
+            )}
+
+            {!isChangingEmail ? (
+              <form onSubmit={handleVerifySubmit} className="space-y-4 pt-1">
+                {/* 6 Digit Inputs */}
+                <div className="flex justify-center items-center gap-2 sm:gap-2.5">
+                  {codeDigits.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      ref={digitRefs[idx]}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={digit}
+                      onChange={(e) => handleDigitChange(idx, e.target.value)}
+                      onKeyDown={(e) => handleDigitKeyDown(idx, e)}
+                      className="w-10 h-12 sm:w-11 sm:h-13 text-center text-xl sm:text-2xl font-bold font-mono text-[#0B1B3A] bg-white border-2 border-slate-200 rounded-xl focus:border-[#1E4FD8] focus:ring-2 focus:ring-[#1E4FD8]/20 focus:outline-none transition-all shadow-sm"
+                    />
+                  ))}
+                </div>
+
+                {/* Primary Verify Button */}
+                <div className="pt-1">
+                  <GlassButton type="submit" loading={loading}>
+                    Verify &amp; Activate Account
+                  </GlassButton>
+                </div>
+
+                {/* Resend & Edit Email Controls */}
+                <div className="flex flex-col sm:flex-row items-center justify-between text-xs gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    disabled={resendCooldown > 0 || loading}
+                    className="flex items-center gap-1.5 text-[#1E4FD8] hover:text-blue-700 font-semibold disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${resendCooldown > 0 ? '' : 'hover:rotate-180 transition-transform'}`} />
+                    {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsChangingEmail(true);
+                      setError('');
+                      setCodeSuccessMsg('');
+                    }}
+                    className="flex items-center gap-1 text-slate-500 hover:text-slate-800 transition-colors"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    <span>Wrong email?</span>
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* Inline form to change mistyped pending email */
+              <form onSubmit={handleChangeEmailSubmit} className="space-y-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                <p className="text-xs font-semibold text-slate-700">Update registration email:</p>
+                <GlassInput
+                  id="newPendingEmail"
+                  label="New Email Address"
+                  type="email"
+                  icon={Mail}
+                  value={newEmailInput}
+                  onChange={(e) => setNewEmailInput(e.target.value)}
+                  placeholder="student@example.com"
+                  required
+                />
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 py-2 px-3 text-xs font-semibold bg-[#1E4FD8] text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    Update &amp; Send New Code
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsChangingEmail(false)}
+                    className="py-2 px-3 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Back to Sign In */}
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => setView('signin')}
+                className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-[#1E4FD8] transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Sign In</span>
               </button>
             </div>
           </div>
