@@ -200,8 +200,9 @@ const seedDatabase = async () => {
     console.log('\n[4/4] Seeding default administrator and 10 students...');
     const adminUsername = process.env.DEFAULT_ADMIN_USERNAME || 'admin';
     const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD;
-    if (!adminPassword || adminPassword.length < 8) {
-      console.error('Error: Please provide DEFAULT_ADMIN_PASSWORD (min 8 chars) in environment to run seed.');
+    // M5 fix: Enforce institutional admin password policy (min 12 characters)
+    if (!adminPassword || adminPassword.length < 12) {
+      console.error('Error: Please provide DEFAULT_ADMIN_PASSWORD (min 12 chars) in environment to run seed.');
       process.exit(1);
     }
     const hashedAdminPassword = await bcrypt.hash(adminPassword, 12);

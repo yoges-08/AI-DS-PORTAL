@@ -144,7 +144,7 @@ app.get('/uploads/:filename', documentDownloadLimiter, authenticateToken, async 
       }
     }
 
-    // Role-based access control: Students can only view their own documents; Admins can view all departmental files
+    // Role-based access control: Students can only view their own documents; Admins must reference valid department documents
     if (req.user.role === 'STUDENT') {
       if (!docRow || docRow.student_id !== req.user.id) {
         return res.status(403).json({
@@ -152,7 +152,12 @@ app.get('/uploads/:filename', documentDownloadLimiter, authenticateToken, async 
           message: 'Access denied: You do not have permission to view this document.'
         });
       }
-    } else if (req.user.role !== 'ADMIN') {
+    } else if (req.user.role === 'ADMIN') {
+      // M7 fix: Require admin file requests to correspond to an existing document record
+      if (!docRow) {
+        return res.status(404).json({ success: false, message: 'Document not found in department records.' });
+      }
+    } else {
       return res.status(403).json({ success: false, message: 'Access denied.' });
     }
 
@@ -184,7 +189,9 @@ app.get('/uploads/:filename', documentDownloadLimiter, authenticateToken, async 
         const fileObj = await downloadObject(filename);
         if (fileObj && fileObj.buffer) {
           res.setHeader('Content-Type', docRow?.mime_type || fileObj.contentType || 'application/octet-stream');
-          res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(docRow?.file_name || filename)}"`);
+          const isImage = (docRow?.mime_type || '').startsWith('image/');
+          const disposition = isImage ? 'inline' : 'attachment';
+          res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(docRow?.file_name || filename)}"`);
           res.setHeader('Content-Length', fileObj.buffer.length);
           return res.send(fileObj.buffer);
         }
@@ -252,7 +259,10 @@ app.get('/api/health', async (req, res) => {
   }
 
   const statusCode = dbStatus.connected ? 200 : 503;
-  console.log(`[Health Ping] Received ping at ${new Date().toISOString()} from ${req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown'} (Status: ${dbStatus.connected ? 'OK' : 'ERR'}) [DB: ${dbStatus.mode}/${dbStatus.database || 'default'}, Storage: ${getStorageProvider()}]`);
+  // Low 9 fix: Quiet healthy pings; only log degraded / disconnected state
+  if (!dbStatus.connected) {
+    console.warn(`[Health Warning] Degraded status at ${new Date().toISOString()}: DB ${dbStatus.mode} disconnected.`);
+  }
   res.status(statusCode).json({
     status: dbStatus.connected ? 'HEALTHY' : 'DEGRADED',
     timestamp: new Date().toISOString()

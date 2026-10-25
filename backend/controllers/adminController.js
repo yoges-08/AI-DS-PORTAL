@@ -1,9 +1,7 @@
-let bcrypt;
-try {
-  bcrypt = require('bcrypt');
-} catch (e) {
-  bcrypt = require('bcryptjs');
-}
+const bcrypt = require('bcryptjs');
+
+// Low 4 fix: Safe escape for SQL LIKE wildcard characters
+const escapeLikePattern = (str) => String(str || '').replace(/[%_\\]/g, (char) => `\\${char}`);
 const crypto = require('crypto');
 const xlsx = require('xlsx');
 const fs = require('fs');
@@ -139,7 +137,7 @@ const getStudents = async (req, res) => {
 
     if (search) {
       conditions.push('(register_no LIKE ? OR name LIKE ? OR mobile LIKE ?)');
-      const term = `%${search}%`;
+      const term = `%${escapeLikePattern(search)}%`;
       params.push(term, term, term);
     }
 
@@ -827,8 +825,9 @@ const resetStudentPassword = async (req, res) => {
     }
 
     const student = rows[0];
-    const tempPassword = `Temp#${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    // Low 3 fix: 64-bit entropy temporary password hashed with bcrypt work factor 12
+    const tempPassword = `Temp#${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
+    const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
     await pool.query(
       'UPDATE students SET password = ?, token_version = COALESCE(token_version, 1) + 1, must_change_password = 1 WHERE id = ?',
@@ -1055,7 +1054,7 @@ const buildStudentFilter = (query = {}) => {
 
   if (search) {
     conditions.push('(register_no LIKE ? OR name LIKE ? OR mobile LIKE ?)');
-    const term = `%${search}%`;
+    const term = `%${escapeLikePattern(search)}%`;
     params.push(term, term, term);
   }
 

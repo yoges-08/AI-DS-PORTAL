@@ -111,9 +111,15 @@ const documentDownloadLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 200, // Limit each IP to 200 requests per 5 minutes
+  max: 1000, // M2 fix: 1000 requests per 5 minutes to prevent campus NAT Wi-Fi lockouts
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => {
+    if (req.user?.id) {
+      return `auth_user_${req.user.role}_${req.user.id}`;
+    }
+    return ipKeyGenerator(req.ip || '');
+  },
   message: {
     success: false,
     message: 'Too many requests. Please slow down.'

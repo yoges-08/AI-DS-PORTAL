@@ -56,7 +56,7 @@ const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProduction,
   sameSite: 'lax',
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for students
+  maxAge: 24 * 60 * 60 * 1000, // 24 hours for students (M6 fix)
   path: '/'
 };
 
@@ -406,7 +406,7 @@ const registerStudent = async (req, res) => {
         tokenVersion: 1
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '24h' }
     );
 
     res.cookie('token', token, COOKIE_OPTIONS);
@@ -474,8 +474,9 @@ const loginStudent = async (req, res) => {
       });
     }
 
-    // S7 fix: Per-account lockout check
-    const lockKey = `login:student:${cleanReg}`;
+    // M1 fix: Composite IP + account lockout to prevent public denial-of-service
+    const clientIp = String(req.ip || 'ip').replace(/[^a-zA-Z0-9_.-]/g, '_');
+    const lockKey = `login:student:${cleanReg}:${clientIp}`;
     if (await isLocked(lockKey)) {
       return res.status(429).json({
         success: false,
@@ -492,8 +493,8 @@ const loginStudent = async (req, res) => {
     if (rows.length === 0) {
       await bcrypt.compare(String(password), DUMMY_HASH);
       await recordFailure(lockKey);
-    await logAdminAction({ adminUsername: 'SYSTEM', action: 'STUDENT_LOGIN_FAILED', studentRegNo: cleanReg, details: 'Failed student login attempt', ipAddress: req.ip });
-    return res.status(401).json({ success: false, message: 'Invalid Register Number or Password.' });
+      // Low 2 fix: Don't flood audit_logs for non-existent student accounts
+      return res.status(401).json({ success: false, message: 'Invalid Register Number or Password.' });
     }
 
     const student = rows[0];
@@ -534,7 +535,7 @@ const loginStudent = async (req, res) => {
         tokenVersion: student.token_version || 1
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '24h' }
     );
 
     // Set secure httpOnly cookie
@@ -594,8 +595,9 @@ const loginAdmin = async (req, res) => {
 
     const cleanUsername = String(username).trim().toLowerCase();
 
-    // S7 fix: Account lockout on admin login
-    const lockKey = `login:admin:${cleanUsername}`;
+    // M1 fix: Composite IP + account lockout to prevent denial-of-service on admin accounts
+    const clientIp = String(req.ip || 'ip').replace(/[^a-zA-Z0-9_.-]/g, '_');
+    const lockKey = `login:admin:${cleanUsername}:${clientIp}`;
     if (await isLocked(lockKey)) {
       return res.status(429).json({
         success: false,
@@ -612,12 +614,7 @@ const loginAdmin = async (req, res) => {
     if (rows.length === 0) {
       await bcrypt.compare(String(password), DUMMY_HASH);
       await recordFailure(lockKey);
-      await logAdminAction({
-        adminUsername: String(cleanUsername || '').slice(0, 50),
-        action: 'ADMIN_LOGIN_FAILED',
-        details: 'Failed admin login attempt (unknown username)',
-        ipAddress: req.ip
-      });
+      // Low 2 fix: Don't flood audit_logs for non-existent admin usernames
       return res.status(401).json({
         success: false,
         message: 'Invalid Admin username or password.'
@@ -1067,7 +1064,7 @@ const changePendingEmail = async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      'SELECT id, name, email, email_verified FROM students WHERE id = ?',
+      'SELECT id, name, email, email_verified, register_no FROM students WHERE id = ?',
       [studentId]
     );
     if (rows.length === 0) {
@@ -1077,6 +1074,29 @@ const changePendingEmail = async (req, res) => {
 
     if (student.email_verified === 1) {
       return res.status(400).json({ success: false, message: 'Cannot change email for an already-verified account.' });
+    }
+
+    // H1 Fix: Enforce whitelist pre-registered email binding on pending email changes
+    const [whitelistRows] = await pool.query(
+      'SELECT email FROM student_whitelist WHERE register_no = ?',
+      [student.register_no]
+    );
+    if (whitelistRows.length > 0 && whitelistRows[0].email && String(whitelistRows[0].email).trim()) {
+      const authorizedEmail = String(whitelistRows[0].email).trim().toLowerCase();
+      if (cleanEmail !== authorizedEmail) {
+        return res.status(403).json({
+          success: false,
+          message: `Pending email must match the pre-registered department whitelist email (${maskEmail(authorizedEmail)}). Please contact the department if your email has changed.`
+        });
+      }
+    }
+
+    // Optional institutional domain enforcement via env
+    if (process.env.REQUIRE_INSTITUTIONAL_EMAIL === 'true' && !cleanEmail.endsWith('@aamec.edu.in')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Registration requires an official institutional email address (@aamec.edu.in).'
+      });
     }
 
     // Check if new email is in use

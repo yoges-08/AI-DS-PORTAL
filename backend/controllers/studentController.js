@@ -285,10 +285,10 @@ const updateStudentDetails = async (req, res) => {
       });
     }
 
-    // Invalidate status if student edits a VERIFIED or REJECTED record
+    // H2 fix: Reset status to DRAFT if student edits a SUBMITTED, VERIFIED, or REJECTED record
     let updatedStatus = existing[0].status;
     let updatedRejectionReason = existing[0].rejection_reason;
-    if (req.user.role !== 'ADMIN' && (existing[0].status === 'VERIFIED' || existing[0].status === 'REJECTED')) {
+    if (req.user.role !== 'ADMIN' && (existing[0].status === 'SUBMITTED' || existing[0].status === 'VERIFIED' || existing[0].status === 'REJECTED')) {
       updatedStatus = 'DRAFT';
       // Keep existing rejection_reason so student still sees why it was rejected while making corrections
     }
@@ -538,9 +538,9 @@ const uploadDocument = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Check lock and retrieve register number
+    // H2 fix: Check lock and status to preserve document integrity
     const [existing] = await pool.query(
-      'SELECT register_no, is_locked FROM students WHERE id = ?',
+      'SELECT register_no, is_locked, status FROM students WHERE id = ?',
       [studentId]
     );
 
@@ -548,11 +548,13 @@ const uploadDocument = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student record not found.' });
     }
 
-    if (existing[0].is_locked && req.user.role !== 'ADMIN') {
-      return res.status(403).json({
-        success: false,
-        message: 'Record is locked. Cannot upload new documents.'
-      });
+    if (req.user.role !== 'ADMIN') {
+      if (existing[0].is_locked || existing[0].status === 'VERIFIED' || existing[0].status === 'SUBMITTED') {
+        return res.status(403).json({
+          success: false,
+          message: `Record is ${existing[0].status || 'LOCKED'}. Cannot upload documents while profile is under review or verified.`
+        });
+      }
     }
 
     if (req.fileValidationError) {
@@ -727,9 +729,18 @@ const deleteDocument = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    const [existing] = await pool.query('SELECT is_locked FROM students WHERE id = ?', [studentId]);
-    if (existing[0]?.is_locked && req.user.role !== 'ADMIN') {
-      return res.status(403).json({ success: false, message: 'Record is locked.' });
+    // H2 fix: Prevent deleting documents when record is SUBMITTED, VERIFIED, or locked
+    const [existing] = await pool.query('SELECT is_locked, status FROM students WHERE id = ?', [studentId]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Student record not found.' });
+    }
+    if (req.user.role !== 'ADMIN') {
+      if (existing[0].is_locked || existing[0].status === 'VERIFIED' || existing[0].status === 'SUBMITTED') {
+        return res.status(403).json({
+          success: false,
+          message: `Record is ${existing[0].status || 'LOCKED'}. Cannot delete documents while profile is under review or verified.`
+        });
+      }
     }
 
     const [doc] = await pool.query(

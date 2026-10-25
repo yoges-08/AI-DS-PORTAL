@@ -13,11 +13,12 @@ const envKey = (process.env.FIELD_ENCRYPTION_KEY || '').trim();
 
 if (envKey && envKey.length === 64 && /^[0-9a-fA-F]+$/.test(envKey)) {
   KEY = Buffer.from(envKey, 'hex');
-} else if (envKey) {
-  KEY = crypto.createHash('sha256').update(envKey).digest();
 } else if (process.env.NODE_ENV === 'production') {
+  // M4 fix: Strictly fail fast in production if key is missing or not 64 hex characters
   console.error('FATAL: A unique 64-hex-character FIELD_ENCRYPTION_KEY must be configured in production.');
   process.exit(1);
+} else if (envKey) {
+  KEY = crypto.createHash('sha256').update(envKey).digest();
 } else if (process.env.JWT_SECRET) {
   KEY = crypto.createHash('sha256').update(process.env.JWT_SECRET + ':aids_field_encryption_salt').digest();
   console.log('[fieldCrypto Notice] FIELD_ENCRYPTION_KEY not explicitly configured; securely derived 256-bit AES key from server JWT secret.');
