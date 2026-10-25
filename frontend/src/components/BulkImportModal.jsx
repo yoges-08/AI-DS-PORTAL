@@ -70,12 +70,12 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-center justify-center p-3 sm:p-6 animate-fade-in">
+    <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-start sm:items-center justify-center p-2 sm:p-6 animate-fade-in">
       {/* Click-away backdrop overlay */}
       <div className="fixed inset-0 bg-transparent" onClick={onClose} aria-hidden="true" />
       
       {/* Modal Dialog Card */}
-      <div className="relative z-10 apple-modal-card rounded-3xl w-full max-w-2xl overflow-hidden flex flex-col my-auto transition-all">
+      <div className="relative z-10 apple-modal-card rounded-2xl sm:rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-y-auto flex flex-col my-2 sm:my-auto transition-all">
         
         {/* Header */}
         <div className="bg-gradient-to-r from-primary to-primary-container text-white px-6 py-4 flex items-center justify-between shrink-0 shadow-sm">

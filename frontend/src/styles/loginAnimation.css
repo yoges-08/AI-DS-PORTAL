@@ -243,12 +243,22 @@
   border-radius: 11px;
   font-size: 10.5px;
   font-weight: 700;
-  white-space: nowrap;
+  max-width: min(220px, calc(100vw - 80px));
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
   box-shadow: 0 8px 20px rgba(0, 15, 50, 0.45), 0 0 14px rgba(56, 189, 248, 0.35);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   pointer-events: none;
   transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+@media (min-width: 640px) {
+  .robert-bubble {
+    white-space: nowrap;
+    max-width: none;
+  }
 }
 @keyframes bubblePop {
   0% { opacity: 0; transform: translateY(-50%) scale(0.8); }

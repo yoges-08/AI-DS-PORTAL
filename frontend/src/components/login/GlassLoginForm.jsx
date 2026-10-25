@@ -397,7 +397,7 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
         {view === 'signin' && (
           <div className="space-y-4">
             <header className="space-y-1">
-              <h1 className="text-2xl sm:text-[27px] font-bold tracking-tight text-[#0B1B3A] flex items-center gap-1.5">
+              <h1 className="text-xl sm:text-[27px] font-bold tracking-tight text-[#0B1B3A] flex items-center gap-1.5">
                 Student <span className="text-[#1E4FD8]">Sign In</span>
               </h1>
               <p className="text-xs text-slate-500 font-normal">
@@ -498,7 +498,7 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
         {view === 'signup' && (
           <div className="space-y-3.5">
             <header className="space-y-1">
-              <h1 className="text-2xl sm:text-[27px] font-bold tracking-tight text-[#0B1B3A] flex items-center gap-1.5">
+              <h1 className="text-xl sm:text-[27px] font-bold tracking-tight text-[#0B1B3A] flex items-center gap-1.5">
                 Create <span className="text-[#1E4FD8]">Student Account</span>
               </h1>
               <p className="text-xs text-slate-500 font-normal">
@@ -682,7 +682,7 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
         {view === 'admin' && (
           <div className="space-y-4">
             <header className="space-y-1">
-              <h1 className="text-2xl sm:text-[27px] font-bold tracking-tight text-[#0B1B3A] flex items-center gap-1.5">
+              <h1 className="text-xl sm:text-[27px] font-bold tracking-tight text-[#0B1B3A] flex items-center gap-1.5">
                 Faculty <span className="text-[#1E4FD8]">Portal</span>
               </h1>
               <p className="text-xs text-slate-500">

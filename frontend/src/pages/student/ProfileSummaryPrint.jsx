@@ -74,30 +74,30 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
       </div>
 
       {/* Printable Sheet (Standard Tamil Nadu UMIS / DOTE / University Record Format) */}
-      <div className="bg-white border border-outline-variant/40 p-8 sm:p-12 rounded-3xl shadow-xl text-black print:p-0 print:border-none print:shadow-none print:rounded-none">
+      <div className="bg-white border border-outline-variant/40 p-4 sm:p-8 md:p-12 rounded-2xl sm:rounded-3xl shadow-xl text-black print:p-0 print:border-none print:shadow-none print:rounded-none">
         
         {/* Institutional Header */}
-        <div className="border-b-2 border-primary pb-4 mb-5 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <img src="/college-logo.webp" alt="AAMEC Crest" className="w-16 h-16 object-contain shrink-0" />
+        <div className="border-b-2 border-primary pb-4 mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 print:flex-row">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <img src="/college-logo.webp" alt="AAMEC Crest" className="w-12 h-12 sm:w-16 sm:h-16 object-contain shrink-0" />
             <div>
-              <h1 className="text-base font-black uppercase tracking-wide text-primary leading-tight">
+              <h1 className="text-sm sm:text-base font-black uppercase tracking-wide text-primary leading-tight">
                 Anjalai Ammal Mahalingam Engineering College
               </h1>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-800">
+              <h2 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-gray-800">
                 Department of Artificial Intelligence & Data Science
               </h2>
-              <h3 className="text-[11px] font-semibold uppercase text-gray-600 tracking-wide">
+              <h3 className="text-[10px] sm:text-[11px] font-semibold uppercase text-gray-600 tracking-wide">
                 Department Student Information System (UMIS Portal)
               </h3>
-              <p className="text-[10px] text-gray-500">
+              <p className="text-[9.5px] sm:text-[10px] text-gray-500">
                 Official Student Master Profile & Statutory Concessions Verification Dossier
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-4 shrink-0">
-            <img src="/aids-logo.jpg" alt="AI & DS Emblem" className="w-16 h-16 rounded-full border border-gray-300 object-cover shadow-xs" />
+          <div className="flex items-center space-x-3 sm:space-x-4 shrink-0 self-end sm:self-auto">
+            <img src="/aids-logo.jpg" alt="AI & DS Emblem" className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border border-gray-300 object-cover shadow-xs" />
             <div className="text-right">
               <StatusBadge status={student.status} isLocked={Boolean(student.is_locked)} />
               <div className="text-[10px] text-gray-500 mt-1 font-mono">
@@ -109,7 +109,8 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
 
         {/* Identification Table with Photo */}
         <div className="flex flex-col sm:flex-row gap-6 mb-6">
-          <table className="flex-1 text-xs border border-gray-300 border-collapse">
+          <div className="flex-1 overflow-x-auto -mx-1 sm:mx-0">
+            <table className="w-full min-w-[500px] sm:min-w-0 text-xs border border-gray-300 border-collapse">
             <tbody>
               <tr className="border-b border-gray-300">
                 <td className="bg-gray-50 font-bold p-2 w-1/4 border-r border-gray-300">Register Number</td>
@@ -142,7 +143,8 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
                 <td className="p-2">{student.mode_of_admission || 'Government Quota'}</td>
               </tr>
             </tbody>
-          </table>
+            </table>
+          </div>
 
           {/* Student Photo Box */}
           <div className="w-28 h-36 border border-gray-300 bg-gray-50 rounded-2xl flex flex-col items-center justify-center p-1 shrink-0 self-center sm:self-start overflow-hidden shadow-sm">
@@ -159,7 +161,8 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
           <h4 className="text-xs font-bold uppercase bg-gray-100 p-2 border border-gray-300 mb-1 text-primary">
             1. Contact & Residential Details
           </h4>
-          <table className="w-full text-xs border border-gray-300 border-collapse">
+          <div className="overflow-x-auto -mx-1 sm:mx-0">
+            <table className="w-full min-w-[500px] sm:min-w-0 text-xs border border-gray-300 border-collapse">
             <tbody>
               <tr className="border-b border-gray-300">
                 <td className="bg-gray-50 font-semibold p-2 w-1/4 border-r border-gray-300">Student Mobile</td>
@@ -184,7 +187,8 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
                 </td>
               </tr>
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
 
         {/* Section 2: Family Particulars */}
@@ -192,7 +196,8 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
           <h4 className="text-xs font-bold uppercase bg-gray-100 p-2 border border-gray-300 mb-1 text-primary">
             2. Family & Income Particulars
           </h4>
-          <table className="w-full text-xs border border-gray-300 border-collapse">
+          <div className="overflow-x-auto -mx-1 sm:mx-0">
+            <table className="w-full min-w-[500px] sm:min-w-0 text-xs border border-gray-300 border-collapse">
             <tbody>
               <tr className="border-b border-gray-300">
                 <td className="bg-gray-50 font-semibold p-2 w-1/4 border-r border-gray-300">Father's Name</td>
@@ -213,7 +218,8 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
                 </td>
               </tr>
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
 
         {/* Section 3: Academic Record */}
@@ -221,7 +227,8 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
           <h4 className="text-xs font-bold uppercase bg-gray-100 p-2 border border-gray-300 mb-1 text-primary">
             3. Qualifying Examination Records
           </h4>
-          <table className="w-full text-xs border border-gray-300 border-collapse">
+          <div className="overflow-x-auto -mx-1 sm:mx-0">
+            <table className="w-full min-w-[500px] sm:min-w-0 text-xs border border-gray-300 border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-300 text-left font-bold">
                 <th className="p-2 border-r border-gray-300">Course / Standard</th>
@@ -247,7 +254,8 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
                 <td className="p-2 font-bold text-primary">{student.hsc_percentage ? `${student.hsc_percentage}%` : '-'}</td>
               </tr>
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
 
         {/* Section 4: Scholarship & Bank Details */}
@@ -255,7 +263,8 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
           <h4 className="text-xs font-bold uppercase bg-gray-100 p-2 border border-gray-300 mb-1 text-primary">
             4. Statutory Concessions, Scholarship & Bank Details
           </h4>
-          <table className="w-full text-xs border border-gray-300 border-collapse">
+          <div className="overflow-x-auto -mx-1 sm:mx-0">
+            <table className="w-full min-w-[500px] sm:min-w-0 text-xs border border-gray-300 border-collapse">
             <tbody>
               <tr className="border-b border-gray-300">
                 <td className="bg-gray-50 font-semibold p-2 w-1/4 border-r border-gray-300">First Graduate Concession</td>
@@ -276,7 +285,8 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
                 <td className="p-2 font-mono font-bold text-primary">{student.bank_acc_no ? `XXXXXX${student.bank_acc_no.slice(-4)}` : '-'}</td>
               </tr>
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
 
         {/* Section 5: Uploaded Documents Verification Status */}
@@ -304,7 +314,7 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
         </div>
 
         {/* Signatures & Declarations */}
-        <div className="mt-10 pt-6 border-t border-gray-400 grid grid-cols-3 gap-6 text-center text-xs">
+        <div className="mt-10 pt-6 border-t border-gray-400 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center text-xs print:grid-cols-3">
           <div>
             <div className="h-10"></div>
             <div className="border-t border-gray-500 pt-1.5 font-semibold text-gray-900">

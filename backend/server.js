@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const express = require('express');
+const compression = require('compression');
 const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
@@ -16,6 +17,9 @@ const { JWT_SECRET, COOKIE_SECRET } = require('./config/secrets');
 const { logAdminAction } = require('./utils/auditLogger');
 
 const app = express();
+
+// Gzip compression for mobile payload optimization
+app.use(compression());
 const PORT = process.env.PORT || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 

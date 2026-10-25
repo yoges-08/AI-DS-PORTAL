@@ -97,10 +97,10 @@ export const Navbar = ({ onToggleMobileMenu, isMobileMenuOpen, onLogoClick }) =>
                 onClick={logout}
                 title="Sign out of portal"
                 aria-label="Logout"
-                className="inline-flex items-center justify-center space-x-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white hover:bg-error-container hover:text-error border border-outline-variant/40 hover:border-error/30 text-on-surface transition-all active:scale-95 shadow-sm shrink-0"
+                className="inline-flex items-center justify-center space-x-1.5 px-3 py-2 min-h-[40px] min-w-[40px] text-xs font-semibold rounded-xl bg-white hover:bg-error-container hover:text-error border border-outline-variant/40 hover:border-error/30 text-on-surface transition-all active:scale-95 shadow-sm shrink-0"
               >
-                <LogOut className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden xs:inline">Sign Out</span>
+                <LogOut className="w-4 h-4 text-rose-600 shrink-0" />
+                <span className="hidden min-[480px]:inline">Sign Out</span>
               </button>
             </div>
           )}

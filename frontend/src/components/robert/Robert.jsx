@@ -52,9 +52,13 @@ export const Robert = () => {
     if (typeof window === 'undefined') return { bottom: '28px', left: '28px', top: 'auto' };
     const isMobile = window.innerWidth < 768;
 
-    // Mobile: keep docked safely at bottom-left corner so screen inputs & banners are never obstructed
+    // Mobile: keep docked safely at bottom-left corner with safe-area insets
     if (isMobile) {
-      return { bottom: '16px', left: '16px', top: 'auto' };
+      return { 
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)', 
+        left: 'calc(env(safe-area-inset-left, 0px) + 14px)', 
+        top: 'auto' 
+      };
     }
 
     // When login modal is closed or user is NOT in a typing field: stay at Home Base
@@ -273,6 +277,16 @@ export const Robert = () => {
     };
   }, []);
 
+  // Update Robert dock position on screen resize or orientation change
+  useEffect(() => {
+    const handleResize = () => {
+      const pos = getTargetPosition(activeField, isLoginOpen);
+      setPosition(pos);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [activeField, isLoginOpen]);
+
   const handleRobertClick = () => {
     if (!isLoginOpen) {
       hopAndSpeak('Ready to access the portal? Tap Login at the top right! 🚀', 'wink');
@@ -292,7 +306,7 @@ export const Robert = () => {
         transform: `rotate(${flightTilt}deg) ${isHopping ? 'translateY(-10px)' : ''}`,
         transition: 'top 1.1s cubic-bezier(0.22, 1, 0.36, 1), bottom 1.1s cubic-bezier(0.22, 1, 0.36, 1), left 1.1s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)'
       }}
-      className="select-none pointer-events-auto"
+      className={`select-none pointer-events-auto ${isLoginOpen ? 'hidden sm:block' : 'block'}`}
     >
       {/* Robert Avatar on the left + Speech Bubble to the right (never covers card) */}
       <div className="relative flex items-center gap-2.5">
@@ -314,7 +328,7 @@ export const Robert = () => {
 
           {/* White Glossy Body Capsule */}
           <div
-            className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-white via-slate-50 to-slate-100 border-2 border-white shadow-lg flex items-center justify-center overflow-hidden"
+            className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-white via-slate-50 to-slate-100 border-2 border-white shadow-lg flex items-center justify-center overflow-hidden"
             style={{
               boxShadow: isWorried
                 ? '0 8px 20px -2px rgba(225, 29, 72, 0.35), 0 0 14px rgba(244, 63, 94, 0.25)'
@@ -325,10 +339,10 @@ export const Robert = () => {
             <div className="absolute top-0 inset-x-0 h-4 bg-gradient-to-b from-white/90 to-transparent pointer-events-none" />
 
             {/* Dark High-Contrast OLED Visor Face */}
-            <div className="w-9 h-6 sm:w-10 sm:h-7 rounded-xl bg-[#081022] border border-blue-400/30 shadow-inner flex flex-col items-center justify-center p-1 relative">
+            <div className="w-8 h-5.5 sm:w-10 sm:h-7 rounded-xl bg-[#081022] border border-blue-400/30 shadow-inner flex flex-col items-center justify-center p-1 relative">
 
               {/* Eye Pair */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 {/* Left Eye */}
                 {expression === 'happy' ? (
                   <svg width="6" height="5" viewBox="0 0 6 5" fill="none">
@@ -383,7 +397,7 @@ export const Robert = () => {
 
         {/* Modern Speech Bubble (Positioned to the right of Robert with pointer arrow facing Robert) */}
         <div
-          className={`pointer-events-none max-w-[175px] sm:max-w-[200px] xl:max-w-[220px] px-3.5 py-2 rounded-2xl bg-white/95 border border-slate-200/90 shadow-xl backdrop-blur-md text-[11.5px] sm:text-[12px] font-semibold text-slate-800 leading-snug transition-all duration-300 ${
+          className={`pointer-events-none max-w-[min(210px,calc(100vw-88px))] sm:max-w-[200px] xl:max-w-[220px] px-3.5 py-2 rounded-2xl bg-white/95 border border-slate-200/90 shadow-xl backdrop-blur-md text-[11px] sm:text-[12px] font-semibold text-slate-800 leading-snug transition-all duration-300 ${
             isMoving ? 'opacity-30 scale-95' : 'opacity-100 scale-100'
           } ${
             isWorried ? 'border-rose-300 text-rose-800 bg-rose-50/95 shadow-rose-200/50' : ''

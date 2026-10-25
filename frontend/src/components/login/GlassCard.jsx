@@ -36,6 +36,10 @@ export const GlassCard = ({ phase = 'idle', onClose, children }) => {
   // 3D Interactive Mouse Tilt
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
+    // Skip tilt calculations on touch/mobile devices to prevent jitter
+    if (typeof window !== 'undefined' && window.matchMedia && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      return;
+    }
     const rect = cardRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -61,8 +65,9 @@ export const GlassCard = ({ phase = 'idle', onClose, children }) => {
 
   const W = dimensions.width;
   const H = dimensions.height;
-  const cut = 56;
-  const radius = 24;
+  const isSmallScreen = W < 400;
+  const cut = isSmallScreen ? 38 : 56;
+  const radius = isSmallScreen ? 18 : 24;
 
   // Exact card outline path with rounded top-right & bottom-left, chamfered top-left & bottom-right
   const cardPath = `
@@ -119,7 +124,7 @@ export const GlassCard = ({ phase = 'idle', onClose, children }) => {
         <button
           type="button"
           onClick={onClose}
-          className="absolute -top-3 -right-3 z-30 w-8 h-8 rounded-full bg-white/95 hover:bg-white border border-gray-200/80 text-gray-500 hover:text-gray-900 flex items-center justify-center transition-all shadow-[0_4px_12px_rgba(15,35,80,0.12)] hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
+          className="absolute -top-2.5 -right-2.5 sm:-top-3 sm:-right-3 z-30 w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-white/95 hover:bg-white border border-gray-200/80 text-gray-500 hover:text-gray-900 flex items-center justify-center transition-all shadow-[0_4px_12px_rgba(15,35,80,0.12)] hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
           title="Close dialog"
           aria-label="Close"
         >
@@ -286,7 +291,7 @@ export const GlassCard = ({ phase = 'idle', onClose, children }) => {
 
           {/* Card Content Wrapper */}
           <div
-            className={`relative z-20 p-6 sm:p-7 text-[#0B1B3A] transition-all duration-200 ${
+            className={`relative z-20 p-5 sm:p-7 text-[#0B1B3A] transition-all duration-200 ${
               phase === 'out' || phase === 'morph' ? 'opacity-0 scale-95 blur-sm' : 'opacity-100 scale-100 blur-0'
             }`}
           >

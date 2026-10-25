@@ -34,7 +34,7 @@ export const AdminSidebar = ({ activeTab, onSelectTab, isOpenMobile, onCloseMobi
   ];
 
   const renderNavContent = () => (
-    <div className="flex flex-col h-full justify-between p-4">
+    <div className="flex flex-col min-h-full justify-between p-4">
       <div>
         {/* Institutional Pill Header */}
         <div className="flex items-center space-x-2.5 p-3 mb-5 bg-white/70 backdrop-blur-md rounded-2xl border border-outline-variant/30 shadow-xs">
@@ -65,7 +65,7 @@ export const AdminSidebar = ({ activeTab, onSelectTab, isOpenMobile, onCloseMobi
                   onSelectTab(item.id);
                   onCloseMobile && onCloseMobile();
                 }}
-                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all text-left active:scale-[0.98] ${
+                className={`w-full flex items-center space-x-3 px-3.5 py-3 min-h-[44px] rounded-xl text-xs font-semibold transition-all text-left active:scale-[0.98] ${
                   isActive
                     ? 'bg-primary text-white shadow-sm shadow-primary/25 font-bold'
                     : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
@@ -115,7 +115,7 @@ export const AdminSidebar = ({ activeTab, onSelectTab, isOpenMobile, onCloseMobi
               </div>
               <button 
                 onClick={onCloseMobile}
-                className="p-1 rounded-md text-white/80 hover:text-white hover:bg-white/10"
+                className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-white/90 hover:text-white hover:bg-white/15 transition-colors"
                 aria-label="Close menu"
               >
                 <X className="w-5 h-5" />

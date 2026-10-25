@@ -5,7 +5,7 @@ export const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-white border-t border-gov-border mt-auto py-3.5 text-xs text-gov-subtle no-print">
+    <footer className="bg-white border-t border-gov-border mt-auto py-3.5 pb-6 sm:pb-3.5 text-xs text-gov-subtle no-print">
       <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-3">
         <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
           <img src="/college-logo.webp" alt="AAMEC" className="h-6 w-auto object-contain" />

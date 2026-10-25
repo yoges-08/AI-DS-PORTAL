@@ -66,21 +66,21 @@ export const LandingNavbar = () => {
           </nav>
 
           {/* Right: Primary Login Button & Mobile Hamburger */}
-          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+          <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
             <button
               onClick={() => openLogin('STUDENT')}
-              className="inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/35 transition-all active:scale-95 cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/35 transition-all active:scale-95 cursor-pointer shrink-0"
             >
-              <LogIn className="w-4 h-4" />
-              <span>Login to Portal</span>
-              <ArrowRight className="w-3.5 h-3.5 hidden sm:inline" />
+              <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span>Login<span className="hidden min-[480px]:inline"> to Portal</span></span>
+              <ArrowRight className="w-3.5 h-3.5 hidden sm:inline shrink-0" />
             </button>
 
             {/* Mobile Drawer Trigger */}
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-slate-700 hover:bg-slate-100 rounded-xl md:hidden focus:outline-none transition-colors"
+              className="p-2 sm:p-2.5 min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center text-slate-700 hover:bg-slate-100 rounded-xl md:hidden focus:outline-none transition-colors"
               aria-label="Toggle Navigation"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -98,7 +98,7 @@ export const LandingNavbar = () => {
               key={link.href}
               href={link.href}
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2.5 rounded-xl hover:bg-blue-50 hover:text-blue-700 transition-colors"
+              className="flex items-center min-h-[44px] px-3 py-2.5 rounded-xl hover:bg-blue-50 hover:text-blue-700 transition-colors"
             >
               {link.label}
             </a>
@@ -109,7 +109,7 @@ export const LandingNavbar = () => {
                 setMobileMenuOpen(false);
                 openLogin('STUDENT');
               }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-sm"
+              className="w-full flex items-center justify-center gap-2 py-3 min-h-[44px] rounded-xl bg-blue-600 active:bg-blue-700 text-white font-bold text-sm shadow-sm transition-transform active:scale-98"
             >
               <LogIn className="w-4 h-4" />
               <span>Login to Portal</span>

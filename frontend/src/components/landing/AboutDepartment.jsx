@@ -56,19 +56,19 @@ export const AboutDepartment = () => {
       </div>
 
       {/* Stats Counter Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-12 sm:mb-16">
         {departmentStats.map((stat, i) => (
           <div 
             key={i} 
-            className="p-5 rounded-2xl bg-white border border-gray-200/80 shadow-[0_4px_20px_rgba(11,27,58,0.03)] text-center transition-transform hover:-translate-y-1"
+            className="p-3.5 sm:p-5 rounded-2xl bg-white border border-gray-200/80 shadow-[0_4px_20px_rgba(11,27,58,0.03)] text-center transition-transform hover:-translate-y-1"
           >
-            <div className="text-2xl sm:text-3xl font-black text-blue-600 tracking-tight">
+            <div className="text-lg min-[380px]:text-xl sm:text-3xl font-black text-blue-600 tracking-tight truncate">
               {stat.value}
             </div>
-            <div className="text-xs sm:text-sm font-bold text-[#0B1B3A] mt-1">
+            <div className="text-xs sm:text-sm font-bold text-[#0B1B3A] mt-1 truncate">
               {stat.label}
             </div>
-            <div className="text-[11px] text-gray-500 mt-0.5">
+            <div className="text-[10.5px] sm:text-[11px] text-gray-500 mt-0.5 leading-snug">
               {stat.desc}
             </div>
           </div>
@@ -76,10 +76,10 @@ export const AboutDepartment = () => {
       </div>
 
       {/* Main Grid: Vision/Mission & Pillars */}
-      <div className="grid lg:grid-cols-12 gap-8 items-stretch">
+      <div className="grid lg:grid-cols-12 gap-6 sm:gap-8 items-stretch">
         
         {/* Left Column: Vision & Mission Glass Card */}
-        <div className="lg:col-span-5 p-8 rounded-3xl bg-gradient-to-br from-blue-900 to-indigo-950 text-white shadow-xl flex flex-col justify-between relative overflow-hidden">
+        <div className="lg:col-span-5 p-5 sm:p-8 rounded-3xl bg-gradient-to-br from-blue-900 to-indigo-950 text-white shadow-xl flex flex-col justify-between relative overflow-hidden">
           {/* Subtle watermark background */}
           <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-white/5 rounded-full blur-2xl pointer-events-none" />
           

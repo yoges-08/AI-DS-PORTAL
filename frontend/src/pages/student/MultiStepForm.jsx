@@ -1619,8 +1619,8 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
 
             <div className="space-y-4">
               {/* First Graduate */}
-              <div className="border border-gray-200 rounded p-3.5 bg-gray-50">
-                <div className="flex items-center justify-between">
+              <div className="border border-gray-200 rounded-xl p-3.5 bg-gray-50">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <label className="text-xs font-bold text-gray-800 uppercase block">
                       First Graduate Status <span className="text-red-600">*</span>
@@ -1629,28 +1629,28 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                       Are you eligible and availing Tamil Nadu Government First Graduate fee concession?
                     </span>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <label className="inline-flex items-center">
+                  <div className="flex items-center space-x-4 shrink-0">
+                    <label className="inline-flex items-center min-h-[36px] cursor-pointer">
                       <input
                         type="radio"
                         name="isFirstGraduate"
                         checked={formData.isFirstGraduate === true}
                         onChange={() => setFormData((p) => ({ ...p, isFirstGraduate: true }))}
                         disabled={isLocked}
-                        className="text-gov-navy"
+                        className="text-gov-navy w-4 h-4"
                       />
-                      <span className="ml-1.5 text-xs font-semibold">Yes</span>
+                      <span className="ml-2 text-xs font-semibold">Yes</span>
                     </label>
-                    <label className="inline-flex items-center">
+                    <label className="inline-flex items-center min-h-[36px] cursor-pointer">
                       <input
                         type="radio"
                         name="isFirstGraduate"
                         checked={formData.isFirstGraduate === false}
                         onChange={() => setFormData((p) => ({ ...p, isFirstGraduate: false }))}
                         disabled={isLocked}
-                        className="text-gov-navy"
+                        className="text-gov-navy w-4 h-4"
                       />
-                      <span className="ml-1.5 text-xs font-semibold">No</span>
+                      <span className="ml-2 text-xs font-semibold">No</span>
                     </label>
                   </div>
                 </div>
@@ -1665,8 +1665,8 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
               </div>
 
               {/* PMS (Post Matric Scholarship) */}
-              <div className="border border-gray-200 rounded p-3.5 bg-gray-50">
-                <div className="flex items-center justify-between">
+              <div className="border border-gray-200 rounded-xl p-3.5 bg-gray-50">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <label className="text-xs font-bold text-gray-800 uppercase block">
                       Post Matric Scholarship (PMS) Beneficiary <span className="text-red-600">*</span>
@@ -1675,28 +1675,28 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                       Eligible for SC/SCA/ST/Converted Christian and MBC/BC eligible students.
                     </span>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <label className="inline-flex items-center">
+                  <div className="flex items-center space-x-4 shrink-0">
+                    <label className="inline-flex items-center min-h-[36px] cursor-pointer">
                       <input
                         type="radio"
                         name="isPms"
                         checked={formData.isPms === true}
                         onChange={() => setFormData((p) => ({ ...p, isPms: true }))}
                         disabled={isLocked}
-                        className="text-gov-navy"
+                        className="text-gov-navy w-4 h-4"
                       />
-                      <span className="ml-1.5 text-xs font-semibold">Yes</span>
+                      <span className="ml-2 text-xs font-semibold">Yes</span>
                     </label>
-                    <label className="inline-flex items-center">
+                    <label className="inline-flex items-center min-h-[36px] cursor-pointer">
                       <input
                         type="radio"
                         name="isPms"
                         checked={formData.isPms === false}
                         onChange={() => setFormData((p) => ({ ...p, isPms: false }))}
                         disabled={isLocked}
-                        className="text-gov-navy"
+                        className="text-gov-navy w-4 h-4"
                       />
-                      <span className="ml-1.5 text-xs font-semibold">No</span>
+                      <span className="ml-2 text-xs font-semibold">No</span>
                     </label>
                   </div>
                 </div>
@@ -2125,18 +2125,18 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
             <div className="space-y-4 text-xs">
               
               {/* Personal & Contact Summary */}
-              <div className="border border-gray-200 rounded p-3">
-                <div className="flex items-center justify-between border-b border-gray-200 pb-1.5 mb-2 font-bold text-gov-navy">
-                  <span>PERSONAL & CONTACT PARTICULARS</span>
+              <div className="border border-gray-200 rounded-xl p-3 sm:p-4 bg-white shadow-xs">
+                <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-2.5 font-bold text-gov-navy">
+                  <span className="text-xs">PERSONAL & CONTACT PARTICULARS</span>
                   <button 
                     type="button" 
                     onClick={() => setCurrentStep(1)} 
-                    className="text-blue-600 hover:underline font-semibold text-[11px]"
+                    className="min-h-[32px] px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] transition-colors"
                   >
                     Edit
                   </button>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-4 gap-2">
                   <div><span className="text-gray-500">Name:</span> <strong className="text-gray-800">{formData.name || '-'}</strong></div>
                   <div><span className="text-gray-500">Reg No:</span> <strong className="text-gray-800">{formData.registerNo}</strong></div>
                   <div><span className="text-gray-500">Year & Sec:</span> <strong className="text-gray-800">{formData.year ? `Year ${formData.year}` : 'Not set'}{formData.section ? ` - Sec ${formData.section}` : ''}</strong></div>
@@ -2147,24 +2147,24 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   <div><span className="text-gray-500">Email:</span> <strong className="text-gray-800">{formData.email || '-'}</strong></div>
                   <div><span className="text-gray-500">Aadhaar:</span> <strong className="text-gray-800">{formData.aadhaarNo ? `XXXX-XXXX-${formData.aadhaarNo.slice(-4)}` : '-'}</strong></div>
                 </div>
-                <div className="mt-2 pt-2 border-t border-gray-100">
+                <div className="mt-2 pt-2 border-t border-gray-100 text-[11.5px]">
                   <span className="text-gray-500">Permanent Address:</span> <span className="text-gray-800">{formData.permanentAddress}, {formData.district}, {formData.pincode}</span>
                 </div>
               </div>
 
               {/* Family & Academic Summary */}
-              <div className="border border-gray-200 rounded p-3">
-                <div className="flex items-center justify-between border-b border-gray-200 pb-1.5 mb-2 font-bold text-gov-navy">
-                  <span>FAMILY & ACADEMIC PARTICULARS</span>
+              <div className="border border-gray-200 rounded-xl p-3 sm:p-4 bg-white shadow-xs">
+                <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-2.5 font-bold text-gov-navy">
+                  <span className="text-xs">FAMILY & ACADEMIC PARTICULARS</span>
                   <button 
                     type="button" 
                     onClick={() => setCurrentStep(3)} 
-                    className="text-blue-600 hover:underline font-semibold text-[11px]"
+                    className="min-h-[32px] px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] transition-colors"
                   >
                     Edit
                   </button>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-4 gap-2">
                   <div><span className="text-gray-500">Father's Name:</span> <strong className="text-gray-800">{formData.fatherName || '-'}</strong></div>
                   <div><span className="text-gray-500">Mother's Name:</span> <strong className="text-gray-800">{formData.motherName || '-'}</strong></div>
                   <div><span className="text-gray-500">Parents Mobile:</span> <strong className="text-gray-800">{formData.parentsMobile || '-'}</strong></div>
@@ -2177,18 +2177,18 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
               </div>
 
               {/* Scholarship & Bank Summary */}
-              <div className="border border-gray-200 rounded p-3">
-                <div className="flex items-center justify-between border-b border-gray-200 pb-1.5 mb-2 font-bold text-gov-navy">
-                  <span>SCHOLARSHIP & BANK DETAILS</span>
+              <div className="border border-gray-200 rounded-xl p-3 sm:p-4 bg-white shadow-xs">
+                <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-2.5 font-bold text-gov-navy">
+                  <span className="text-xs">SCHOLARSHIP & BANK DETAILS</span>
                   <button 
                     type="button" 
                     onClick={() => setCurrentStep(5)} 
-                    className="text-blue-600 hover:underline font-semibold text-[11px]"
+                    className="min-h-[32px] px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] transition-colors"
                   >
                     Edit
                   </button>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-4 gap-2">
                   <div><span className="text-gray-500">First Graduate:</span> <strong className="text-gray-800">{formData.isFirstGraduate ? 'YES' : 'NO'}</strong></div>
                   <div><span className="text-gray-500">PMS Beneficiary:</span> <strong className="text-gray-800">{formData.isPms ? `YES (${formData.pmsStatus})` : 'NO'}</strong></div>
                   <div><span className="text-gray-500">Bank Name:</span> <strong className="text-gray-800">{formData.bankName || '-'}</strong></div>
@@ -2254,22 +2254,22 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
         )}
 
         {/* Bottom Form Actions (Save draft, Save & Exit, Next, Prev, Submit) */}
-        <div className="mt-8 pt-4 border-t border-outline-variant/30 flex flex-col sm:flex-row items-center justify-between gap-3 no-print">
+        <div className="mt-8 pt-4 border-t border-outline-variant/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 no-print">
           
-          <div>
+          <div className="w-full sm:w-auto">
             {currentStep > 1 && (
               <button
                 type="button"
                 onClick={handlePrev}
                 disabled={saving || submitting}
-                className="inline-flex items-center gap-1 px-4 py-2 border border-outline-variant/50 rounded-xl text-xs font-semibold text-on-surface bg-surface-container-high/60 hover:bg-surface-container-high shadow-sm transition-all active:scale-95"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1 px-4 py-2.5 min-h-[42px] border border-outline-variant/50 rounded-xl text-xs font-semibold text-on-surface bg-surface-container-high/60 hover:bg-surface-container-high shadow-sm transition-all active:scale-95"
               >
                 <ChevronLeft className="w-4 h-4 mr-0.5" /> Back
               </button>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="w-full sm:w-auto grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
             {!isLocked && (
               <>
                 {/* Save Draft */}
@@ -2277,7 +2277,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   type="button"
                   onClick={handleSaveDraft}
                   disabled={saving || submitting}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-xl text-xs font-semibold shadow-sm transition-all active:scale-95 ${
+                  className={`inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 min-h-[42px] border rounded-xl text-xs font-semibold shadow-sm transition-all active:scale-95 ${
                     isCurrentStepComplete
                       ? 'border-outline-variant/50 text-primary bg-white hover:bg-surface-container'
                       : 'border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100'
@@ -2297,7 +2297,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   type="button"
                   onClick={handleSaveAndExit}
                   disabled={saving || submitting}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-xl text-xs font-semibold shadow-sm transition-all active:scale-95 ${
+                  className={`inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 min-h-[42px] border rounded-xl text-xs font-semibold shadow-sm transition-all active:scale-95 ${
                     isCurrentStepComplete
                       ? 'border-outline-variant/40 text-on-surface-variant bg-surface-container-high/60 hover:bg-surface-container-high'
                       : 'border-amber-200 text-amber-800 bg-amber-50/50 hover:bg-amber-100'
@@ -2319,7 +2319,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                 type="button"
                 onClick={handleNext}
                 disabled={saving || submitting}
-                className={`inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-semibold shadow-md transition-all active:scale-95 ${
+                className={`col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 px-5 py-2.5 min-h-[44px] rounded-xl text-xs font-semibold shadow-md transition-all active:scale-95 ${
                   isCurrentStepComplete
                     ? 'bg-primary hover:bg-primary-container text-white'
                     : 'bg-amber-600 text-white hover:bg-amber-700'
@@ -2338,7 +2338,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   type="button"
                   onClick={handleSubmit}
                   disabled={submitting || !formData.declarationAccepted}
-                  className="inline-flex items-center gap-1.5 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95 disabled:opacity-50"
+                  className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 px-6 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95 disabled:opacity-50"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>{submitting ? 'Submitting...' : 'Final Submit Record'}</span>

@@ -32,39 +32,18 @@ export const RobertMascot = (props) => {
   const activeField = props.activeField || context.activeField || 'idle';
   const role = props.role || context.role || 'STUDENT';
   const errorMessage = props.errorMessage || context.errorMessage || '';
-  // Flight & Position state - strictly anchored to the safe left side
-  const [position, setPosition] = useState({ top: '95px', left: '70px' });
-  const [isMoving, setIsMoving] = useState(false);
-  const [flightTilt, setFlightTilt] = useState(0);
-  const [isHopping, setIsHopping] = useState(false);
-
-  // Speech & Typewriter state
-  const [typedSpeech, setTypedSpeech] = useState("Hi! I'm Robert 👋 Click a field to sign in!");
-  const [isTyping, setIsTyping] = useState(false);
-
-  // Facial Expression & Eye Tracking
-  const [expression, setExpression] = useState('normal'); // 'normal' | 'happy' | 'talking' | 'wink' | 'surprised' | 'worried'
-  const [eyeGlance, setEyeGlance] = useState({ x: 0, y: 0 });
-  const [isWobbling, setIsWobbling] = useState(false);
-
-  // Refs for tracking active intervals and animations
-  const typingTimerRef = useRef(null);
-  const flightTimerRef = useRef(null);
-  const wobbleTimerRef = useRef(null);
-  const hopTimerRef = useRef(null);
-  const prevFieldRef = useRef(activeField);
-  const perchIdxRef = useRef(0);
-
-  // ============================================================
-  // STRICT LEFT-SIDE SAFE PERCH ENGINE (Never enters typing area!)
-  // ============================================================
+  // Flight & Position state - safely docked to bottom-left on mobile or left rail on desktop
   const getSafeLeftPerch = (field) => {
-    if (typeof window === 'undefined') return { top: '22%', left: 'clamp(20px, 3.5vw, 44px)' };
+    if (typeof window === 'undefined') return { top: '22%', bottom: 'auto', left: 'clamp(20px, 3.5vw, 44px)' };
     const winW = window.innerWidth;
 
-    // Mobile / Tablet: Stay safely docked at bottom-left corner so inputs & banner are never covered
+    // Mobile / Tablet: Stay safely docked at bottom-left corner with safe-area insets
     if (winW < 768) {
-      return { top: 'auto', bottom: '16px', left: '16px' };
+      return { 
+        top: 'auto', 
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)', 
+        left: 'calc(env(safe-area-inset-left, 0px) + 14px)' 
+      };
     }
 
     // Fixed dedicated perches on the left margin, guaranteed >150px clearance from the centered card
@@ -86,6 +65,20 @@ export const RobertMascot = (props) => {
         return { top: '35%', bottom: 'auto', left: 'clamp(20px, 3.5vw, 48px)' };
     }
   };
+
+  const [position, setPosition] = useState(() => getSafeLeftPerch(activeField));
+  const [isMoving, setIsMoving] = useState(false);
+  const [flightTilt, setFlightTilt] = useState(0);
+  const [isHopping, setIsHopping] = useState(false);
+
+  // Sync position on window resize or mobile orientation change
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition(getSafeLeftPerch(activeField));
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [activeField]);
 
   // ============================================================
   // TYPEWRITER ENGINE (Types out message character by character)
@@ -315,6 +308,7 @@ export const RobertMascot = (props) => {
       id="robertContainer"
       style={{
         top: position.top,
+        bottom: position.bottom,
         left: position.left,
         transform: `rotate(${flightTilt}deg) ${isHopping ? 'translateY(-10px)' : ''} ${isWobbling ? 'scale(1.08)' : 'scale(1)'}`,
         transition: 'top 1.1s cubic-bezier(0.22, 1, 0.36, 1), bottom 1.1s cubic-bezier(0.22, 1, 0.36, 1), left 1.1s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)'

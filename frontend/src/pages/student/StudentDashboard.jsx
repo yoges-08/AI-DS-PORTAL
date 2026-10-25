@@ -72,29 +72,29 @@ export const StudentDashboard = () => {
         </div>
 
         {/* Sliding Segmented Tab Switcher */}
-        <div className="p-1 bg-surface-variant/70 rounded-xl flex self-start md:self-center shrink-0 border border-outline-variant/30 select-none">
+        <div className="p-1 bg-surface-variant/70 rounded-xl w-full sm:w-auto grid grid-cols-2 sm:flex self-stretch sm:self-center shrink-0 border border-outline-variant/30 select-none gap-1 sm:gap-0">
           <button
             onClick={() => setActiveTab('form')}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
+            className={`inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 min-h-[42px] text-xs font-semibold rounded-lg transition-all duration-200 ${
               activeTab === 'form'
                 ? 'bg-white text-primary shadow-sm font-bold'
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            <Edit3 className="w-3.5 h-3.5" />
-            <span>{user?.isLocked ? 'View Dossier' : 'Update Details'}</span>
+            <Edit3 className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{user?.isLocked ? 'View Dossier' : 'Update Details'}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('summary')}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
+            className={`inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 min-h-[42px] text-xs font-semibold rounded-lg transition-all duration-200 ${
               activeTab === 'summary'
                 ? 'bg-white text-primary shadow-sm font-bold'
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print A4 Dossier</span>
+            <Printer className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Print A4 Dossier</span>
           </button>
         </div>
       </div>

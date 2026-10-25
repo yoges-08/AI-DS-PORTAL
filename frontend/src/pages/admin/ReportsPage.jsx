@@ -141,13 +141,13 @@ export const ReportsPage = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="pt-4 border-t border-outline-variant/30 flex flex-wrap items-center gap-3">
+        <div className="pt-4 border-t border-outline-variant/30 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <button
             onClick={handleDownloadExcel}
             disabled={downloading}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-50 transition-all active:scale-95"
+            className="w-full sm:w-auto inline-flex items-center justify-center min-h-[44px] gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-50 transition-all active:scale-95"
           >
-            <FileSpreadsheet className="w-4 h-4" />
+            <FileSpreadsheet className="w-4 h-4 shrink-0" />
             <span>
               {downloading && activeDownloadType === 'excel'
                 ? 'Exporting Excel Register...'
@@ -158,9 +158,9 @@ export const ReportsPage = () => {
           <button
             onClick={handleDownloadPdf}
             disabled={downloading}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-container text-white rounded-xl text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-50 transition-all active:scale-95"
+            className="w-full sm:w-auto inline-flex items-center justify-center min-h-[44px] gap-2 px-5 py-2.5 bg-primary hover:bg-primary-container text-white rounded-xl text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-50 transition-all active:scale-95"
           >
-            <FileDown className="w-4 h-4" />
+            <FileDown className="w-4 h-4 shrink-0" />
             <span>
               {downloading && activeDownloadType === 'pdf'
                 ? 'Compiling PDF Dossier...'

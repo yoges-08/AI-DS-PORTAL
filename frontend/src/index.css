@@ -14,8 +14,19 @@
     line-height: 1.5;
   }
 
+  /* 16px font-size on mobile touch viewports prevents unwanted iOS Safari page auto-zoom */
   input, select, textarea {
-    font-size: 14px;
+    font-size: 16px;
+  }
+  @media (min-width: 640px) {
+    input, select, textarea {
+      font-size: 14px;
+    }
+  }
+
+  /* Optimize touch target responsiveness */
+  button, a, input, select, textarea {
+    touch-action: manipulation;
   }
 
   .material-symbols-outlined {

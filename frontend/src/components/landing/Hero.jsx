@@ -30,13 +30,13 @@ export const Hero = () => {
           <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
             
             {/* Pill Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/70 shadow-sm text-blue-700 text-xs font-bold tracking-wide uppercase">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-              <span>Official Departmental Portal &bull; Anna University</span>
+            <div className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/70 shadow-sm text-blue-700 text-[11px] sm:text-xs font-bold tracking-wide uppercase max-w-full">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span className="truncate">Official Departmental Portal &bull; Anna University</span>
             </div>
 
             {/* Main Title */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.12]">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.14]">
               Department Student <br className="hidden sm:inline" />
               <span className="bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 bg-clip-text text-transparent">
                 Information System
@@ -94,7 +94,7 @@ export const Hero = () => {
               <div className="absolute -inset-2 bg-gradient-to-r from-blue-600/15 via-sky-500/20 to-indigo-600/15 rounded-3xl blur-xl" />
 
               {/* Glass Dossier Presentation Card */}
-              <div className="relative glass-card-white p-6 sm:p-7 space-y-5">
+              <div className="relative glass-card-white p-4 sm:p-7 space-y-4 sm:space-y-5">
                 
                 {/* Header */}
                 <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -147,7 +147,7 @@ export const Hero = () => {
                 {/* Interactive Direct Action Button */}
                 <button
                   onClick={() => openLogin('STUDENT')}
-                  className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-98 cursor-pointer"
+                  className="w-full py-3 min-h-[44px] rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-98 cursor-pointer"
                 >
                   <span>Sign In to Access Your Records</span>
                   <ArrowRight className="w-3.5 h-3.5" />

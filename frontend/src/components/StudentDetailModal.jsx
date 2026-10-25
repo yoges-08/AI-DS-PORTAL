@@ -141,27 +141,27 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-center justify-center p-3 sm:p-6 animate-fade-in">
+    <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-start sm:items-center justify-center p-2 sm:p-6 animate-fade-in">
       {/* Click-away backdrop overlay */}
       <div className="fixed inset-0 bg-transparent" onClick={onClose} aria-hidden="true" />
       
       {/* Modal Dialog Card */}
-      <div className="relative z-10 apple-modal-card rounded-3xl w-full max-w-4xl my-auto max-h-[94vh] flex flex-col overflow-hidden transition-all">
+      <div className="relative z-10 apple-modal-card rounded-2xl sm:rounded-3xl w-full max-w-4xl my-2 sm:my-auto max-h-[96vh] sm:max-h-[94vh] flex flex-col overflow-hidden transition-all">
         
         {/* Top Header Bar */}
-        <div className="bg-gradient-to-r from-primary via-primary-container to-secondary px-6 py-4 flex items-center justify-between shrink-0 text-white shadow-sm">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-white" />
+        <div className="bg-gradient-to-r from-primary via-primary-container to-secondary px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between shrink-0 text-white shadow-sm">
+          <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+              <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold tracking-tight text-white uppercase font-mono">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-xs sm:text-sm font-bold tracking-tight text-white uppercase font-mono truncate">
                   Dossier #{student?.register_no || 'INSPECTOR'}
                 </h3>
                 {student && <StatusBadge status={student.status} isLocked={Boolean(student.is_locked)} />}
               </div>
-              <p className="text-xs text-white/70">
+              <p className="text-[11px] sm:text-xs text-white/70 truncate">
                 Department of AI & Data Science • Academic Master Record
               </p>
             </div>
@@ -169,20 +169,20 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
           
           <button 
             onClick={onClose} 
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white transition-all active:scale-95"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white transition-all active:scale-95 shrink-0 ml-2"
             aria-label="Close modal"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Action Toolbar */}
-        <div className="bg-surface-container-low/80 border-b border-outline-variant/30 px-6 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0 backdrop-blur-md text-xs">
-          <div className="flex flex-wrap items-center gap-2">
+        {/* Action Toolbar - Swipeable rail on mobile */}
+        <div className="bg-surface-container-low/80 border-b border-outline-variant/30 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2.5 shrink-0 backdrop-blur-md text-xs overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleToggleLock}
               disabled={actionLoading}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold border transition-all active:scale-95 ${
+              className={`inline-flex items-center gap-1.5 px-3 py-2 min-h-[38px] rounded-xl font-semibold border transition-all active:scale-95 whitespace-nowrap ${
                 student?.is_locked
                   ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
                   : 'bg-white text-on-surface border-outline-variant/50 hover:bg-surface-container shadow-sm'
@@ -195,7 +195,7 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
             <button
               onClick={handleResetPassword}
               disabled={actionLoading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-outline-variant/50 text-on-surface rounded-xl font-semibold hover:bg-surface-container shadow-sm transition-all active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[38px] bg-white border border-outline-variant/50 text-on-surface rounded-xl font-semibold hover:bg-surface-container shadow-sm transition-all active:scale-95 whitespace-nowrap"
               title="Generate temporary password"
             >
               <KeyRound className="w-3.5 h-3.5 text-primary" />
@@ -204,7 +204,7 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
 
             <button
               onClick={() => onEditStudent && onEditStudent(student.id)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-outline-variant/50 text-secondary rounded-xl font-semibold hover:bg-secondary-fixed/30 shadow-sm transition-all active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[38px] bg-white border border-outline-variant/50 text-secondary rounded-xl font-semibold hover:bg-secondary-fixed/30 shadow-sm transition-all active:scale-95 whitespace-nowrap"
             >
               <Edit3 className="w-3.5 h-3.5" />
               <span>Edit Details</span>
@@ -213,7 +213,7 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
             <button
               onClick={handleDeleteStudent}
               disabled={actionLoading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 text-error rounded-xl font-semibold hover:bg-red-50 shadow-sm transition-all active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[38px] bg-white border border-red-200 text-error rounded-xl font-semibold hover:bg-red-50 shadow-sm transition-all active:scale-95 whitespace-nowrap"
               title="Permanently delete student profile and login"
             >
               <Trash2 className="w-3.5 h-3.5 text-error" />
@@ -221,12 +221,12 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {student?.status !== 'VERIFIED' && (
               <button
                 onClick={() => handleStatusUpdate('VERIFIED')}
                 disabled={actionLoading}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow-sm transition-all active:scale-95"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[38px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow-sm transition-all active:scale-95 whitespace-nowrap"
               >
                 <CheckCircle className="w-3.5 h-3.5" />
                 <span>Verify & Approve</span>
@@ -237,7 +237,7 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
               <button
                 onClick={() => setRejectionModal(true)}
                 disabled={actionLoading}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold shadow-sm transition-all active:scale-95"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[38px] bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold shadow-sm transition-all active:scale-95 whitespace-nowrap"
               >
                 <XCircle className="w-3.5 h-3.5" />
                 <span>Reject</span>

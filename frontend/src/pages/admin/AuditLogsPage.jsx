@@ -170,7 +170,7 @@ export const AuditLogsPage = () => {
                       <span className="text-outline font-normal">Candidate:</span> {log.student_reg_no}
                     </div>
                   )}
-                  <div className="text-on-surface bg-surface-container-low/80 p-2.5 rounded-xl border border-outline-variant/20 font-mono text-[11px]">
+                  <div className="text-on-surface bg-surface-container-low/80 p-2.5 rounded-xl border border-outline-variant/20 font-mono text-[11px] break-words break-all">
                     {log.details || '-'}
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-outline pt-1">

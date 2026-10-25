@@ -531,12 +531,12 @@ export const BulkManagePage = () => {
         </div>
 
         {/* 3 Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex items-center gap-2.5 w-full lg:w-auto">
           {/* Bulk Lock Button */}
           <button
             onClick={handleOpenLockModal}
             disabled={!hasTargets || actionLoading}
-            className="inline-flex items-center px-4 py-2.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             title="Lock editing on selected students"
           >
             <Lock className="w-3.5 h-3.5 mr-1.5" />
@@ -547,7 +547,7 @@ export const BulkManagePage = () => {
           <button
             onClick={handleOpenUnlockModal}
             disabled={!hasTargets || actionLoading}
-            className="inline-flex items-center px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             title="Unlock editing on selected students"
           >
             <Unlock className="w-3.5 h-3.5 mr-1.5" />
@@ -558,7 +558,7 @@ export const BulkManagePage = () => {
           <button
             onClick={handleOpenDeleteModal}
             disabled={!hasTargets || actionLoading}
-            className="inline-flex items-center px-4 py-2.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             title="Permanently remove selected students & storage files"
           >
             <Trash2 className="w-3.5 h-3.5 mr-1.5" />
@@ -705,11 +705,11 @@ export const BulkManagePage = () => {
       {/* MODAL 1: BULK LOCK CONFIRMATION */}
       {/* ============================================================ */}
       {activeModal === 'lock' && createPortal(
-        <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-center justify-center p-3 sm:p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-start sm:items-center justify-center p-3 sm:p-6 animate-fade-in">
           {/* Click-away backdrop overlay */}
           <div className="fixed inset-0 bg-transparent" onClick={() => !actionLoading && setActiveModal(null)} aria-hidden="true" />
           
-          <div className="relative z-10 apple-modal-card rounded-2xl max-w-md w-full p-6 space-y-4 my-auto animate-in fade-in zoom-in-95 duration-150">
+          <div className="relative z-10 apple-modal-card rounded-2xl max-w-md w-full max-h-[88vh] overflow-y-auto p-4 sm:p-6 space-y-4 my-2 sm:my-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-amber-700">
               <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
                 <Lock className="w-5 h-5 text-amber-600" />
@@ -762,11 +762,11 @@ export const BulkManagePage = () => {
       {/* MODAL 2: BULK UNLOCK CONFIRMATION */}
       {/* ============================================================ */}
       {activeModal === 'unlock' && createPortal(
-        <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-center justify-center p-3 sm:p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-start sm:items-center justify-center p-3 sm:p-6 animate-fade-in">
           {/* Click-away backdrop overlay */}
           <div className="fixed inset-0 bg-transparent" onClick={() => !actionLoading && setActiveModal(null)} aria-hidden="true" />
           
-          <div className="relative z-10 apple-modal-card rounded-2xl max-w-md w-full p-6 space-y-4 my-auto animate-in fade-in zoom-in-95 duration-150">
+          <div className="relative z-10 apple-modal-card rounded-2xl max-w-md w-full max-h-[88vh] overflow-y-auto p-4 sm:p-6 space-y-4 my-2 sm:my-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-emerald-700">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
                 <Unlock className="w-5 h-5 text-emerald-600" />
@@ -814,11 +814,11 @@ export const BulkManagePage = () => {
       {/* MODAL 3: BULK DELETE CONFIRMATION (With DELETE typing guard) */}
       {/* ============================================================ */}
       {activeModal === 'delete' && createPortal(
-        <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-center justify-center p-3 sm:p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-start sm:items-center justify-center p-3 sm:p-6 animate-fade-in">
           {/* Click-away backdrop overlay */}
           <div className="fixed inset-0 bg-transparent" onClick={() => !actionLoading && setActiveModal(null)} aria-hidden="true" />
           
-          <div className="relative z-10 apple-modal-card rounded-2xl max-w-lg w-full p-6 space-y-4 my-auto animate-in fade-in zoom-in-95 duration-150">
+          <div className="relative z-10 apple-modal-card rounded-2xl max-w-lg w-full max-h-[88vh] overflow-y-auto p-4 sm:p-6 space-y-4 my-2 sm:my-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-rose-700">
               <div className="w-11 h-11 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0">
                 <Trash2 className="w-6 h-6 text-rose-600" />
@@ -893,11 +893,11 @@ export const BulkManagePage = () => {
       {/* MODAL 4: ACTION RESULT FEEDBACK BANNER */}
       {/* ============================================================ */}
       {activeModal === 'result' && actionResult && createPortal(
-        <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-center justify-center p-3 sm:p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[9999] overflow-y-auto apple-modal-backdrop flex min-h-full items-start sm:items-center justify-center p-3 sm:p-6 animate-fade-in">
           {/* Click-away backdrop overlay */}
           <div className="fixed inset-0 bg-transparent" onClick={() => { setActiveModal(null); setActionResult(null); }} aria-hidden="true" />
           
-          <div className="relative z-10 apple-modal-card rounded-2xl max-w-md w-full p-6 space-y-4 my-auto animate-in fade-in zoom-in-95 duration-150">
+          <div className="relative z-10 apple-modal-card rounded-2xl max-w-md w-full max-h-[88vh] overflow-y-auto p-4 sm:p-6 space-y-4 my-2 sm:my-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-5 h-5" />

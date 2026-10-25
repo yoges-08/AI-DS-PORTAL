@@ -228,30 +228,30 @@ export const AdminDashboard = ({ onOpenMultiStepEdit, onNavigateTab }) => {
         </div>
 
         {/* Global Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
           <button
             onClick={() => setIsAddOpen(true)}
-            className="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary-container text-white text-xs font-semibold rounded-xl shadow-sm transition-all active:scale-[0.98]"
+            className="inline-flex items-center justify-center px-4 py-2.5 min-h-[40px] bg-primary hover:bg-primary-container text-white text-xs font-semibold rounded-xl shadow-sm transition-all active:scale-[0.98]"
           >
-            <UserPlus className="w-3.5 h-3.5 mr-1.5" />
+            <UserPlus className="w-3.5 h-3.5 mr-1.5 shrink-0" />
             <span>Add Student</span>
           </button>
 
           <button
             onClick={() => setIsBulkOpen(true)}
-            className="inline-flex items-center px-3.5 py-2 bg-white hover:bg-surface-container border border-outline-variant/50 text-primary text-xs font-semibold rounded-xl shadow-2xs transition-all active:scale-[0.98]"
+            className="inline-flex items-center justify-center px-3.5 py-2.5 min-h-[40px] bg-white hover:bg-surface-container border border-outline-variant/50 text-primary text-xs font-semibold rounded-xl shadow-2xs transition-all active:scale-[0.98]"
           >
-            <Upload className="w-3.5 h-3.5 mr-1.5 text-secondary" />
+            <Upload className="w-3.5 h-3.5 mr-1.5 text-secondary shrink-0" />
             <span>Bulk Import</span>
           </button>
 
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab('bulk-manage')}
-              className="inline-flex items-center px-3.5 py-2 bg-white hover:bg-surface-container border border-outline-variant/50 text-primary text-xs font-semibold rounded-xl shadow-2xs transition-all active:scale-[0.98]"
+              className="inline-flex items-center justify-center px-3.5 py-2.5 min-h-[40px] bg-white hover:bg-surface-container border border-outline-variant/50 text-primary text-xs font-semibold rounded-xl shadow-2xs transition-all active:scale-[0.98]"
               title="Cohort bulk lock, unlock, and delete"
             >
-              <ListChecks className="w-3.5 h-3.5 mr-1.5 text-secondary" />
+              <ListChecks className="w-3.5 h-3.5 mr-1.5 text-secondary shrink-0" />
               <span>Bulk Manage</span>
             </button>
           )}
@@ -259,30 +259,30 @@ export const AdminDashboard = ({ onOpenMultiStepEdit, onNavigateTab }) => {
           <button
             onClick={handleExportExcel}
             disabled={exporting}
-            className="inline-flex items-center px-3.5 py-2 bg-white hover:bg-emerald-50/50 border border-emerald-500/30 text-emerald-800 text-xs font-semibold rounded-xl shadow-2xs transition-all active:scale-[0.98] disabled:opacity-50"
+            className="inline-flex items-center justify-center px-3.5 py-2.5 min-h-[40px] bg-white hover:bg-emerald-50/50 border border-emerald-500/30 text-emerald-800 text-xs font-semibold rounded-xl shadow-2xs transition-all active:scale-[0.98] disabled:opacity-50"
             title="Download Excel register"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+            <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0" />
             <span>{exporting ? 'Exporting...' : 'Export Excel'}</span>
           </button>
 
           <button
             onClick={handleExportPdf}
             disabled={exporting}
-            className="inline-flex items-center px-3.5 py-2 bg-white hover:bg-rose-50/50 border border-rose-500/30 text-rose-800 text-xs font-semibold rounded-xl shadow-2xs transition-all active:scale-[0.98] disabled:opacity-50"
+            className="col-span-2 sm:col-span-1 inline-flex items-center justify-center px-3.5 py-2.5 min-h-[40px] bg-white hover:bg-rose-50/50 border border-rose-500/30 text-rose-800 text-xs font-semibold rounded-xl shadow-2xs transition-all active:scale-[0.98] disabled:opacity-50"
             title="Download official PDF report"
           >
-            <FileDown className="w-3.5 h-3.5 mr-1.5 text-rose-600" />
+            <FileDown className="w-3.5 h-3.5 mr-1.5 text-rose-600 shrink-0" />
             <span>{exporting ? 'Exporting...' : 'Official PDF'}</span>
           </button>
         </div>
       </div>
 
       {/* Top Bento Metric Cards (Apple macOS Style) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5 sm:gap-3.5">
         
         {/* Total Students */}
-        <div className="glass-card-l2 rounded-2xl p-4 border border-white/80 shadow-xs flex flex-col justify-between">
+        <div className="glass-card-l2 rounded-2xl p-3.5 sm:p-4 border border-white/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-on-surface-variant mb-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider">Total Cohort</span>
             <div className="w-7 h-7 rounded-xl bg-primary-fixed/50 flex items-center justify-center text-primary">
@@ -520,16 +520,18 @@ export const AdminDashboard = ({ onOpenMultiStepEdit, onNavigateTab }) => {
                 className="p-4 hover:bg-white/50 transition-colors space-y-2.5 cursor-pointer"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <div className="font-bold text-sm text-primary flex items-center gap-1.5">
-                      <span className="text-[11px] font-mono text-outline">#{(pagination.page - 1) * pagination.limit + idx + 1}</span>
-                      <span>{student.name}</span>
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <div className="font-bold text-sm text-primary flex items-center gap-1.5 truncate">
+                      <span className="text-[11px] font-mono text-outline shrink-0">#{(pagination.page - 1) * pagination.limit + idx + 1}</span>
+                      <span className="truncate">{student.name}</span>
                     </div>
-                    <div className="font-mono text-xs text-secondary font-semibold">
+                    <div className="font-mono text-xs text-secondary font-semibold truncate">
                       {student.register_no}
                     </div>
                   </div>
-                  <StatusBadge status={student.status} isLocked={Boolean(student.is_locked)} />
+                  <div className="shrink-0">
+                    <StatusBadge status={student.status} isLocked={Boolean(student.is_locked)} />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs text-on-surface-variant bg-surface-container/50 p-2.5 rounded-xl border border-outline-variant/30">

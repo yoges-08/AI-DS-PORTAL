@@ -36,7 +36,7 @@ export const LoginOverlay = () => {
   return (
     <AnimatePresence>
       {isLoginOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto min-h-[100dvh]">
           {/* Frosted Backdrop over the Landing Page with Floating Glass Bubbles */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -61,7 +61,7 @@ export const LoginOverlay = () => {
               stiffness: 320, 
               mass: 0.85 
             }}
-            className="relative z-10 w-full max-w-[460px] my-auto"
+            className="relative z-10 w-full max-w-[460px] my-auto py-4 sm:py-6"
             role="dialog"
             aria-modal="true"
             aria-labelledby="loginModalTitle"
