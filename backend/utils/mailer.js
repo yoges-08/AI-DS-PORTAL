@@ -20,7 +20,8 @@ function maskEmail(email) {
 function mailEnabled() {
   const enabled = process.env.MAIL_ENABLED === 'true';
   const hasKey = Boolean(process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim());
-  return enabled && hasKey;
+  const hasSender = Boolean(process.env.MAIL_FROM_EMAIL && process.env.MAIL_FROM_EMAIL.trim());
+  return enabled && hasKey && hasSender;
 }
 
 /**
@@ -98,7 +99,11 @@ async function deliver({
   }
 
   // 4. Construct payload for Brevo API
-  const senderEmail = process.env.MAIL_FROM_EMAIL || 'no-reply@aamec.edu.in';
+  const senderEmail = (process.env.MAIL_FROM_EMAIL || '').trim();
+  if (!senderEmail) {
+    console.error(`[Mailer] Cannot send ${template} to ${maskedTo}: MAIL_FROM_EMAIL is not configured.`);
+    return { success: false, error: 'MAIL_FROM_EMAIL is not configured' };
+  }
   const senderName = process.env.MAIL_FROM_NAME || 'AI & DS Portal - AAMEC';
 
   const payload = {
@@ -109,6 +114,13 @@ async function deliver({
     textContent: textContent || htmlContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
   };
 
+  if (process.env.MAIL_REPLY_TO && process.env.MAIL_REPLY_TO.trim()) {
+    payload.replyTo = {
+      email: process.env.MAIL_REPLY_TO.trim(),
+      name: senderName
+    };
+  }
+
   if (Array.isArray(attachments) && attachments.length > 0) {
     payload.attachment = attachments.map(att => ({
       name: att.name,
@@ -116,29 +128,69 @@ async function deliver({
     }));
   }
 
-  // 5. Send HTTPS request with 15-second timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  // 5. Send HTTPS request with 15-second timeout and 1 automatic retry on transient error
+  const maxAttempts = 2;
 
-  try {
-    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'api-key': process.env.BREVO_API_KEY.trim(),
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    clearTimeout(timeoutId);
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': process.env.BREVO_API_KEY.trim(),
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
 
-    const body = await res.json().catch(() => ({}));
+      clearTimeout(timeoutId);
 
-    if (!res.ok) {
-      const errMsg = body?.message || `Brevo HTTP ${res.status}`;
-      console.error(`[Mailer] Failed sending ${template} to ${maskedTo}: ${errMsg}`);
+      const body = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const errMsg = body?.message || `Brevo HTTP ${res.status}`;
+        if ((res.status >= 500 || res.status === 429) && attempt < maxAttempts) {
+          console.warn(`[Mailer] Brevo transient HTTP ${res.status}. Retrying in 1.5s (attempt ${attempt}/${maxAttempts})...`);
+          await new Promise(r => setTimeout(r, 1500));
+          continue;
+        }
+        console.error(`[Mailer] Failed sending ${template} to ${maskedTo}: ${errMsg}`);
+        try {
+          await pool.query(
+            `INSERT INTO email_logs (student_id, to_email, template, status, error)
+             VALUES (?, ?, ?, 'FAILED', ?)`,
+            [studentId, maskedTo, template, errMsg.slice(0, 255)]
+          );
+        } catch (e) {}
+        return { success: false, error: errMsg };
+      }
+
+      const messageId = body?.messageId || 'OK';
+      console.log(`[Mailer] Successfully delivered ${template} to ${maskedTo} (ID: ${messageId})`);
+
+      try {
+        await pool.query(
+          `INSERT INTO email_logs (student_id, to_email, template, status, provider_message_id)
+           VALUES (?, ?, ?, 'SENT', ?)`,
+          [studentId, maskedTo, template, String(messageId).slice(0, 100)]
+        );
+      } catch (e) {}
+
+      return { success: true, messageId };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      const errMsg = err.name === 'AbortError' ? 'Brevo request timed out (15s)' : (err.message || 'Unknown network error');
+      if (attempt < maxAttempts) {
+        console.warn(`[Mailer] Network error sending ${template}: ${errMsg}. Retrying in 1.5s...`);
+        await new Promise(r => setTimeout(r, 1500));
+        continue;
+      }
+      console.error(`[Mailer] Exception sending ${template} to ${maskedTo}: ${errMsg}`);
+
       try {
         await pool.query(
           `INSERT INTO email_logs (student_id, to_email, template, status, error)
@@ -146,35 +198,9 @@ async function deliver({
           [studentId, maskedTo, template, errMsg.slice(0, 255)]
         );
       } catch (e) {}
+
       return { success: false, error: errMsg };
     }
-
-    const messageId = body?.messageId || 'OK';
-    console.log(`[Mailer] Successfully delivered ${template} to ${maskedTo} (ID: ${messageId})`);
-
-    try {
-      await pool.query(
-        `INSERT INTO email_logs (student_id, to_email, template, status, provider_message_id)
-         VALUES (?, ?, ?, 'SENT', ?)`,
-        [studentId, maskedTo, template, String(messageId).slice(0, 100)]
-      );
-    } catch (e) {}
-
-    return { success: true, messageId };
-  } catch (err) {
-    clearTimeout(timeoutId);
-    const errMsg = err.name === 'AbortError' ? 'Brevo request timed out (15s)' : (err.message || 'Unknown network error');
-    console.error(`[Mailer] Exception sending ${template} to ${maskedTo}: ${errMsg}`);
-
-    try {
-      await pool.query(
-        `INSERT INTO email_logs (student_id, to_email, template, status, error)
-         VALUES (?, ?, ?, 'FAILED', ?)`,
-        [studentId, maskedTo, template, errMsg.slice(0, 255)]
-      );
-    } catch (e) {}
-
-    return { success: false, error: errMsg };
   }
 }
 

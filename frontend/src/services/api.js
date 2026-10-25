@@ -56,6 +56,11 @@ const handleResponse = async (response) => {
     const error = new Error(data.message || `Request failed with status ${response.status}`);
     error.errors = data.errors;
     error.status = response.status;
+    error.code = data.code;
+    error.pendingToken = data.pendingToken;
+    error.studentId = data.studentId;
+    error.emailMasked = data.emailMasked;
+    error.data = data;
     throw error;
   }
   return data;
@@ -98,32 +103,41 @@ export const api = {
     return await handleResponse(res);
   },
 
-  async verifyEmail(studentId, code, registerNo) {
+  async verifyEmail(pendingToken, code) {
+    const payload = typeof pendingToken === 'object' && pendingToken !== null
+      ? pendingToken
+      : { pendingToken, code };
     const res = await apiFetch(`${BASE_URL}/auth/student/verify-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ studentId, code, registerNo })
+      body: JSON.stringify(payload)
     });
     return await handleResponse(res);
   },
 
-  async resendVerificationCode(studentId, registerNo) {
+  async resendVerificationCode(pendingToken) {
+    const payload = typeof pendingToken === 'object' && pendingToken !== null
+      ? pendingToken
+      : { pendingToken };
     const res = await apiFetch(`${BASE_URL}/auth/student/resend-code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ studentId, registerNo })
+      body: JSON.stringify(payload)
     });
     return await handleResponse(res);
   },
 
-  async changePendingEmail(studentId, newEmail, registerNo) {
+  async changePendingEmail(pendingToken, newEmail) {
+    const payload = typeof pendingToken === 'object' && pendingToken !== null
+      ? pendingToken
+      : { pendingToken, newEmail };
     const res = await apiFetch(`${BASE_URL}/auth/student/change-pending-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ studentId, newEmail, registerNo })
+      body: JSON.stringify(payload)
     });
     return await handleResponse(res);
   },

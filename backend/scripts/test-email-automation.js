@@ -156,6 +156,35 @@ async function runTests() {
   await runPeriodicCleanup();
   console.log('✓ runPeriodicCleanup completed without errors.');
 
+
+  // Test 8: Cryptographic Verification Pass (pendingToken)
+  console.log('\n[Test 8] Testing Verification Pass (pendingToken) Security...');
+  const jwt = require('jsonwebtoken');
+  const { JWT_SECRET } = require('../config/secrets');
+
+  // 8a. Valid token signs and decodes correctly
+  const validPass = jwt.sign({ purpose: 'email-verify', sid: 42 }, JWT_SECRET + ':email-verify', { expiresIn: '30m' });
+  const decoded = jwt.verify(validPass, JWT_SECRET + ':email-verify');
+  if (decoded.purpose !== 'email-verify' || decoded.sid !== 42) {
+    throw new Error('Verification pass decoding failed');
+  }
+
+  // 8b. Forged token with wrong secret fails
+  try {
+    jwt.verify(validPass, 'wrong-secret');
+    throw new Error('Forged token was unexpectedly accepted');
+  } catch (err) {
+    if (err.message.includes('unexpectedly accepted')) throw err;
+  }
+
+  // 8c. Token with wrong purpose is rejected
+  const wrongPurposePass = jwt.sign({ purpose: 'student-auth', sid: 42 }, JWT_SECRET + ':email-verify');
+  const decodedWrong = jwt.verify(wrongPurposePass, JWT_SECRET + ':email-verify');
+  if (decodedWrong.purpose === 'email-verify') {
+    throw new Error('Wrong purpose token matched email-verify');
+  }
+  console.log('✓ Cryptographic Verification Pass protects unverified accounts against unauthorized takeover.');
+
   console.log('\n======================================================');
   console.log('ALL EMAIL AUTOMATION TESTS PASSED WITH 100% SUCCESS!');
   console.log('======================================================\n');

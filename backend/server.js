@@ -309,6 +309,19 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log(`CORS allowed client: ${CLIENT_URL}`);
   console.log('====================================================');
 
+  // Email Automation configuration check
+  if (process.env.MAIL_ENABLED === 'true') {
+    const hasKey = Boolean(process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim());
+    const hasSender = Boolean(process.env.MAIL_FROM_EMAIL && process.env.MAIL_FROM_EMAIL.trim());
+    if (!hasKey || !hasSender) {
+      console.warn('⚠️ [Mailer Warning]: MAIL_ENABLED=true but BREVO_API_KEY or MAIL_FROM_EMAIL is missing. Email automation will be paused.');
+    } else {
+      console.log(`✉️ [Mailer]: Brevo email automation active (Sender: ${process.env.MAIL_FROM_EMAIL.trim()})`);
+    }
+  } else {
+    console.log('✉️ [Mailer]: Email sending disabled (MAIL_ENABLED=false)');
+  }
+
   // Verify DB connection
   await testConnection();
 

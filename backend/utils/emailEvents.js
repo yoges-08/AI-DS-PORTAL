@@ -4,7 +4,7 @@ const { submitted, verified, rejected, locked, unlocked } = require('./emailTemp
 const { generateStudentFormPdf } = require('./studentFormPdf');
 const { readStoredFile } = require('./storedFiles');
 
-const MAX_TOTAL_ATTACHMENT_BYTES = 3 * 1024 * 1024; // 3MB limit for Brevo email attachments
+const getMaxAttachmentBytes = () => parseInt(process.env.MAIL_MAX_ATTACHMENT_BYTES || '3000000', 10);
 
 /**
  * Event E3: Student submitted profile dossier
@@ -37,6 +37,8 @@ async function sendSubmissionEmail(studentId) {
 
     const attachments = [];
     let currentBytes = 0;
+    const maxBytes = getMaxAttachmentBytes();
+    const attachDocuments = process.env.MAIL_ATTACH_DOCUMENTS !== 'false';
 
     if (pdfBuffer) {
       currentBytes += pdfBuffer.length;
@@ -46,30 +48,38 @@ async function sendSubmissionEmail(studentId) {
       });
     }
 
-    // 3. Attach uploaded documents (up to 3MB total)
-    const [docs] = await pool.query(
-      'SELECT id, doc_type, file_name, file_path, mime_type, file_data, file_size FROM student_documents WHERE student_id = ?',
-      [studentId]
-    );
+    let omittedCount = 0;
 
-    for (const doc of docs) {
-      if (doc.doc_type === 'photo') continue; // Photo is already inside the PDF
-      try {
-        const fileBuf = await readStoredFile({
-          filePath: doc.file_path,
-          fileName: doc.file_name,
-          mimeType: doc.mime_type,
-          fileData: doc.file_data
-        });
-        if (fileBuf && (currentBytes + fileBuf.length) <= MAX_TOTAL_ATTACHMENT_BYTES) {
-          currentBytes += fileBuf.length;
-          attachments.push({
-            name: doc.file_name || `${doc.doc_type}.pdf`,
-            content: fileBuf.toString('base64')
+    // 3. Attach uploaded documents if MAIL_ATTACH_DOCUMENTS is true (up to maxBytes total)
+    if (attachDocuments) {
+      const [docs] = await pool.query(
+        'SELECT id, doc_type, file_name, file_path, mime_type, file_data, file_size FROM student_documents WHERE student_id = ?',
+        [studentId]
+      );
+
+      for (const doc of docs) {
+        if (doc.doc_type === 'photo') continue; // Photo is already inside the PDF
+        try {
+          const fileBuf = await readStoredFile({
+            filePath: doc.file_path,
+            fileName: doc.file_name,
+            mimeType: doc.mime_type,
+            fileData: doc.file_data
           });
+          if (fileBuf) {
+            if ((currentBytes + fileBuf.length) <= maxBytes) {
+              currentBytes += fileBuf.length;
+              attachments.push({
+                name: doc.file_name || `${doc.doc_type}.pdf`,
+                content: fileBuf.toString('base64')
+              });
+            } else {
+              omittedCount++;
+            }
+          }
+        } catch (docErr) {
+          // Skip document if unreadable
         }
-      } catch (docErr) {
-        // Skip document if unreadable
       }
     }
 
@@ -77,7 +87,8 @@ async function sendSubmissionEmail(studentId) {
       name: student.name,
       registerNo: student.register_no,
       submissionDate: student.submission_date,
-      attachmentCount: attachments.length
+      attachmentCount: attachments.length,
+      omittedCount
     });
 
     sendInBackground({

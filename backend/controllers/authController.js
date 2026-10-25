@@ -27,6 +27,29 @@ const verifyPassword = async (input, hash) => {
   return trimmed !== raw ? bcrypt.compare(trimmed, hash) : false;
 };
 
+/**
+ * Signed short-lived (30m) Verification Pass for pending email verification.
+ * Prevents unauthorized account takeover by proving the caller holds a valid registration or login pass.
+ */
+const createPendingToken = (studentId) => {
+  return jwt.sign(
+    { purpose: 'email-verify', sid: studentId },
+    JWT_SECRET + ':email-verify',
+    { expiresIn: '30m' }
+  );
+};
+
+const readPendingToken = (req) => {
+  try {
+    const rawToken = req.body?.pendingToken || req.headers['x-pending-token'];
+    if (!rawToken || typeof rawToken !== 'string') return null;
+    const decoded = jwt.verify(rawToken.trim(), JWT_SECRET + ':email-verify');
+    return decoded && decoded.purpose === 'email-verify' && decoded.sid ? decoded.sid : null;
+  } catch {
+    return null;
+  }
+};
+
 
 // Cookie options: In production cross-domain setups (e.g. Vercel client -> Render API), SameSite='none' with Secure=true is required.
 const COOKIE_OPTIONS = {
@@ -281,7 +304,14 @@ const registerStudent = async (req, res) => {
     // 4. Hash password with bcrypt cost 12
     const hashedPassword = await bcrypt.hash(rawPassword, 12);
 
-    const needVerify = process.env.REQUIRE_EMAIL_VERIFICATION !== 'false' && mailEnabled();
+    const needVerify = process.env.REQUIRE_EMAIL_VERIFICATION !== 'false';
+    if (needVerify && !mailEnabled()) {
+      await conn.rollback();
+      return res.status(503).json({
+        success: false,
+        message: 'Email verification service is temporarily unavailable. Please try again later or contact the administrator.'
+      });
+    }
 
     // 5. Insert new student account
     const [insertResult] = await conn.query(
@@ -329,10 +359,13 @@ const registerStudent = async (req, res) => {
         emailSent = Boolean(emailRes.success);
       }
 
+      const pendingToken = createPendingToken(newStudentId);
+
       return res.status(201).json({
         success: true,
         requiresVerification: true,
         message: 'Registration successful! A 6-digit verification code has been sent to your email address.',
+        pendingToken,
         studentId: newStudentId,
         emailMasked: maskEmail(cleanEmail),
         emailSent
@@ -454,10 +487,17 @@ const loginStudent = async (req, res) => {
     // S7 fix: Clear login failures on valid authentication
     await clearFailures(lockKey);
 
-    // Auto-mark account verified on authenticated login with chosen password (no OTP block on login)
-    if (student.email_verified === 0) {
-      await pool.query('UPDATE students SET email_verified = 1 WHERE id = ?', [student.id]);
-      student.email_verified = 1;
+    // Require email verification if account is not yet verified
+    if (process.env.REQUIRE_EMAIL_VERIFICATION !== 'false' && student.email_verified === 0) {
+      const pendingPass = createPendingToken(student.id);
+      return res.status(403).json({
+        success: false,
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Your email address has not been verified yet. Please enter the verification code sent to your email.',
+        pendingToken: pendingPass,
+        studentId: student.id,
+        emailMasked: maskEmail(student.email)
+      });
     }
 
     // Generate JWT
@@ -806,32 +846,37 @@ const changePassword = async (req, res) => {
 /**
  * Verify Student Email with 6-Digit Code
  * POST /api/auth/student/verify-email
- * Body: { studentId, code }
+ * Body: { pendingToken, code }
  */
 const verifyEmail = async (req, res) => {
   try {
-    const { studentId, registerNo, email, code } = req.body;
-    if (!code) {
-      return res.status(400).json({ success: false, message: 'Verification code is required.' });
+    const studentId = readPendingToken(req);
+    if (!studentId) {
+      return res.status(401).json({
+        success: false,
+        code: 'SESSION_EXPIRED',
+        message: 'Verification session expired or invalid. Please sign in again.'
+      });
     }
 
-    let targetStudentId = studentId;
-    if (!targetStudentId) {
-      const cleanReg = registerNo ? cleanRegisterNo(registerNo) : '';
-      const cleanEm = email ? String(email).trim().toLowerCase() : '';
-      const [lookup] = await pool.query(
-        'SELECT id FROM students WHERE (register_no = ? AND ? != "") OR (LOWER(email) = ? AND ? != "") ORDER BY id DESC LIMIT 1',
-        [cleanReg, cleanReg, cleanEm, cleanEm]
-      );
-      if (lookup.length > 0) targetStudentId = lookup[0].id;
+    const { code } = req.body;
+    if (!code || String(code).trim().length !== 6) {
+      return res.status(400).json({ success: false, message: 'Valid 6-digit verification code is required.' });
     }
 
-    if (!targetStudentId) {
-      return res.status(400).json({ success: false, message: 'Student identification is required.' });
+    // Rate limiting & lockout protection on brute-forcing verification codes
+    const verifyLockKey = `verify-email:${studentId}`;
+    if (await isLocked(verifyLockKey)) {
+      return res.status(429).json({
+        success: false,
+        code: 'ACCOUNT_LOCKED',
+        message: 'Too many incorrect verification attempts. Please wait 15 minutes before trying again.'
+      });
     }
 
-    const result = await checkCode(targetStudentId, code);
+    const result = await checkCode(studentId, String(code).trim());
     if (!result.valid) {
+      await recordFailure(verifyLockKey);
       return res.status(400).json({
         success: false,
         code: result.error,
@@ -840,10 +885,13 @@ const verifyEmail = async (req, res) => {
       });
     }
 
+    // Clear verification lockout on success
+    await clearFailures(verifyLockKey);
+
     // Code verified! Fetch student to issue session token
     const [rows] = await pool.query(
       'SELECT id, register_no, name, dob, email, year, section, status, is_locked, token_version, must_change_password FROM students WHERE id = ?',
-      [targetStudentId]
+      [studentId]
     );
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Student record not found.' });
@@ -912,29 +960,22 @@ const verifyEmail = async (req, res) => {
 /**
  * Resend 6-Digit Email Verification Code
  * POST /api/auth/student/resend-code
- * Body: { studentId }
+ * Body: { pendingToken }
  */
 const resendVerificationCode = async (req, res) => {
   try {
-    const { studentId, registerNo, email } = req.body;
-    let targetStudentId = studentId;
-    if (!targetStudentId) {
-      const cleanReg = registerNo ? cleanRegisterNo(registerNo) : '';
-      const cleanEm = email ? String(email).trim().toLowerCase() : '';
-      const [lookup] = await pool.query(
-        'SELECT id FROM students WHERE (register_no = ? AND ? != "") OR (LOWER(email) = ? AND ? != "") ORDER BY id DESC LIMIT 1',
-        [cleanReg, cleanReg, cleanEm, cleanEm]
-      );
-      if (lookup.length > 0) targetStudentId = lookup[0].id;
-    }
-
-    if (!targetStudentId) {
-      return res.status(400).json({ success: false, message: 'Student identification is required.' });
+    const studentId = readPendingToken(req);
+    if (!studentId) {
+      return res.status(401).json({
+        success: false,
+        code: 'SESSION_EXPIRED',
+        message: 'Verification session expired or invalid. Please sign in again.'
+      });
     }
 
     const [rows] = await pool.query(
       'SELECT id, name, email, email_verified FROM students WHERE id = ?',
-      [targetStudentId]
+      [studentId]
     );
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Student record not found.' });
@@ -942,7 +983,7 @@ const resendVerificationCode = async (req, res) => {
     const student = rows[0];
 
     if (student.email_verified === 1) {
-      return res.status(400).json({ success: false, message: 'This student email is already verified. Please log in.' });
+      return res.status(400).json({ success: false, message: 'This student email is already verified. Please sign in.' });
     }
 
     const issueRes = await issueCode(student.id, student.email);
@@ -981,11 +1022,20 @@ const resendVerificationCode = async (req, res) => {
 /**
  * Change Pending Registration Email
  * POST /api/auth/student/change-pending-email
- * Body: { studentId, newEmail }
+ * Body: { pendingToken, newEmail }
  */
 const changePendingEmail = async (req, res) => {
   try {
-    const { studentId, registerNo, email, newEmail } = req.body;
+    const studentId = readPendingToken(req);
+    if (!studentId) {
+      return res.status(401).json({
+        success: false,
+        code: 'SESSION_EXPIRED',
+        message: 'Verification session expired or invalid. Please sign in again.'
+      });
+    }
+
+    const { newEmail } = req.body;
     if (!newEmail) {
       return res.status(400).json({ success: false, message: 'New email address is required.' });
     }
@@ -994,24 +1044,9 @@ const changePendingEmail = async (req, res) => {
       return res.status(400).json({ success: false, message: 'A valid email address is required.' });
     }
 
-    let targetStudentId = studentId;
-    if (!targetStudentId) {
-      const cleanReg = registerNo ? cleanRegisterNo(registerNo) : '';
-      const cleanEm = email ? String(email).trim().toLowerCase() : '';
-      const [lookup] = await pool.query(
-        'SELECT id FROM students WHERE (register_no = ? AND ? != "") OR (LOWER(email) = ? AND ? != "") ORDER BY id DESC LIMIT 1',
-        [cleanReg, cleanReg, cleanEm, cleanEm]
-      );
-      if (lookup.length > 0) targetStudentId = lookup[0].id;
-    }
-
-    if (!targetStudentId) {
-      return res.status(400).json({ success: false, message: 'Student identification is required.' });
-    }
-
     const [rows] = await pool.query(
       'SELECT id, name, email, email_verified FROM students WHERE id = ?',
-      [targetStudentId]
+      [studentId]
     );
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Student record not found.' });
@@ -1025,16 +1060,13 @@ const changePendingEmail = async (req, res) => {
     // Check if new email is in use
     const [dupRows] = await pool.query(
       'SELECT id FROM students WHERE LOWER(email) = LOWER(?) AND id != ?',
-      [cleanEmail, targetStudentId]
+      [cleanEmail, studentId]
     );
     if (dupRows.length > 0) {
       return res.status(409).json({ success: false, message: 'This email address is already in use by another student.' });
     }
 
-    // Update email on student record
-    await pool.query('UPDATE students SET email = ? WHERE id = ?', [cleanEmail, targetStudentId]);
-
-    // Issue new code
+    // ATOMIC FIX: Issue new code FIRST before modifying database
     const issueRes = await issueCode(student.id, cleanEmail);
     if (issueRes.error) {
       return res.status(429).json({
@@ -1044,6 +1076,9 @@ const changePendingEmail = async (req, res) => {
         waitSeconds: issueRes.waitSeconds
       });
     }
+
+    // Update email on student record only after code generation succeeds
+    await pool.query('UPDATE students SET email = ? WHERE id = ?', [cleanEmail, studentId]);
 
     // Send email E1 synchronously
     const tpl = verificationCode({ name: student.name, code: issueRes.code, validMinutes: 10 });

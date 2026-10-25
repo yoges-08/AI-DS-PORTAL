@@ -382,7 +382,7 @@ function accountCreated({ name, registerNo }) {
 /**
  * E3: Profile Dossier Submitted Successfully
  */
-function submitted({ name, registerNo, submissionDate, attachmentCount = 0 }) {
+function submitted({ name, registerNo, submissionDate, attachmentCount = 0, omittedCount = 0 }) {
   const safeName = esc(name);
   const safeReg = esc(registerNo);
   const portalUrl = getPortalUrl();
@@ -424,6 +424,11 @@ function submitted({ name, registerNo, submissionDate, attachmentCount = 0 }) {
       <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
         Attached to this email is a generated copy of your submitted application summary (PDF) along with your uploaded certificates for your personal records.
       </p>
+      ${omittedCount > 0 ? `
+        <div style="margin-top: 12px; padding: 10px 14px; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px; font-size: 12px; color: #92400e; line-height: 1.5;">
+          <strong>Notice:</strong> ${omittedCount} certificate(s) could not be attached directly to this email due to attachment size constraints. All submitted certificates remain securely archived and can be viewed or downloaded anytime directly from your student portal.
+        </div>
+      ` : ''}
     </div>
 
     <!-- Review Progress Tracker -->

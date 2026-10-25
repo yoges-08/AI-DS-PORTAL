@@ -751,6 +751,17 @@ const toggleLockStudent = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student record not found.' });
     }
 
+    const currentLockState = Boolean(student[0].is_locked);
+    const lockChanged = currentLockState !== lock;
+
+    if (!lockChanged) {
+      return res.json({
+        success: true,
+        message: `Student record is already ${lock ? 'LOCKED' : 'UNLOCKED'}.`,
+        isLocked: currentLockState
+      });
+    }
+
     const newLockState = lock ? 1 : 0;
     const lockedAt = lock ? new Date() : null;
     const lockedBy = lock ? req.user.username : null;
@@ -772,10 +783,12 @@ const toggleLockStudent = async (req, res) => {
       ipAddress: req.ip
     });
 
-    // E6/E7: Send lock/unlock email notification in background
-    sendLockEmail(studentId, lock).catch(err => {
-      console.error('[EmailEvents] sendLockEmail failed:', err.message);
-    });
+    // E6/E7: Send lock/unlock email notification in background only when state changed
+    if (lockChanged) {
+      sendLockEmail(studentId, lock).catch(err => {
+        console.error('[EmailEvents] sendLockEmail failed:', err.message);
+      });
+    }
 
     return res.json({
       success: true,
@@ -901,8 +914,9 @@ const updateStudentStatus = async (req, res) => {
       ipAddress: req.ip
     });
 
-    // E4/E5: Send status verified or rejected email in background
-    if (status === 'VERIFIED' || status === 'REJECTED') {
+    // E4/E5: Send status verified or rejected email in background only when status actually changes
+    const statusChanged = currentStatus !== status;
+    if (statusChanged && (status === 'VERIFIED' || status === 'REJECTED')) {
       sendStatusEmail(studentId, status, finalReason).catch(err => {
         console.error('[EmailEvents] sendStatusEmail failed:', err.message);
       });
