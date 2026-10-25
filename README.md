@@ -55,8 +55,10 @@ AI&DS PORTAL/
 │
 ├── frontend/
 │   ├── public/
-│   │   ├── logo.svg              # Department institutional crest
-│   │   └── sample_student_bulk_import.csv
+│   │   ├── college-logo.webp     # Institutional crest & favicon
+│   │   ├── aids-logo.jpg         # Department logo banner
+│   │   ├── sample_student_bulk_import.csv   # Sample CSV template for bulk import
+│   │   └── sample_student_bulk_import.xlsx  # Sample Excel template for bulk import
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Navbar.jsx            # Official top banner with user session
@@ -90,8 +92,9 @@ AI&DS PORTAL/
 │   ├── tailwind.config.js
 │   └── vite.config.js
 │
-├── sample_student_bulk_import.csv     # Sample CSV template for bulk import
-├── sample_student_bulk_import.xlsx    # Sample Excel template for bulk import
+├── DEPLOYMENT_GUIDE.md               # Production deployment manual
+├── render.yaml                       # Render web service blueprint
+├── vercel.json                       # Vercel production frontend configuration
 └── README.md
 ```
 
