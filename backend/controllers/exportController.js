@@ -5,11 +5,11 @@ const { maskAadhaar, maskBankAcc } = require('../utils/validators');
 const { decrypt } = require('../utils/fieldCrypto');
 const { logAdminAction } = require('../utils/auditLogger');
 
-// S-12 fix: Escape potential formula injection triggers (=, @, or + / - followed by alphabet)
+// SEC-LOW-03: Escape all formula injection triggers (=, +, -, @, tab, return)
 const sanitizeExcelValue = (val) => {
   if (typeof val === 'string') {
     const trimmed = val.trim();
-    if (/^[=@\t\r]/.test(trimmed) || /^[+\-][a-zA-Z]/.test(trimmed)) {
+    if (/^[=+\-@\t\r]/.test(trimmed)) {
       return `'${val}`;
     }
   }
@@ -120,6 +120,7 @@ const exportExcel = async (req, res) => {
       FROM students
       ${whereClause}
       ORDER BY year ASC, section ASC, register_no ASC
+      LIMIT 2500
     `;
 
     const [rows] = await pool.query(query, params);
@@ -208,6 +209,7 @@ const exportPdf = async (req, res) => {
       FROM students
       ${whereClause}
       ORDER BY year ASC, section ASC, register_no ASC
+      LIMIT 2500
     `;
 
     const [students] = await pool.query(query, params);

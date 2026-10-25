@@ -9,7 +9,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: TRUST_PROXY
-        value: "1"
+        value: "2"
+      - key: CLIENT_URL
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: COOKIE_SECRET

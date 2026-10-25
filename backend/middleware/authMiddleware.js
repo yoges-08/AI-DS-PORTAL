@@ -75,13 +75,9 @@ const authenticateToken = async (req, res, next) => {
       tokenVersionCache.set(cacheKey, { version: currentVersion, isLocked, mustChangePassword, cachedAt: now });
     }
 
-    // S4 fix: Immediate session revocation for administratively locked accounts
-    if (decoded.role === 'STUDENT' && isLocked === 1) {
-      return res.status(403).json({
-        success: false,
-        message: 'Your student account has been locked. Please contact the department administrator.'
-      });
-    }
+    // Attach user lock and password status without blanket session termination (SEC-CRIT-01)
+    req.user.isLocked = Boolean(isLocked);
+    req.user.mustChangePassword = Boolean(mustChangePassword);
 
     // O2 fix: Server-side enforcement of password change for reset/temporary credentials
     if (decoded.role === 'STUDENT' && mustChangePassword === 1) {

@@ -152,6 +152,7 @@ CREATE TABLE IF NOT EXISTS `student_whitelist` (
   `register_no` VARCHAR(20) NOT NULL UNIQUE,
   `dob` VARCHAR(10) NOT NULL COMMENT 'Format: YYYY-MM-DD',
   `claim_code_hash` VARCHAR(100) NULL COMMENT 'Bcrypt hash of one-time claim code',
+  `email` VARCHAR(100) NULL COMMENT 'Pre-registered institutional or authorized email',
   `is_claimed` TINYINT(1) NOT NULL DEFAULT 0,
   `claimed_student_id` INT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

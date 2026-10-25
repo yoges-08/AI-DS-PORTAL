@@ -1,3 +1,4 @@
+process.env.REQUIRE_EMAIL_VERIFICATION = 'false';
 const { pool, testConnection } = require('../config/db');
 const { clearFailures } = require('../utils/lockout');
 const {

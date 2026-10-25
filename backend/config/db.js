@@ -179,6 +179,7 @@ const initSqliteFallback = async () => {
         register_no TEXT UNIQUE NOT NULL,
         dob TEXT NOT NULL,
         claim_code_hash TEXT,
+        email TEXT,
         is_claimed INTEGER DEFAULT 0,
         claimed_student_id INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -335,6 +336,9 @@ const initSqliteFallback = async () => {
       const whitelistCols = sqliteDb.prepare("PRAGMA table_info(student_whitelist)").all();
       if (!whitelistCols.some(c => c.name === 'claim_code_hash')) {
         sqliteDb.exec('ALTER TABLE student_whitelist ADD COLUMN claim_code_hash TEXT;');
+      }
+      if (!whitelistCols.some(c => c.name === 'email')) {
+        sqliteDb.exec('ALTER TABLE student_whitelist ADD COLUMN email TEXT;');
       }
 
       // Backfill any existing students into student_whitelist as claimed
@@ -525,6 +529,7 @@ const testConnection = async () => {
       // Ignore
     }
     await addColumnIfMissing(conn, 'student_whitelist', 'claim_code_hash', 'VARCHAR(100) NULL');
+    await addColumnIfMissing(conn, 'student_whitelist', 'email', 'VARCHAR(100) NULL');
     try {
       await conn.query(`
         CREATE TABLE IF NOT EXISTS \`auth_lockouts\` (

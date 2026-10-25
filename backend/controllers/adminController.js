@@ -406,6 +406,7 @@ const parseWhitelistSpreadsheet = (fileBuf, originalname) => {
 
   let regCol = -1;
   let dobCol = -1;
+  let emailCol = -1;
 
   if (headerRow) {
     headerRow.forEach((cell, idx) => {
@@ -420,6 +421,12 @@ const parseWhitelistSpreadsheet = (fileBuf, originalname) => {
         dobCol = idx;
       } else if (dobCol === -1 && /dob|birth/i.test(header)) {
         dobCol = idx;
+      }
+
+      if (emailCol === -1 && /^(email|e-mail|mail([_\s]?id)?)$/i.test(header)) {
+        emailCol = idx;
+      } else if (emailCol === -1 && /email|mail/i.test(header)) {
+        emailCol = idx;
       }
     });
   }
@@ -454,6 +461,7 @@ const parseWhitelistSpreadsheet = (fileBuf, originalname) => {
 
     const rawRegNo = row[regCol];
     const rawDob = row[dobCol];
+    const rawEmail = emailCol !== -1 ? String(row[emailCol] || '').trim().toLowerCase() : null;
 
     if (isScientificNotation(rawRegNo)) {
       errors.push({
@@ -495,7 +503,8 @@ const parseWhitelistSpreadsheet = (fileBuf, originalname) => {
     validRows.push({
       rowNum,
       registerNo: cleanRegNo,
-      dob
+      dob,
+      email: rawEmail || null
     });
   }
 
@@ -553,7 +562,7 @@ const bulkImportStudents = async (req, res) => {
       const ph = chunk.map(() => '?').join(',');
 
       const [wlRows] = await conn.query(
-        `SELECT id, register_no, dob, is_claimed FROM student_whitelist WHERE register_no IN (${ph})`,
+        `SELECT id, register_no, dob, email, is_claimed FROM student_whitelist WHERE register_no IN (${ph})`,
         chunk
       );
       wlRows.forEach(r => existingWlMap.set(r.register_no, r));
@@ -574,11 +583,12 @@ const bulkImportStudents = async (req, res) => {
           continue;
         }
 
-        // Unclaimed: update DOB if changed
-        if (wl.dob !== item.dob) {
+        // Unclaimed: update DOB or email if changed
+        const emailChanged = item.email && wl.email !== item.email;
+        if (wl.dob !== item.dob || emailChanged) {
           await conn.query(
-            'UPDATE student_whitelist SET dob = ? WHERE id = ?',
-            [item.dob, wl.id]
+            'UPDATE student_whitelist SET dob = ?, email = COALESCE(?, email) WHERE id = ?',
+            [item.dob, item.email || null, wl.id]
           );
           updatedCount++;
         } else {
@@ -596,9 +606,9 @@ const bulkImportStudents = async (req, res) => {
           skippedCount++;
         } else {
           await conn.query(
-            `INSERT INTO student_whitelist (register_no, dob, is_claimed)
-             VALUES (?, ?, 0)`,
-            [item.registerNo, item.dob]
+            `INSERT INTO student_whitelist (register_no, dob, email, is_claimed)
+             VALUES (?, ?, ?, 0)`,
+            [item.registerNo, item.dob, item.email || null]
           );
           insertedCount++;
         }

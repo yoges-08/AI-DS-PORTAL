@@ -178,6 +178,14 @@ const updateStudentDetails = async (req, res) => {
     }
 
     const d = req.body;
+
+    // SEC-MED-03: Prevent silent unverified modification of registered email address
+    if (d.email && existing[0].email && String(d.email).trim().toLowerCase() !== String(existing[0].email).trim().toLowerCase()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Registered email address cannot be changed directly in the profile editor. Please contact the department administrator to update your email.'
+      });
+    }
     const errors = {};
 
     // Validate year & section if provided

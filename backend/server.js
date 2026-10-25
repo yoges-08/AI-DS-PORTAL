@@ -30,10 +30,12 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'same-site' }
 }));
 
-// Trust proxy only when configured for reverse proxy environments (nginx, Render, Cloudflare, etc.)
+// Trust proxy configuration for multi-hop reverse proxies (Vercel + Render) (SEC-HIGH-04)
 if (process.env.TRUST_PROXY) {
   const tp = process.env.TRUST_PROXY;
   app.set('trust proxy', tp === 'true' ? 1 : (Number(tp) || tp));
+} else if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 2);
 }
 
 // Ensure uploads folder exists
@@ -172,6 +174,9 @@ app.get('/uploads/:filename', documentDownloadLimiter, authenticateToken, async 
 
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'");
+    res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
 
     // 1. Primary: Serve object from Storage (Supabase Storage / R2 via unified adapter)
     if (isStorageConfigured()) {
@@ -324,6 +329,9 @@ app.listen(PORT, '0.0.0.0', async () => {
 
   // Verify DB connection
   await testConnection();
+
+  // Start background periodic maintenance jobs (SEC-MED-05)
+  startPeriodicCleanup();
 
   // O8 fix: Boot-time storage health check in production
   if (process.env.NODE_ENV === 'production' && !isStorageConfigured()) {

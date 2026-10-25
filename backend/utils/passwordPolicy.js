@@ -23,8 +23,8 @@ function checkPassword(password, { registerNo = '', dob = '', minLength = 8 } = 
   if (p.length < minLength) {
     return `Password must be at least ${minLength} characters long.`;
   }
-  if (p.length > 72) {
-    return 'Password must be at most 72 characters long.';
+  if (Buffer.byteLength(p, 'utf8') > 72) {
+    return 'Password must not exceed 72 bytes in length.';
   }
   if (!/[A-Za-z]/.test(p) || !/\d/.test(p)) {
     return 'Password must contain both letters and numbers.';

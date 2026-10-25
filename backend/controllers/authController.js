@@ -222,9 +222,9 @@ const registerStudent = async (req, res) => {
     // Begin atomic transaction
     await conn.beginTransaction();
 
-    // 1. Re-verify whitelist record with row lock FOR UPDATE
+    // 1. Re-verify whitelist record with row lock FOR UPDATE (SEC-HIGH-01)
     const [whitelistRows] = await conn.query(
-      'SELECT id, is_claimed, claimed_student_id, claim_code_hash FROM student_whitelist WHERE register_no = ? AND dob = ? FOR UPDATE',
+      'SELECT id, is_claimed, claimed_student_id, claim_code_hash, email FROM student_whitelist WHERE register_no = ? AND dob = ? FOR UPDATE',
       [cleanReg, normalizedDob]
     );
 
@@ -259,6 +259,28 @@ const registerStudent = async (req, res) => {
         whitelistEntry.is_claimed = 0;
         whitelistEntry.claimed_student_id = null;
       }
+    }
+
+    // SEC-HIGH-01: Enforce pre-registered whitelist email binding if defined
+    if (whitelistEntry.email && String(whitelistEntry.email).trim()) {
+      const authorizedEmail = String(whitelistEntry.email).trim().toLowerCase();
+      if (cleanEmail !== authorizedEmail) {
+        await conn.rollback();
+        await recordFailure(lockKey);
+        return res.status(400).json({
+          success: false,
+          message: `Registration email must match the pre-registered email on file (${maskEmail(authorizedEmail)}). Please contact the department if your email has changed.`
+        });
+      }
+    }
+
+    // Optional institutional domain enforcement via env
+    if (process.env.REQUIRE_INSTITUTIONAL_EMAIL === 'true' && !cleanEmail.endsWith('@aamec.edu.in')) {
+      await conn.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Registration requires an official institutional email address (@aamec.edu.in).'
+      });
     }
 
     // S3 fix (Option 1): If whitelist record requires claim code, verify it

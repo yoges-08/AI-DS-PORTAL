@@ -48,7 +48,8 @@ async function issueCode(studentId, email) {
 
   // 6-digit cryptographically secure numeric code
   const code = String(crypto.randomInt(100000, 1000000));
-  const secret = process.env.JWT_SECRET || 'aids_portal_fallback_secret';
+  const { JWT_SECRET } = require('../config/secrets');
+  const secret = JWT_SECRET;
   const codeHash = crypto
     .createHmac('sha256', secret)
     .update(`${studentId}:${code}`)
@@ -92,8 +93,42 @@ async function checkCode(studentId, inputCode) {
     };
   }
 
+  const now = Date.now();
+  // Atomic check-and-increment to prevent concurrent race condition bypasses (SEC-HIGH-03)
+  const [updateRes] = await pool.query(
+    'UPDATE email_verifications SET attempts = attempts + 1 WHERE student_id = ? AND attempts < 5 AND expires_at > ?',
+    [studentId, now]
+  );
+
+  if (updateRes.affectedRows === 0) {
+    const [checkRows] = await pool.query(
+      'SELECT attempts, expires_at FROM email_verifications WHERE student_id = ?',
+      [studentId]
+    );
+    if (!checkRows || checkRows.length === 0) {
+      return {
+        valid: false,
+        error: 'NO_PENDING_CODE',
+        message: 'No pending verification code found. Please request a new one.'
+      };
+    }
+    if (now > Number(checkRows[0].expires_at)) {
+      return {
+        valid: false,
+        error: 'EXPIRED',
+        message: 'Verification code has expired. Please request a new code.'
+      };
+    }
+    return {
+      valid: false,
+      error: 'MAX_ATTEMPTS_EXCEEDED',
+      message: 'Maximum verification attempts exceeded. Please request a new code.'
+    };
+  }
+
+  // Fetch updated record to verify HMAC
   const [rows] = await pool.query(
-    'SELECT * FROM email_verifications WHERE student_id = ?',
+    'SELECT code_hash, attempts FROM email_verifications WHERE student_id = ?',
     [studentId]
   );
   if (!rows || rows.length === 0) {
@@ -105,24 +140,8 @@ async function checkCode(studentId, inputCode) {
   }
 
   const record = rows[0];
-
-  if (Number(record.attempts) >= 5) {
-    return {
-      valid: false,
-      error: 'MAX_ATTEMPTS_EXCEEDED',
-      message: 'Maximum verification attempts exceeded. Please request a new code.'
-    };
-  }
-
-  if (Date.now() > Number(record.expires_at)) {
-    return {
-      valid: false,
-      error: 'EXPIRED',
-      message: 'Verification code has expired. Please request a new code.'
-    };
-  }
-
-  const secret = process.env.JWT_SECRET || 'aids_portal_fallback_secret';
+  const { JWT_SECRET } = require('../config/secrets');
+  const secret = JWT_SECRET;
   const computedHash = crypto
     .createHmac('sha256', secret)
     .update(`${studentId}:${codeStr}`)
@@ -133,12 +152,7 @@ async function checkCode(studentId, inputCode) {
   const isMatch = hashBuf.length === dbBuf.length && crypto.timingSafeEqual(hashBuf, dbBuf);
 
   if (!isMatch) {
-    const newAttempts = Number(record.attempts) + 1;
-    await pool.query(
-      'UPDATE email_verifications SET attempts = ? WHERE student_id = ?',
-      [newAttempts, studentId]
-    );
-    const remaining = 5 - newAttempts;
+    const remaining = 5 - Number(record.attempts);
     return {
       valid: false,
       error: 'INVALID_CODE',

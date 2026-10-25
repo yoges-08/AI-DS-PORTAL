@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 
 /**
@@ -145,12 +146,22 @@ const emailCodeLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    const id = req.body?.studentId || req.body?.email || '';
-    return `${ipKeyGenerator(req.ip || '')}_${String(id).trim().slice(0, 50)}`;
+    let studentId = '';
+    try {
+      const raw = req.body?.pendingToken || req.headers['x-pending-token'];
+      if (raw && typeof raw === 'string') {
+        const decoded = jwt.decode(raw.trim());
+        if (decoded?.sid) studentId = String(decoded.sid);
+      }
+    } catch (e) {}
+    if (!studentId) {
+      studentId = req.body?.email ? String(req.body.email).trim().toLowerCase() : '';
+    }
+    return `${ipKeyGenerator(req.ip || '')}_${studentId}`;
   },
   message: {
     success: false,
-    message: 'Too many verification code attempts. Please wait a few minutes before trying again.'
+    message: 'Too many verification code attempts. Please wait 15 minutes before trying again.'
   }
 });
 
