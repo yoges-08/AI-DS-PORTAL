@@ -338,6 +338,20 @@ export const api = {
     return handleResponse(res);
   },
 
+  async getWhitelist(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await apiFetch(`${BASE_URL}/admin/whitelist${query ? `?${query}` : ''}`, { credentials: 'include' });
+    return handleResponse(res);
+  },
+
+  async deleteWhitelistEntry(id) {
+    const res = await apiFetch(`${BASE_URL}/admin/whitelist/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    return handleResponse(res);
+  },
+
   // Bulk Operations
   async previewBulkStudents(filters = {}) {
     const res = await apiFetch(`${BASE_URL}/admin/students/bulk/preview`, {

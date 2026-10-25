@@ -10,6 +10,7 @@ import { StudentDashboard } from './pages/student/StudentDashboard';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminSidebar } from './components/AdminSidebar';
 import { BulkImportPage } from './pages/admin/BulkImportPage';
+import { WhitelistPage } from './pages/admin/WhitelistPage';
 import { BulkManagePage } from './pages/admin/BulkManagePage';
 import { ReportsPage } from './pages/admin/ReportsPage';
 import { AuditLogsPage } from './pages/admin/AuditLogsPage';
@@ -90,6 +91,7 @@ export const App = () => {
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'students', label: 'Students' },
     { id: 'bulk-import', label: 'Bulk Import' },
+    { id: 'whitelist', label: 'Whitelist' },
     { id: 'bulk-manage', label: 'Bulk Manage' },
     { id: 'reports', label: 'Reports' },
     { id: 'audit-logs', label: 'Audit Logs' }
@@ -159,7 +161,9 @@ export const App = () => {
               onNavigateTab={(tab) => setAdminTab(tab)}
             />
           ) : adminTab === 'bulk-import' ? (
-            <BulkImportPage />
+            <BulkImportPage onNavigateTab={(tab) => setAdminTab(tab)} />
+          ) : adminTab === 'whitelist' ? (
+            <WhitelistPage onNavigateTab={(tab) => setAdminTab(tab)} />
           ) : adminTab === 'bulk-manage' ? (
             <BulkManagePage />
           ) : adminTab === 'reports' ? (

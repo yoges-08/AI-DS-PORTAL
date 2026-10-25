@@ -13,7 +13,9 @@ const {
   deleteStudent,
   previewBulkStudents,
   bulkLockStudents,
-  bulkDeleteStudents
+  bulkDeleteStudents,
+  getWhitelistEntries,
+  deleteWhitelistEntry
 } = require('../controllers/adminController');
 const { authenticateToken, requireAdmin } = require('../middleware/authMiddleware');
 const { bulkActionLimiter } = require('../middleware/rateLimiter');
@@ -81,5 +83,7 @@ router.post('/students/:id/reset-password', resetStudentPassword);
 router.patch('/students/:id/status', updateStudentStatus);
 router.delete('/students/:id', deleteStudent);
 router.get('/audit-logs', getAuditLogs);
+router.get('/whitelist', getWhitelistEntries);
+router.delete('/whitelist/:id', deleteWhitelistEntry);
 
 module.exports = router;

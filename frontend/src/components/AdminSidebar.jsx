@@ -4,6 +4,7 @@ import {
   LayoutDashboard, 
   Users, 
   FileSpreadsheet, 
+  ClipboardCheck,
   ListChecks,
   FileDown, 
   History, 
@@ -28,6 +29,7 @@ export const AdminSidebar = ({ activeTab, onSelectTab, isOpenMobile, onCloseMobi
     { id: 'dashboard', label: 'Command Center', icon: LayoutDashboard },
     { id: 'students', label: 'Student Register', icon: Users },
     { id: 'bulk-import', label: 'Cohort Bulk Import', icon: FileSpreadsheet },
+    { id: 'whitelist', label: 'Imported Whitelist', icon: ClipboardCheck },
     { id: 'bulk-manage', label: 'Bulk Manage', icon: ListChecks },
     { id: 'reports', label: 'Reports & Exports', icon: FileDown },
     { id: 'audit-logs', label: 'Security Audit Logs', icon: History }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FileSpreadsheet, Upload, Download, CheckCircle, AlertCircle, FileText, Check, AlertTriangle, Eye, ArrowRight } from 'lucide-react';
 import { api } from '../../services/api';
 
-export const BulkImportPage = () => {
+export const BulkImportPage = ({ onNavigateTab }) => {
   const [file, setFile] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
@@ -198,6 +198,16 @@ export const BulkImportPage = () => {
                     ))}
                   </ul>
                 </div>
+              )}
+
+              {onNavigateTab && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('whitelist')}
+                  className="w-full mt-2 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all shadow-xs active:scale-[0.99]"
+                >
+                  <span>View All Uploaded Register Numbers &amp; DOBs in Whitelist &rarr;</span>
+                </button>
               )}
             </div>
           )}

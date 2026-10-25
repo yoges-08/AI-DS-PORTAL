@@ -1507,6 +1507,149 @@ const bulkDeleteStudents = async (req, res) => {
   }
 };
 
+/**
+ * Get imported student whitelist entries (Register numbers & DOB uploaded for eligibility)
+ */
+const getWhitelistEntries = async (req, res) => {
+  try {
+    const page = toPositiveInt(req.query.page, 1);
+    const limit = Math.min(100, toPositiveInt(req.query.limit, 20));
+    const offset = (page - 1) * limit;
+    const search = toSafeString(req.query.search).trim();
+    const status = toSafeString(req.query.status).trim().toLowerCase(); // 'all', 'claimed', 'unclaimed'
+
+    const conditions = [];
+    const params = [];
+
+    if (search) {
+      const term = `%${escapeLikePattern(search)}%`;
+      conditions.push('(w.register_no LIKE ? OR w.email LIKE ? OR s.name LIKE ?)');
+      params.push(term, term, term);
+    }
+
+    if (status === 'claimed') {
+      conditions.push('w.is_claimed = 1');
+    } else if (status === 'unclaimed') {
+      conditions.push('w.is_claimed = 0');
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    // Aggregated summary stats (unfiltered so cards always show total cohort figures)
+    const [statsRows] = await pool.query(`
+      SELECT 
+        COUNT(*) AS total,
+        SUM(CASE WHEN is_claimed = 1 THEN 1 ELSE 0 END) AS claimed,
+        SUM(CASE WHEN is_claimed = 0 THEN 1 ELSE 0 END) AS unclaimed,
+        SUM(CASE WHEN email IS NOT NULL AND TRIM(email) != '' THEN 1 ELSE 0 END) AS with_email
+      FROM student_whitelist
+    `);
+
+    const rawStats = statsRows[0] || {};
+    const stats = {
+      total: Number(rawStats.total || 0),
+      claimed: Number(rawStats.claimed || 0),
+      unclaimed: Number(rawStats.unclaimed || 0),
+      withEmail: Number(rawStats.with_email || 0)
+    };
+
+    // Filtered count for pagination
+    const countSql = `
+      SELECT COUNT(*) AS total 
+      FROM student_whitelist w 
+      LEFT JOIN students s ON w.claimed_student_id = s.id 
+      ${whereClause}
+    `;
+    const [countRows] = await pool.query(countSql, params);
+    const total = Number(countRows[0]?.total || 0);
+
+    // Filtered page rows
+    const dataSql = `
+      SELECT 
+        w.id,
+        w.register_no,
+        w.dob,
+        w.email,
+        w.is_claimed,
+        w.claimed_student_id,
+        w.created_at,
+        w.updated_at,
+        s.name AS student_name,
+        s.year AS student_year,
+        s.section AS student_section,
+        s.status AS student_status
+      FROM student_whitelist w
+      LEFT JOIN students s ON w.claimed_student_id = s.id
+      ${whereClause}
+      ORDER BY w.id DESC
+      LIMIT ? OFFSET ?
+    `;
+    const [whitelist] = await pool.query(dataSql, [...params, limit, offset]);
+
+    return res.json({
+      success: true,
+      whitelist,
+      stats,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1
+      }
+    });
+  } catch (error) {
+    console.error('[getWhitelistEntries Error]:', error);
+    return res.status(500).json({ success: false, message: 'Failed to load whitelist entries.' });
+  }
+};
+
+/**
+ * Delete a student whitelist entry (e.g. erroneous register number or DOB uploaded)
+ */
+const deleteWhitelistEntry = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid whitelist entry ID.' });
+    }
+
+    const [rows] = await pool.query('SELECT * FROM student_whitelist WHERE id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Whitelist record not found.' });
+    }
+
+    const entry = rows[0];
+
+    // Prevent deleting an entry that is currently linked to an active student account
+    if (entry.is_claimed && entry.claimed_student_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete whitelist record for an already registered student. Delete the student from the Student Register tab first.'
+      });
+    }
+
+    await pool.query('DELETE FROM student_whitelist WHERE id = ?', [id]);
+    await clearFailures(`verify:${entry.register_no}`);
+
+    await logAdminAction({
+      adminId: req.user.id,
+      adminUsername: req.user.username,
+      action: 'DELETE_WHITELIST_ENTRY',
+      studentRegNo: entry.register_no,
+      details: `Deleted whitelist record for Register No: ${entry.register_no} (DOB: ${entry.dob})`,
+      ipAddress: req.ip
+    });
+
+    return res.json({
+      success: true,
+      message: `Whitelist entry for register number ${entry.register_no} has been deleted.`
+    });
+  } catch (error) {
+    console.error('[deleteWhitelistEntry Error]:', error);
+    return res.status(500).json({ success: false, message: 'Failed to delete whitelist entry.' });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getStudents,
@@ -1521,7 +1664,9 @@ module.exports = {
   buildStudentFilter,
   previewBulkStudents,
   bulkLockStudents,
-  bulkDeleteStudents
+  bulkDeleteStudents,
+  getWhitelistEntries,
+  deleteWhitelistEntry
 };
 
 
