@@ -14,10 +14,10 @@ import {
   Cpu,
   Boxes,
   Activity,
-  Layers,
   Terminal,
   Zap,
   Award,
+  Layers,
   Database
 } from 'lucide-react';
 
@@ -40,19 +40,20 @@ export const Hero = () => {
   const [tiltStyle, setTiltStyle] = useState({});
   const [activeView, setActiveView] = useState('3D'); // '3D' | 'DOSSIER'
 
-  // 1. GSAP Hero Entrance & ScrollTrigger Parallax
+  // 1. GSAP ScrollTrigger Cinematic Experience
   useEffect(() => {
     const ctx = gsap.context(() => {
+      // Intro timeline
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
-      tl.fromTo(badgeRef.current, { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 })
-        .fromTo(titleRef.current, { y: 35, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8 }, '-=0.4')
+      tl.fromTo(badgeRef.current, { y: 28, opacity: 0, scale: 0.95 }, { y: 0, opacity: 1, scale: 1, duration: 0.7 })
+        .fromTo(titleRef.current, { y: 40, opacity: 0, rotationX: 15, transformPerspective: 800 }, { y: 0, opacity: 1, rotationX: 0, duration: 0.9 }, '-=0.4')
         .fromTo(descRef.current, { y: 25, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 }, '-=0.5')
-        .fromTo(ctaRef.current, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, '-=0.4')
+        .fromTo(ctaRef.current, { y: 20, opacity: 0, scale: 0.96 }, { y: 0, opacity: 1, scale: 1, duration: 0.6 }, '-=0.4')
         .fromTo(trustRef.current, { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, '-=0.3')
-        .fromTo(rightColRef.current, { scale: 0.92, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 1, ease: 'back.out(1.2)' }, '-=0.8');
+        .fromTo(rightColRef.current, { scale: 0.88, opacity: 0, y: 40 }, { scale: 1, opacity: 1, y: 0, duration: 1.1, ease: 'back.out(1.25)' }, '-=0.8');
 
-      // Parallax scroll scrub
+      // ScrollTrigger Cinematic Scrub (Parallax + 3D Depth Fly-through)
       gsap.to(leftColRef.current, {
         scrollTrigger: {
           trigger: heroRef.current,
@@ -60,8 +61,9 @@ export const Hero = () => {
           end: 'bottom top',
           scrub: 1.2
         },
-        y: -90,
-        opacity: 0.35,
+        y: -120,
+        opacity: 0.2,
+        scale: 0.94,
         ease: 'none'
       });
 
@@ -72,8 +74,9 @@ export const Hero = () => {
           end: 'bottom top',
           scrub: 1
         },
-        y: -50,
-        scale: 0.96,
+        y: -60,
+        scale: 0.95,
+        rotationY: -6,
         ease: 'none'
       });
     }, heroRef);
@@ -81,7 +84,7 @@ export const Hero = () => {
     return () => ctx.revert();
   }, []);
 
-  // 2. Interactive 3D Card Tilt Physics
+  // 2. Interactive 3D Card Tilt Physics with Dynamic Light Glint
   const handleCardMouseMove = (e) => {
     const card = cardTiltRef.current;
     if (!card) return;
@@ -92,19 +95,19 @@ export const Hero = () => {
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
 
-    const rotateX = ((y - centerY) / centerY) * -12;
-    const rotateY = ((x - centerX) / centerX) * 12;
+    const rotateX = ((y - centerY) / centerY) * -14;
+    const rotateY = ((x - centerX) / centerX) * 14;
 
     setTiltStyle({
-      transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`,
-      transition: 'transform 0.1s ease-out'
+      transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.025, 1.025, 1.025)`,
+      transition: 'transform 0.08s ease-out'
     });
   };
 
   const handleCardMouseLeave = () => {
     setTiltStyle({
       transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
-      transition: 'transform 0.5s ease-out'
+      transition: 'transform 0.6s ease-out'
     });
   };
 
@@ -112,22 +115,22 @@ export const Hero = () => {
     <section 
       ref={heroRef} 
       id="hero" 
-      className="relative pt-8 pb-16 sm:pt-14 sm:pb-24 overflow-hidden bg-grid-cyber"
+      className="relative pt-6 pb-16 sm:pt-12 sm:pb-24 overflow-hidden bg-grid-cyber"
     >
       
       {/* Ambient Cyber Lighting Atmosphere */}
-      <div className="absolute w-[550px] h-[550px] bg-blue-400/20 -top-24 -left-24 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse-glow" />
-      <div className="absolute w-[650px] h-[650px] bg-sky-300/25 top-28 -right-36 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute w-[450px] h-[450px] bg-indigo-300/20 bottom-0 left-1/4 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute w-[600px] h-[600px] bg-blue-500/15 -top-28 -left-28 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse-glow" />
+      <div className="absolute w-[700px] h-[700px] bg-cyan-400/20 top-20 -right-40 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute w-[500px] h-[500px] bg-indigo-500/15 bottom-0 left-1/3 rounded-full blur-3xl pointer-events-none -z-10" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* Top Executive Micro Telemetry Stream */}
         <div className="flex items-center justify-center lg:justify-start mb-6">
-          <div className="inline-flex items-center gap-2 sm:gap-3 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-700/60 text-slate-300 shadow-md backdrop-blur-md text-[10.5px] sm:text-xs font-mono">
+          <div className="inline-flex items-center gap-2 sm:gap-3 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-700/70 text-slate-300 shadow-md backdrop-blur-md text-[10.5px] sm:text-xs font-mono">
             <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>SYS ONLINE</span>
+              <span>SYS: ONLINE</span>
             </span>
             <span className="text-white/20">&bull;</span>
             <span className="text-cyan-300 hidden min-[400px]:inline">AICTE #7176-AIDS</span>
@@ -189,7 +192,7 @@ export const Hero = () => {
 
               <button
                 onClick={() => openLogin('SIGNUP')}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-white/90 hover:bg-white text-slate-800 font-bold text-sm border border-slate-300 shadow-xs hover:shadow-md transition-all transform active:scale-95 hover:-translate-y-0.5 cursor-pointer backdrop-blur-md"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-white/95 hover:bg-white text-slate-800 font-bold text-sm border border-slate-300 shadow-xs hover:shadow-md transition-all transform active:scale-95 hover:-translate-y-0.5 cursor-pointer backdrop-blur-md"
               >
                 <UserPlus className="w-4 h-4 text-blue-600 shrink-0" />
                 <span>First-Time Registration</span>
@@ -234,7 +237,7 @@ export const Hero = () => {
                 }`}
               >
                 <Cpu className="w-3.5 h-3.5" />
-                <span>3D Neural AI Core</span>
+                <span>3D Quantum AI Field</span>
               </button>
 
               <button
@@ -251,19 +254,19 @@ export const Hero = () => {
             </div>
 
             {/* Container for the 3D Experience or 3D Tilt Card */}
-            <div className="relative w-full max-w-lg min-h-[480px] sm:min-h-[520px] flex items-center justify-center">
+            <div className="relative w-full max-w-lg min-h-[490px] sm:min-h-[530px] flex items-center justify-center">
               
-              {/* Subtle Backing Halo */}
-              <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/20 via-sky-500/25 to-indigo-600/20 rounded-3xl blur-2xl -z-10" />
+              {/* Backing Ambient Halo Glow */}
+              <div className="absolute -inset-4 bg-gradient-to-r from-cyan-500/20 via-blue-600/25 to-indigo-600/20 rounded-3xl blur-2xl -z-10" />
 
-              {/* View 1: 3D AI Neural Synapse Galaxy */}
+              {/* View 1: 3D Quantum AI Tensor Field */}
               {activeView === '3D' && (
-                <div className="w-full h-[480px] sm:h-[520px] rounded-3xl bg-slate-950/95 backdrop-blur-xl border border-slate-800 shadow-2xl overflow-hidden relative group">
+                <div className="w-full h-[490px] sm:h-[530px] rounded-3xl bg-slate-950/95 backdrop-blur-xl border border-slate-800 shadow-2xl overflow-hidden relative group">
                   <AiNeuralScene3D className="w-full h-full" interactive={true} />
                 </div>
               )}
 
-              {/* View 2: Interactive 3D Tilt Academic Dossier Card with Iridescent Border */}
+              {/* View 2: Interactive 3D Tilt Academic Dossier Card */}
               {activeView === 'DOSSIER' && (
                 <div
                   ref={cardTiltRef}
@@ -337,7 +340,7 @@ export const Hero = () => {
                       className="text-blue-600 hover:text-blue-800 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
                     >
                       <Cpu className="w-3.5 h-3.5" />
-                      <span>Back to 3D Neural View</span>
+                      <span>Back to 3D Quantum View</span>
                     </button>
                   </div>
                 </div>

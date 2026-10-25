@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Zap, RotateCcw, Compass, Sparkles, Activity } from 'lucide-react';
+import { Zap, Sparkles, Orbit, Compass, RotateCcw, Cpu, Eye, Radio } from 'lucide-react';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -11,12 +11,12 @@ if (typeof window !== 'undefined') {
 export const AiNeuralScene3D = ({ className = '', interactive = true }) => {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
-  const sceneMethodsRef = useRef(null);
+  const engineRef = useRef(null);
 
   const [fps, setFps] = useState(60);
-  const [activeConnections, setActiveConnections] = useState(384);
+  const [activeShape, setActiveShape] = useState('sphere'); // 'sphere' | 'vortex' | 'helix'
+  const [pulseActive, setPulseActive] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
-  const [burstActive, setBurstActive] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -26,14 +26,14 @@ export const AiNeuralScene3D = ({ className = '', interactive = true }) => {
     let animationFrameId;
     let isDisposed = false;
 
-    // Dimensions
+    // Viewport dimensions
     const width = container.clientWidth || 600;
-    const height = container.clientHeight || 500;
+    const height = container.clientHeight || 520;
 
-    // 1. Scene, Camera, Renderer
+    // 1. Scene, Camera, Renderer with High Performance & Color Space
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(46, width / height, 0.1, 100);
-    camera.position.set(0, 0, 8.2);
+    const camera = new THREE.PerspectiveCamera(48, width / height, 0.1, 100);
+    camera.position.set(0, 0, 8.4);
 
     const renderer = new THREE.WebGLRenderer({
       canvas,
@@ -44,232 +44,289 @@ export const AiNeuralScene3D = ({ className = '', interactive = true }) => {
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    // Neural Galaxy master group
-    const neuralGroup = new THREE.Group();
-    scene.add(neuralGroup);
+    // Master World Group
+    const worldGroup = new THREE.Group();
+    scene.add(worldGroup);
 
-    // 2. High-Class Colors
-    const colors = [
-      new THREE.Color('#3B82F6'), // Cyber Royal Blue
-      new THREE.Color('#38BDF8'), // Electric Cyan
-      new THREE.Color('#6366F1'), // Synapse Indigo
-      new THREE.Color('#10B981'), // Tensor Emerald
-      new THREE.Color('#8B5CF6')  // Quantum Violet
+    // 2. High-Tech Color Palette for AI & Data Science
+    const palette = [
+      new THREE.Color('#00F2FE'), // Electric Cyan
+      new THREE.Color('#38BDF8'), // Cyber Sky
+      new THREE.Color('#2563EB'), // Royal AI Blue
+      new THREE.Color('#818CF8'), // Indigo Neon
+      new THREE.Color('#C084FC'), // Quantum Purple
+      new THREE.Color('#34D399')  // Emerald Tensor
     ];
 
-    // 3. Ambient Starfield / Deep Space Data Dust
-    const STAR_COUNT = 240;
-    const starGeo = new THREE.BufferGeometry();
-    const starPos = new Float32Array(STAR_COUNT * 3);
-    const starColors = new Float32Array(STAR_COUNT * 3);
+    // 3. 1,200 Interactive Morphing Quantum Particles
+    const PARTICLE_COUNT = 1200;
+    const particleGeometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(PARTICLE_COUNT * 3);
+    const targetPositions = new Float32Array(PARTICLE_COUNT * 3);
+    const originalPositions = new Float32Array(PARTICLE_COUNT * 3);
+    const colors = new Float32Array(PARTICLE_COUNT * 3);
+    const scales = new Float32Array(PARTICLE_COUNT);
 
-    for (let i = 0; i < STAR_COUNT; i++) {
-      starPos[i * 3] = (Math.random() - 0.5) * 22;
-      starPos[i * 3 + 1] = (Math.random() - 0.5) * 22;
-      starPos[i * 3 + 2] = (Math.random() - 0.5) * 18;
+    // Generate Shape 1: Quantum Sphere with Fibonacci distribution
+    const generateSpherePositions = (arr) => {
+      const RADIUS = 3.2;
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const phi = Math.acos(1 - (2 * (i + 0.5)) / PARTICLE_COUNT);
+        const theta = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
 
-      const c = colors[i % colors.length];
-      starColors[i * 3] = c.r;
-      starColors[i * 3 + 1] = c.g;
-      starColors[i * 3 + 2] = c.b;
+        const r = RADIUS * (0.84 + Math.sin(i * 0.15) * 0.2);
+        arr[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        arr[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+        arr[i * 3 + 2] = r * Math.cos(phi);
+      }
+    };
+
+    // Generate Shape 2: Cosmic Torus Vortex
+    const generateVortexPositions = (arr) => {
+      const R = 3.0;
+      const r = 1.1;
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const u = (i / PARTICLE_COUNT) * Math.PI * 4;
+        const v = (i / PARTICLE_COUNT) * Math.PI * 2 * 9;
+
+        arr[i * 3] = (R + r * Math.cos(v)) * Math.cos(u);
+        arr[i * 3 + 1] = (R + r * Math.cos(v)) * Math.sin(u) * 0.6;
+        arr[i * 3 + 2] = r * Math.sin(v) + Math.sin(u * 2) * 0.4;
+      }
+    };
+
+    // Generate Shape 3: Neural DNA Double-Helix
+    const generateHelixPositions = (arr) => {
+      const turns = 4;
+      const length = 5.6;
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const strand = i % 2 === 0 ? 0 : Math.PI;
+        const progress = i / PARTICLE_COUNT;
+        const angle = progress * Math.PI * 2 * turns + strand;
+        const radius = 1.8;
+
+        arr[i * 3] = Math.cos(angle) * radius;
+        arr[i * 3 + 1] = (progress - 0.5) * length;
+        arr[i * 3 + 2] = Math.sin(angle) * radius;
+      }
+    };
+
+    // Initial shape
+    generateSpherePositions(positions);
+    generateSpherePositions(targetPositions);
+    generateSpherePositions(originalPositions);
+
+    // Particle Colors & Scales
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const c = palette[i % palette.length];
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+      scales[i] = 1.0;
     }
-    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-    starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
 
-    const starMat = new THREE.PointsMaterial({
-      size: 0.05,
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    // Custom circular soft glow texture for particles
+    const createParticleTexture = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      gradient.addColorStop(0.2, 'rgba(56, 189, 248, 0.9)');
+      gradient.addColorStop(0.55, 'rgba(37, 99, 235, 0.4)');
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 64, 64);
+      const texture = new THREE.Texture(canvas);
+      texture.needsUpdate = true;
+      return texture;
+    };
+
+    const particleMaterial = new THREE.PointsMaterial({
+      size: 0.14,
+      map: createParticleTexture(),
       vertexColors: true,
       transparent: true,
-      opacity: 0.45,
-      blending: THREE.AdditiveBlending
-    });
-    const starfield = new THREE.Points(starGeo, starMat);
-    scene.add(starfield);
-
-    // 4. Neural Nodes (Fibonacci sphere distribution)
-    const NODE_COUNT = 150;
-    const SPHERE_RADIUS = 3.1;
-    const nodePositions = [];
-    const basePositions = [];
-    const nodeVelocities = [];
-    const nodeMeshes = [];
-
-    const nodeGeometry = new THREE.SphereGeometry(0.065, 12, 12);
-    const clusterGeometry = new THREE.SphereGeometry(0.13, 16, 16);
-
-    for (let i = 0; i < NODE_COUNT; i++) {
-      const phi = Math.acos(1 - (2 * (i + 0.5)) / NODE_COUNT);
-      const theta = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
-
-      const r = SPHERE_RADIUS * (0.86 + Math.random() * 0.28);
-      const x = r * Math.sin(phi) * Math.cos(theta);
-      const y = r * Math.sin(phi) * Math.sin(theta);
-      const z = r * Math.cos(phi);
-
-      const pos = new THREE.Vector3(x, y, z);
-      nodePositions.push(pos.clone());
-      basePositions.push(pos.clone());
-
-      nodeVelocities.push(
-        new THREE.Vector3(
-          (Math.random() - 0.5) * 0.0035,
-          (Math.random() - 0.5) * 0.0035,
-          (Math.random() - 0.5) * 0.0035
-        )
-      );
-
-      const color = colors[i % colors.length];
-      const isClusterHead = i % 12 === 0;
-
-      const mat = new THREE.MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity: isClusterHead ? 0.95 : 0.75
-      });
-
-      const mesh = new THREE.Mesh(isClusterHead ? clusterGeometry : nodeGeometry, mat);
-      mesh.position.copy(pos);
-      neuralGroup.add(mesh);
-      nodeMeshes.push(mesh);
-    }
-
-    // 5. Dynamic Synaptic Lines
-    const CONNECTION_DIST = 1.4;
-    const maxLineSegments = (NODE_COUNT * (NODE_COUNT - 1)) / 2;
-    const linePositions = new Float32Array(maxLineSegments * 6);
-    const lineColors = new Float32Array(maxLineSegments * 6);
-
-    const lineGeometry = new THREE.BufferGeometry();
-    lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3).setUsage(THREE.DynamicDrawUsage));
-    lineGeometry.setAttribute('color', new THREE.BufferAttribute(lineColors, 3).setUsage(THREE.DynamicDrawUsage));
-
-    const lineMaterial = new THREE.LineBasicMaterial({
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.45,
-      blending: THREE.AdditiveBlending
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
     });
 
-    const linesMesh = new THREE.LineSegments(lineGeometry, lineMaterial);
-    neuralGroup.add(linesMesh);
+    const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+    worldGroup.add(particleSystem);
 
-    // 6. Active Data Packets (Tensor Stream)
-    const PULSE_COUNT = 28;
-    const pulses = [];
-    const pulseGeometry = new THREE.SphereGeometry(0.048, 8, 8);
-    const pulseMaterial = new THREE.MeshBasicMaterial({
-      color: 0x67e8f9,
-      transparent: true,
-      opacity: 0.95
-    });
-
-    for (let p = 0; p < PULSE_COUNT; p++) {
-      const fromIdx = Math.floor(Math.random() * NODE_COUNT);
-      let toIdx = (fromIdx + 1 + Math.floor(Math.random() * 8)) % NODE_COUNT;
-      const mesh = new THREE.Mesh(pulseGeometry, pulseMaterial.clone());
-      neuralGroup.add(mesh);
-      pulses.push({
-        mesh,
-        fromIdx,
-        toIdx,
-        progress: Math.random(),
-        speed: 0.009 + Math.random() * 0.014
-      });
-    }
-
-    // 7. Central Quantum Core (Multi-Faceted Icosahedron)
-    const coreGeo = new THREE.IcosahedronGeometry(1.3, 1);
-    const coreMat = new THREE.MeshBasicMaterial({
-      color: 0x3b82f6,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.38
-    });
-    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
-    neuralGroup.add(coreMesh);
-
-    // Inner Glowing Orb
-    const innerOrbGeo = new THREE.SphereGeometry(0.68, 16, 16);
-    const innerOrbMat = new THREE.MeshBasicMaterial({
-      color: 0x0284c7,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.28
-    });
-    const innerOrbMesh = new THREE.Mesh(innerOrbGeo, innerOrbMat);
-    neuralGroup.add(innerOrbMesh);
-
-    // Gyroscopic Rings with Dual Orbit Angles
-    const ringMat1 = new THREE.MeshBasicMaterial({
-      color: 0x60a5fa,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.3
-    });
-    const ring1 = new THREE.Mesh(new THREE.TorusGeometry(3.5, 0.014, 8, 80), ringMat1);
-    ring1.rotation.x = Math.PI / 4;
-    neuralGroup.add(ring1);
-
-    const ringMat2 = new THREE.MeshBasicMaterial({
+    // 4. Central Holographic Gemstone (Quantum AI Core)
+    const crystalGeo = new THREE.OctahedronGeometry(1.2, 2);
+    const crystalMat = new THREE.MeshBasicMaterial({
       color: 0x38bdf8,
       wireframe: true,
       transparent: true,
-      opacity: 0.24
+      opacity: 0.5
     });
-    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(3.8, 0.012, 8, 80), ringMat2);
-    ring2.rotation.y = Math.PI / 3;
-    ring2.rotation.x = -Math.PI / 6;
-    neuralGroup.add(ring2);
+    const crystalMesh = new THREE.Mesh(crystalGeo, crystalMat);
+    worldGroup.add(crystalMesh);
 
-    // 8. Shockwave Ripple System
-    let shockwave = { active: false, radius: 0, maxRadius: 5.5, speed: 0.14 };
+    // Glowing Inner Plasma Orb
+    const innerPlasmaGeo = new THREE.SphereGeometry(0.7, 24, 24);
+    const innerPlasmaMat = new THREE.MeshBasicMaterial({
+      color: 0x00f2fe,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.35
+    });
+    const innerPlasmaMesh = new THREE.Mesh(innerPlasmaGeo, innerPlasmaMat);
+    worldGroup.add(innerPlasmaMesh);
+
+    // Point Light emitting from crystal core
+    const coreLight = new THREE.PointLight(0x38bdf8, 2.5, 12);
+    scene.add(coreLight);
+
+    // 5. Triple Concentric Gyroscopic Cyber Rings
+    // Ring 1 (Inner Glowing Dashed Ring)
+    const ring1Geo = new THREE.TorusGeometry(2.3, 0.018, 12, 100);
+    const ring1Mat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.5,
+      wireframe: true
+    });
+    const ring1 = new THREE.Mesh(ring1Geo, ring1Mat);
+    ring1.rotation.x = Math.PI / 3;
+    worldGroup.add(ring1);
+
+    // Ring 2 (Middle Orbit with 4 Orbiting Data Crystal Satellites)
+    const ring2Geo = new THREE.TorusGeometry(3.3, 0.015, 12, 120);
+    const ring2Mat = new THREE.MeshBasicMaterial({
+      color: 0x818cf8,
+      transparent: true,
+      opacity: 0.4
+    });
+    const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
+    ring2.rotation.y = Math.PI / 4;
+    ring2.rotation.x = -Math.PI / 6;
+    worldGroup.add(ring2);
+
+    // 4 Orbiting Mini Data Crystals
+    const satelliteCount = 4;
+    const satellites = [];
+    const satGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+    const satMat = new THREE.MeshBasicMaterial({
+      color: 0x00f2fe,
+      wireframe: true
+    });
+
+    for (let s = 0; s < satelliteCount; s++) {
+      const sat = new THREE.Mesh(satGeo, satMat);
+      worldGroup.add(sat);
+      satellites.push({
+        mesh: sat,
+        offset: (s / satelliteCount) * Math.PI * 2,
+        radius: 3.3,
+        speed: 0.8
+      });
+    }
+
+    // Ring 3 (Outer Horizon Ring)
+    const ring3Geo = new THREE.TorusGeometry(4.2, 0.012, 12, 140);
+    const ring3Mat = new THREE.MeshBasicMaterial({
+      color: 0x2563eb,
+      transparent: true,
+      opacity: 0.35
+    });
+    const ring3 = new THREE.Mesh(ring3Geo, ring3Mat);
+    ring3.rotation.z = Math.PI / 5;
+    ring3.rotation.y = -Math.PI / 3;
+    worldGroup.add(ring3);
+
+    // 6. Connecting Synaptic Energy Arcs (High-voltage lines)
+    const ARC_COUNT = 60;
+    const arcGeo = new THREE.BufferGeometry();
+    const arcPos = new Float32Array(ARC_COUNT * 6);
+    arcGeo.setAttribute('position', new THREE.BufferAttribute(arcPos, 3).setUsage(THREE.DynamicDrawUsage));
+    const arcMat = new THREE.LineBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.4,
+      blending: THREE.AdditiveBlending
+    });
+    const arcMesh = new THREE.LineSegments(arcGeo, arcMat);
+    worldGroup.add(arcMesh);
+
+    // 7. Shockwave Impulse System
+    let shockwave = {
+      active: false,
+      radius: 0,
+      maxRadius: 6.5,
+      speed: 0.18,
+      strength: 1.0
+    };
 
     const triggerBurst = () => {
       shockwave.active = true;
       shockwave.radius = 0;
-      setBurstActive(true);
-      setTimeout(() => setBurstActive(false), 900);
+      setPulseActive(true);
+      setTimeout(() => setPulseActive(false), 900);
     };
 
-    // Reset rotation
-    const resetRotation = () => {
-      gsap.to(neuralGroup.rotation, { x: 0, y: 0, z: 0, duration: 1, ease: 'power2.out' });
-      targetRotationX = 0;
-      targetRotationY = 0;
+    // Shape morphing controller
+    const setShapeMode = (mode) => {
+      setActiveShape(mode);
+      if (mode === 'sphere') {
+        generateSpherePositions(targetPositions);
+      } else if (mode === 'vortex') {
+        generateVortexPositions(targetPositions);
+      } else if (mode === 'helix') {
+        generateHelixPositions(targetPositions);
+      }
+      triggerBurst();
     };
 
-    sceneMethodsRef.current = { triggerBurst, resetRotation };
+    // Reset Camera / Rotation
+    const resetView = () => {
+      gsap.to(worldGroup.rotation, { x: 0, y: 0, z: 0, duration: 1.2, ease: 'power2.out' });
+      targetRotX = 0;
+      targetRotY = 0;
+    };
 
-    // 9. Interactive Drag & Mouse Tracking
+    engineRef.current = { triggerBurst, setShapeMode, resetView };
+
+    // 8. Interactive Mouse Physics & 3D Tilt Drag
     let isDragging = false;
-    let previousPointerPosition = { x: 0, y: 0 };
-    let targetRotationX = 0;
-    let targetRotationY = 0;
-    let mouseNormX = 0;
-    let mouseNormY = 0;
+    let previousPointer = { x: 0, y: 0 };
+    let targetRotX = 0;
+    let targetRotY = 0;
+    let mouseWorld = new THREE.Vector3(999, 999, 999);
+    const raycaster = new THREE.Raycaster();
+    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 
     const onPointerDown = (e) => {
       isDragging = true;
-      previousPointerPosition = { x: e.clientX, y: e.clientY };
+      previousPointer = { x: e.clientX, y: e.clientY };
     };
 
     const onPointerMove = (e) => {
       const rect = container.getBoundingClientRect();
-      mouseNormX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      mouseNormY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+      const normX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const normY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+
+      // Raycast mouse position onto 3D plane
+      raycaster.setFromCamera(new THREE.Vector2(normX, normY), camera);
+      raycaster.ray.intersectPlane(plane, mouseWorld);
 
       if (isDragging) {
-        const deltaX = e.clientX - previousPointerPosition.x;
-        const deltaY = e.clientY - previousPointerPosition.y;
-
-        targetRotationY += deltaX * 0.008;
-        targetRotationX += deltaY * 0.008;
-
-        previousPointerPosition = { x: e.clientX, y: e.clientY };
+        const deltaX = e.clientX - previousPointer.x;
+        const deltaY = e.clientY - previousPointer.y;
+        targetRotY += deltaX * 0.009;
+        targetRotX += deltaY * 0.009;
+        previousPointer = { x: e.clientX, y: e.clientY };
       } else {
-        // Subtle proximity target
-        targetRotationY += (mouseNormX * 0.5 - targetRotationY) * 0.02;
-        targetRotationX += (-mouseNormY * 0.4 - targetRotationX) * 0.02;
+        // Subtle magnetic perspective tilt
+        targetRotY += (normX * 0.65 - targetRotY) * 0.03;
+        targetRotX += (-normY * 0.45 - targetRotX) * 0.03;
       }
     };
 
@@ -280,13 +337,9 @@ export const AiNeuralScene3D = ({ className = '', interactive = true }) => {
     canvas.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('click', triggerBurst);
 
-    // Click canvas to trigger neural shockwave
-    canvas.addEventListener('click', () => {
-      triggerBurst();
-    });
-
-    // 10. GSAP ScrollTrigger Integration
+    // 9. GSAP ScrollTrigger Integration
     const scrollTriggerInstance = ScrollTrigger.create({
       trigger: container,
       start: 'top top',
@@ -294,13 +347,15 @@ export const AiNeuralScene3D = ({ className = '', interactive = true }) => {
       scrub: 1.2,
       onUpdate: (self) => {
         const progress = self.progress;
-        neuralGroup.rotation.z = progress * Math.PI * 0.45;
-        neuralGroup.position.y = -progress * 2.5;
-        neuralGroup.position.z = -progress * 1.8;
+        // Deep cinematic camera dolly & 3D galaxy swirl
+        worldGroup.rotation.z = progress * Math.PI * 0.65;
+        worldGroup.position.y = -progress * 2.8;
+        worldGroup.position.z = -progress * 2.2;
+        camera.position.z = 8.4 - progress * 1.5;
       }
     });
 
-    // 11. Resize Observer
+    // 10. Resize Observer
     const handleResize = () => {
       if (!container || isDisposed) return;
       const newWidth = container.clientWidth;
@@ -315,7 +370,7 @@ export const AiNeuralScene3D = ({ className = '', interactive = true }) => {
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(container);
 
-    // 12. Animation Loop
+    // 11. 60 FPS Render Loop with Fluid Wave Harmonics
     let clock = new THREE.Clock();
     let frameCount = 0;
     let lastFpsUpdate = performance.now();
@@ -326,7 +381,7 @@ export const AiNeuralScene3D = ({ className = '', interactive = true }) => {
 
       const elapsedTime = clock.getElapsedTime();
 
-      // FPS calculation
+      // FPS Calculation
       frameCount++;
       const now = performance.now();
       if (now - lastFpsUpdate >= 1000) {
@@ -335,30 +390,41 @@ export const AiNeuralScene3D = ({ className = '', interactive = true }) => {
         lastFpsUpdate = now;
       }
 
-      // Continuous slow rotation if autoRotate
+      // Continuous Orbital Spin
       if (autoRotate && !isDragging) {
-        targetRotationY += 0.0018;
+        targetRotY += 0.0022;
       }
 
-      // Smooth damping (LERP)
-      neuralGroup.rotation.y += (targetRotationY - neuralGroup.rotation.y) * 0.06;
-      neuralGroup.rotation.x += (targetRotationX - neuralGroup.rotation.x) * 0.06;
+      // LERP Damping on World Rotation
+      worldGroup.rotation.y += (targetRotY - worldGroup.rotation.y) * 0.055;
+      worldGroup.rotation.x += (targetRotX - worldGroup.rotation.x) * 0.055;
 
-      // Ambient starfield slow drift
-      starfield.rotation.y = elapsedTime * 0.015;
-      starfield.rotation.x = elapsedTime * 0.008;
+      // Rotate Crystal Core
+      crystalMesh.rotation.y = elapsedTime * 0.38;
+      crystalMesh.rotation.x = elapsedTime * 0.24;
+      const breathScale = 1 + 0.08 * Math.sin(elapsedTime * 2.8);
+      crystalMesh.scale.set(breathScale, breathScale, breathScale);
 
-      // Rotate quantum core & gyro rings
-      coreMesh.rotation.y = elapsedTime * 0.32;
-      coreMesh.rotation.x = elapsedTime * 0.2;
-      const pulseScale = 1 + 0.07 * Math.sin(elapsedTime * 2.5);
-      coreMesh.scale.set(pulseScale, pulseScale, pulseScale);
+      innerPlasmaMesh.rotation.y = -elapsedTime * 0.6;
+      innerPlasmaMesh.rotation.z = elapsedTime * 0.35;
 
-      innerOrbMesh.rotation.y = -elapsedTime * 0.45;
-      ring1.rotation.z = elapsedTime * 0.16;
-      ring2.rotation.z = -elapsedTime * 0.14;
+      // Gyro Rings Rotation
+      ring1.rotation.z = elapsedTime * 0.22;
+      ring2.rotation.z = -elapsedTime * 0.18;
+      ring3.rotation.z = elapsedTime * 0.12;
 
-      // Shockwave update
+      // Orbiting Satellites on Ring 2
+      for (let s = 0; s < satelliteCount; s++) {
+        const sat = satellites[s];
+        const angle = elapsedTime * sat.speed + sat.offset;
+        sat.mesh.position.x = Math.cos(angle) * sat.radius;
+        sat.mesh.position.y = Math.sin(angle) * sat.radius * 0.7;
+        sat.mesh.position.z = Math.sin(angle) * sat.radius * 0.7;
+        sat.mesh.rotation.x = elapsedTime * 2;
+        sat.mesh.rotation.y = elapsedTime * 3;
+      }
+
+      // Shockwave Progress
       if (shockwave.active) {
         shockwave.radius += shockwave.speed;
         if (shockwave.radius > shockwave.maxRadius) {
@@ -366,89 +432,72 @@ export const AiNeuralScene3D = ({ className = '', interactive = true }) => {
         }
       }
 
-      // Update Node positions & shockwave displacement
-      for (let i = 0; i < NODE_COUNT; i++) {
-        const pos = nodePositions[i];
-        const vel = nodeVelocities[i];
-        pos.add(vel);
+      // Particle Position Animation & Fluid Wave Harmonics
+      const posAttr = particleGeometry.attributes.position;
+      const posArray = posAttr.array;
 
-        // Shockwave impulse calculation
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const idx = i * 3;
+
+        // Smooth transition to target shape
+        posArray[idx] += (targetPositions[idx] - posArray[idx]) * 0.04;
+        posArray[idx + 1] += (targetPositions[idx + 1] - posArray[idx + 1]) * 0.04;
+        posArray[idx + 2] += (targetPositions[idx + 2] - posArray[idx + 2]) * 0.04;
+
+        // Harmonic organic sine breathing
+        const wave = Math.sin(elapsedTime * 1.8 + i * 0.05) * 0.004;
+        posArray[idx] += wave;
+        posArray[idx + 1] += wave;
+        posArray[idx + 2] += wave;
+
+        // Interactive Mouse Attraction (Magnetic Gravitational Field)
+        const dx = mouseWorld.x - posArray[idx];
+        const dy = mouseWorld.y - posArray[idx + 1];
+        const dz = mouseWorld.z - posArray[idx + 2];
+        const distToMouse = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        if (distToMouse < 2.2) {
+          const force = (1 - distToMouse / 2.2) * 0.035;
+          posArray[idx] += dx * force;
+          posArray[idx + 1] += dy * force;
+          posArray[idx + 2] += dz * force;
+        }
+
+        // Shockwave ripple displacement
         if (shockwave.active) {
-          const distToCenter = pos.length();
-          const waveDelta = Math.abs(distToCenter - shockwave.radius);
-          if (waveDelta < 0.6) {
-            const pushFactor = (1 - waveDelta / 0.6) * 0.08;
-            pos.addScaledVector(pos.clone().normalize(), pushFactor);
-            nodeMeshes[i].scale.setScalar(1.6);
-          } else {
-            nodeMeshes[i].scale.setScalar(1);
-          }
-        }
-
-        // Bound to radius envelope
-        const d = pos.length();
-        if (d > SPHERE_RADIUS * 1.3 || d < SPHERE_RADIUS * 0.72) {
-          vel.negate();
-        }
-
-        nodeMeshes[i].position.copy(pos);
-      }
-
-      // Synaptic Lines calculation
-      let vertexIndex = 0;
-      let colorIndex = 0;
-      let connectionsCount = 0;
-
-      for (let i = 0; i < NODE_COUNT; i++) {
-        for (let j = i + 1; j < NODE_COUNT; j++) {
-          const dist = nodePositions[i].distanceTo(nodePositions[j]);
-          if (dist < CONNECTION_DIST) {
-            connectionsCount++;
-            const alpha = 1 - dist / CONNECTION_DIST;
-            const c1 = colors[i % colors.length];
-            const c2 = colors[j % colors.length];
-
-            // Point 1
-            linePositions[vertexIndex++] = nodePositions[i].x;
-            linePositions[vertexIndex++] = nodePositions[i].y;
-            linePositions[vertexIndex++] = nodePositions[i].z;
-            lineColors[colorIndex++] = c1.r * alpha;
-            lineColors[colorIndex++] = c1.g * alpha;
-            lineColors[colorIndex++] = c1.b * alpha;
-
-            // Point 2
-            linePositions[vertexIndex++] = nodePositions[j].x;
-            linePositions[vertexIndex++] = nodePositions[j].y;
-            linePositions[vertexIndex++] = nodePositions[j].z;
-            lineColors[colorIndex++] = c2.r * alpha;
-            lineColors[colorIndex++] = c2.g * alpha;
-            lineColors[colorIndex++] = c2.b * alpha;
+          const distToOrigin = Math.sqrt(
+            posArray[idx] ** 2 + posArray[idx + 1] ** 2 + posArray[idx + 2] ** 2
+          );
+          const waveDelta = Math.abs(distToOrigin - shockwave.radius);
+          if (waveDelta < 0.75) {
+            const push = (1 - waveDelta / 0.75) * 0.09;
+            const normX = posArray[idx] / (distToOrigin || 1);
+            const normY = posArray[idx + 1] / (distToOrigin || 1);
+            const normZ = posArray[idx + 2] / (distToOrigin || 1);
+            posArray[idx] += normX * push;
+            posArray[idx + 1] += normY * push;
+            posArray[idx + 2] += normZ * push;
           }
         }
       }
+      posAttr.needsUpdate = true;
 
-      if (Math.random() < 0.05) {
-        setActiveConnections(connectionsCount);
+      // Update Synaptic Arcs between nearest node clusters
+      const arcPosArr = arcGeo.attributes.position.array;
+      let arcIdx = 0;
+      for (let a = 0; a < ARC_COUNT; a++) {
+        const p1 = (a * 19) % PARTICLE_COUNT;
+        const p2 = (p1 + 17) % PARTICLE_COUNT;
+
+        arcPosArr[arcIdx++] = posArray[p1 * 3];
+        arcPosArr[arcIdx++] = posArray[p1 * 3 + 1];
+        arcPosArr[arcIdx++] = posArray[p1 * 3 + 2];
+
+        arcPosArr[arcIdx++] = posArray[p2 * 3];
+        arcPosArr[arcIdx++] = posArray[p2 * 3 + 1];
+        arcPosArr[arcIdx++] = posArray[p2 * 3 + 2];
       }
-
-      lineGeometry.setDrawRange(0, vertexIndex / 3);
-      lineGeometry.attributes.position.needsUpdate = true;
-      lineGeometry.attributes.color.needsUpdate = true;
-
-      // Update Data Pulses
-      for (let p = 0; p < PULSE_COUNT; p++) {
-        const pulse = pulses[p];
-        pulse.progress += pulse.speed;
-        if (pulse.progress >= 1) {
-          pulse.progress = 0;
-          pulse.fromIdx = pulse.toIdx;
-          pulse.toIdx = Math.floor(Math.random() * NODE_COUNT);
-        }
-
-        const fromPos = nodePositions[pulse.fromIdx];
-        const toPos = nodePositions[pulse.toIdx];
-        pulse.mesh.position.lerpVectors(fromPos, toPos, pulse.progress);
-      }
+      arcGeo.attributes.position.needsUpdate = true;
 
       renderer.render(scene, camera);
     };
@@ -461,30 +510,29 @@ export const AiNeuralScene3D = ({ className = '', interactive = true }) => {
       canvas.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('click', triggerBurst);
       resizeObserver.disconnect();
       scrollTriggerInstance.kill();
 
-      nodeGeometry.dispose();
-      clusterGeometry.dispose();
-      lineGeometry.dispose();
-      lineMaterial.dispose();
-      coreGeo.dispose();
-      coreMat.dispose();
-      innerOrbGeo.dispose();
-      innerOrbMat.dispose();
-      starGeo.dispose();
-      starMat.dispose();
+      particleGeometry.dispose();
+      particleMaterial.dispose();
+      crystalGeo.dispose();
+      crystalMat.dispose();
+      innerPlasmaGeo.dispose();
+      innerPlasmaMat.dispose();
+      ring1Geo.dispose();
+      ring1Mat.dispose();
+      ring2Geo.dispose();
+      ring2Mat.dispose();
+      ring3Geo.dispose();
+      ring3Mat.dispose();
+      arcGeo.dispose();
+      arcMat.dispose();
+      satGeo.dispose();
+      satMat.dispose();
       renderer.dispose();
     };
   }, [autoRotate]);
-
-  const handleTriggerBurst = () => {
-    sceneMethodsRef.current?.triggerBurst();
-  };
-
-  const handleReset = () => {
-    sceneMethodsRef.current?.resetRotation();
-  };
 
   return (
     <div
@@ -496,49 +544,76 @@ export const AiNeuralScene3D = ({ className = '', interactive = true }) => {
         className="w-full h-full block cursor-grab active:cursor-grabbing outline-none"
       />
 
-      {/* High-Class Cyber HUD Header Pill */}
+      {/* Cyberpunk Holographic HUD Header */}
       <div className="absolute top-3 left-4 right-4 pointer-events-none flex items-center justify-between text-xs z-10">
-        <div className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full border border-slate-700/60 text-slate-300 font-mono text-[11px] shadow-sm">
-          <Activity className="w-3 h-3 text-cyan-400 animate-pulse" />
-          <span>QUANTUM NEURAL MESH</span>
-          <span className="text-white/30 hidden sm:inline">&bull;</span>
-          <span className="text-cyan-400 font-bold hidden sm:inline">LIVE 3D</span>
+        <div className="flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-cyan-500/30 text-slate-200 font-mono text-[11px] shadow-lg shadow-cyan-500/10">
+          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+          <span className="font-bold text-cyan-300">QUANTUM AI TENSOR FIELD</span>
+          <span className="text-white/20 hidden sm:inline">&bull;</span>
+          <span className="text-slate-400 hidden sm:inline">{fps} FPS</span>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-400/25 text-cyan-300 text-[10px] font-mono shadow-xs backdrop-blur-md">
-          <Sparkles className="w-3 h-3 text-cyan-400" />
-          <span className="hidden sm:inline">DRAG TO ORBIT &bull; CLICK TO PULSE</span>
+        <div className="flex items-center gap-1.5 bg-blue-600/20 px-3 py-1.5 rounded-full border border-blue-400/30 text-cyan-200 text-[10.5px] font-mono shadow-md backdrop-blur-md">
+          <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+          <span className="hidden sm:inline">MAGNETIC CURSOR &bull; CLICK TO BURST</span>
           <span className="sm:hidden">INTERACTIVE 3D</span>
         </div>
       </div>
 
-      {/* Interactive Controls Overlay Bar */}
+      {/* Futuristic 3D Controls Bar */}
       <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-auto z-10 gap-2 flex-wrap">
         
-        {/* Telemetry info */}
-        <div className="flex items-center gap-2 bg-slate-900/85 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-[10px] text-cyan-300 font-mono tracking-wider shadow-sm">
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-          <span>{fps} FPS</span>
-          <span className="text-white/30">&bull;</span>
-          <span>150 NODES</span>
-          <span className="text-white/30 hidden sm:inline">&bull;</span>
-          <span className="text-white/70 hidden sm:inline">{activeConnections} SYNAPSES</span>
+        {/* Morphing Presets */}
+        <div className="flex items-center p-1 bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-700/80 shadow-md">
+          <button
+            type="button"
+            onClick={() => engineRef.current?.setShapeMode('sphere')}
+            className={`px-2.5 sm:px-3 py-1 rounded-xl text-[10.5px] sm:text-[11px] font-mono font-semibold transition-all cursor-pointer ${
+              activeShape === 'sphere'
+                ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            Sphere
+          </button>
+          <button
+            type="button"
+            onClick={() => engineRef.current?.setShapeMode('vortex')}
+            className={`px-2.5 sm:px-3 py-1 rounded-xl text-[10.5px] sm:text-[11px] font-mono font-semibold transition-all cursor-pointer ${
+              activeShape === 'vortex'
+                ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            Vortex
+          </button>
+          <button
+            type="button"
+            onClick={() => engineRef.current?.setShapeMode('helix')}
+            className={`px-2.5 sm:px-3 py-1 rounded-xl text-[10.5px] sm:text-[11px] font-mono font-semibold transition-all cursor-pointer ${
+              activeShape === 'helix'
+                ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            DNA Helix
+          </button>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            onClick={handleTriggerBurst}
+            onClick={() => engineRef.current?.triggerBurst()}
             className={`px-3 py-1.5 rounded-xl text-[11px] font-bold font-mono border backdrop-blur-md transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs ${
-              burstActive
-                ? 'bg-cyan-400 text-slate-900 border-cyan-300 shadow-cyan-400/40 shadow-md'
+              pulseActive
+                ? 'bg-cyan-400 text-slate-900 border-cyan-300 shadow-cyan-400/50 shadow-md'
                 : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
             }`}
-            title="Trigger neural shockwave"
+            title="Fire shockwave pulse"
           >
-            <Zap className="w-3 h-3 text-cyan-400" />
-            <span className="hidden sm:inline">Pulse Synapse</span>
+            <Zap className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Pulse</span>
           </button>
 
           <button
@@ -549,19 +624,18 @@ export const AiNeuralScene3D = ({ className = '', interactive = true }) => {
                 ? 'bg-blue-600/60 text-cyan-200 border-blue-400/40'
                 : 'bg-white/10 hover:bg-white/20 text-white/70 border-white/20'
             }`}
-            title="Toggle continuous auto-orbit"
+            title="Toggle orbit rotation"
           >
-            <Compass className={`w-3 h-3 ${autoRotate ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }} />
-            <span className="hidden sm:inline">{autoRotate ? 'Orbit On' : 'Paused'}</span>
+            <Orbit className={`w-3.5 h-3.5 ${autoRotate ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }} />
           </button>
 
           <button
             type="button"
-            onClick={handleReset}
-            className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 border border-white/20 text-[11px] font-mono backdrop-blur-md transition-all active:scale-95 shadow-xs"
-            title="Reset camera rotation"
+            onClick={() => engineRef.current?.resetView()}
+            className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 border border-white/20 text-[11px] font-mono backdrop-blur-md transition-all active:scale-95 shadow-xs cursor-pointer"
+            title="Reset perspective"
           >
-            <RotateCcw className="w-3 h-3" />
+            <RotateCcw className="w-3.5 h-3.5" />
           </button>
         </div>
 
