@@ -38,7 +38,8 @@ async function sendSubmissionEmail(studentId) {
     const attachments = [];
     let currentBytes = 0;
     const maxBytes = getMaxAttachmentBytes();
-    const attachDocuments = process.env.MAIL_ATTACH_DOCUMENTS !== 'false';
+    // SEC-MED-06: Default to attaching only the official summary PDF (safe by default)
+    const attachDocuments = process.env.MAIL_ATTACH_DOCUMENTS === 'true';
 
     if (pdfBuffer) {
       currentBytes += pdfBuffer.length;

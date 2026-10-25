@@ -1157,10 +1157,12 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  disabled={isLocked}
+                  disabled={true}
                   placeholder="student.name@student.college.edu"
-                  className={getInputClass('email')}
+                  title="Account email is verified at registration. Contact administrator if you need to update it."
+                  className={`${getInputClass('email')} bg-gray-100 cursor-not-allowed text-gray-600`}
                 />
+                <p className="text-[11px] text-gray-500 mt-1">Verified account email (Cannot be modified directly. Contact administrator to update).</p>
                 {errors.email && <p className="text-xs text-red-600 mt-1 font-medium">{errors.email}</p>}
               </div>
 

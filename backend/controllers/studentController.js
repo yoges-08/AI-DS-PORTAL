@@ -216,14 +216,19 @@ const updateStudentDetails = async (req, res) => {
     if (d.altMobile && !validateMobile(d.altMobile)) {
       errors.altMobile = 'Alternate mobile number must be exactly 10 digits starting with 6-9.';
     }
-    if (d.email) {
-      if (!validateEmail(d.email)) {
+    if (d.email !== undefined && d.email !== null) {
+      const cleanEmail = String(d.email).trim().toLowerCase();
+      const currentEmail = String(existing[0]?.email || '').trim().toLowerCase();
+      if (!validateEmail(cleanEmail)) {
         errors.email = 'Please provide a valid email address.';
+      } else if (req.user.role === 'STUDENT' && currentEmail && cleanEmail !== currentEmail) {
+        // SEC-MED-03: Prevent unverified account email modification by students
+        errors.email = 'Your verified account email cannot be modified directly. Please contact the administrator to request an email update.';
       } else {
         // B6 fix: Ensure updated email is not already taken by another student
         const [dupe] = await pool.query(
           'SELECT id FROM students WHERE LOWER(email) = LOWER(?) AND id <> ?',
-          [String(d.email).trim(), studentId]
+          [cleanEmail, studentId]
         );
         if (dupe.length > 0) {
           errors.email = 'This email address is already in use by another account.';
