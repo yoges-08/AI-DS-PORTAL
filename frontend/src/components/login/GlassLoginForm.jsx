@@ -784,7 +784,7 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
               <div className="pt-1.5">
                 <GlassButton
                   type="submit"
-                  disabled={!isSignupReady || !agreeTerms}
+                  disabled={loading}
                   loading={loading}
                 >
                   Create Student Account
