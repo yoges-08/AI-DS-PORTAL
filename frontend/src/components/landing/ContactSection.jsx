@@ -1,8 +1,8 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { 
   Mail, 
   MapPin, 
-  Phone, 
   Clock, 
   HelpCircle, 
   ShieldCheck, 
@@ -12,7 +12,13 @@ import {
 export const ContactSection = () => {
   return (
     <section id="contact" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-20">
-      <div className="rounded-3xl bg-white border border-gray-200/80 shadow-[0_10px_40px_rgba(11,27,58,0.04)] p-8 sm:p-12 relative overflow-hidden">
+      <motion.div 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-50px' }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className="rounded-3xl bg-white border border-gray-200/80 shadow-[0_10px_40px_rgba(11,27,58,0.04)] p-8 sm:p-12 relative overflow-hidden"
+      >
         
         {/* Subtle accent blob */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-50/60 rounded-full blur-3xl pointer-events-none -z-10" />
@@ -68,60 +74,67 @@ export const ContactSection = () => {
                   <Clock className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Office Hours</div>
+                  <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Working Hours</div>
                   <div className="text-sm font-semibold text-[#0B1B3A] mt-0.5">
-                    Monday &ndash; Saturday &bull; 8:45 AM &ndash; 4:45 PM IST
+                    Monday &ndash; Saturday &bull; 09:00 AM &ndash; 05:00 PM IST
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right Column: Frequently Asked Questions & Quick Help */}
+          {/* Right Column: Support & Assistance Card */}
           <div className="lg:col-span-6 space-y-4">
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <HelpCircle className="w-4 h-4 text-blue-600" />
-              <span>Student Registration FAQ</span>
-            </div>
+            <motion.div 
+              whileHover={{ y: -4, scale: 1.01 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 20 }}
+              className="p-6 sm:p-8 rounded-2xl bg-[#F7F9FC] border border-gray-200/80 space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
+                  <HelpCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#0B1B3A]">
+                    Student Help &amp; Grievance Redressal
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Direct assistance for enrolled AI &amp; DS students
+                  </p>
+                </div>
+              </div>
 
-            <div className="p-4 rounded-2xl bg-gray-50/80 border border-gray-200/80 hover:bg-white hover:border-blue-200 transition-all">
-              <h4 className="text-xs font-bold text-[#0B1B3A]">
-                1. What if my Register Number is not found in the whitelist?
-              </h4>
-              <p className="text-[11.5px] text-gray-600 mt-1">
-                Your Department Administrator or Faculty Advisor uploads the approved cohort whitelist before registration opens. If your record does not match, bring your Anna University hall ticket / admission order to the AI &amp; DS department office.
+              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                If you encounter discrepancies in your Date of Birth, Register Number, or Community certificate during self-registration, please consult the Department Office in person with your original Admission Allotment Order.
               </p>
-            </div>
 
-            <div className="p-4 rounded-2xl bg-gray-50/80 border border-gray-200/80 hover:bg-white hover:border-blue-200 transition-all">
-              <h4 className="text-xs font-bold text-[#0B1B3A]">
-                2. Can I change my password after creating an account?
-              </h4>
-              <p className="text-[11.5px] text-gray-600 mt-1">
-                Yes. Once registered, log into the Student Portal with your Register Number and password. You can manage your security settings and profile data from the dashboard.
-              </p>
-            </div>
+              <div className="pt-2 border-t border-gray-200">
+                <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span>Authorized Administrative Portal &bull; ISO &amp; NBA Compliant</span>
+                </div>
+              </div>
+            </motion.div>
 
-            <div className="p-4 rounded-2xl bg-gray-50/80 border border-gray-200/80 hover:bg-white hover:border-blue-200 transition-all">
-              <h4 className="text-xs font-bold text-[#0B1B3A]">
-                3. Are uploaded documents secure?
-              </h4>
-              <p className="text-[11.5px] text-gray-600 mt-1">
-                All certificates, identity proofs, and marks cards are encrypted at rest and served exclusively through signed, time-limited tokens to authorized faculty coordinators and administrators.
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/60 flex items-center gap-2.5 text-xs text-blue-900 font-medium">
-              <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-              <span>Robert, our virtual department assistant, is available 24/7 on screen to guide you.</span>
-            </div>
+            {/* Quick Link Card */}
+            <motion.a 
+              href="https://aamec.edu.in" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 transition-colors group"
+            >
+              <div className="text-xs font-semibold text-gray-700 group-hover:text-blue-700">
+                Explore Anna University Affiliation &amp; Regulation 2021
+              </div>
+              <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors shrink-0" />
+            </motion.a>
           </div>
 
         </div>
 
-      </div>
+      </motion.div>
     </section>
   );
 };
-
-export default ContactSection;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { 
   UserCheck, 
   ShieldCheck, 
@@ -53,12 +54,42 @@ export const FeaturesGrid = () => {
     }
   ];
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.15
+      }
+    }
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 28 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: 'spring',
+        damping: 24,
+        stiffness: 240
+      }
+    }
+  };
+
   return (
     <section id="features" className="py-20 sm:py-28 bg-slate-50/70 border-y border-slate-200/60 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto space-y-3 mb-16">
+        {/* Section Header with Scroll Reveal */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-50px' }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="text-center max-w-3xl mx-auto space-y-3 mb-16"
+        >
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100/70 text-blue-700 text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Architecture &amp; Features</span>
@@ -69,22 +100,40 @@ export const FeaturesGrid = () => {
           <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
             Every feature is engineered to meet Anna University record compliance standards while ensuring students own and manage their confidential credentials securely.
           </p>
-        </div>
+        </motion.div>
 
-        {/* Feature Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Feature Cards Grid with Staggered Scroll Animations */}
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-40px' }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
           {features.map((feat, idx) => {
             const Icon = feat.icon;
             return (
-              <div
+              <motion.div
                 key={idx}
-                className="glass-card-feature p-6 sm:p-7 space-y-4 flex flex-col justify-between"
+                variants={cardVariants}
+                whileHover={{ 
+                  y: -7, 
+                  scale: 1.015,
+                  boxShadow: '0 20px 30px -10px rgba(15, 23, 42, 0.08)' 
+                }}
+                transition={{ type: 'spring', stiffness: 350, damping: 20 }}
+                className="glass-card-feature p-6 sm:p-7 space-y-4 flex flex-col justify-between cursor-pointer group"
+                onClick={() => openLogin('STUDENT')}
               >
                 <div className="space-y-3.5">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${feat.color}`}>
+                  <motion.div 
+                    whileHover={{ rotate: [0, -8, 8, 0], scale: 1.1 }}
+                    transition={{ duration: 0.4 }}
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${feat.color}`}
+                  >
                     <Icon className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                  </motion.div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight group-hover:text-blue-700 transition-colors">
                     {feat.title}
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
@@ -93,18 +142,21 @@ export const FeaturesGrid = () => {
                 </div>
 
                 <div className="pt-2 border-t border-slate-100">
-                  <button
-                    onClick={() => openLogin('STUDENT')}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
-                  >
+                  <div className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 group-hover:text-blue-800 transition-colors">
                     <span>Explore in Portal</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                    <motion.span
+                      initial={{ x: 0 }}
+                      whileHover={{ x: 3 }}
+                      className="inline-block"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </motion.span>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
 
       </div>
     </section>

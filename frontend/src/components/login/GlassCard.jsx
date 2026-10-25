@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 
 /**
@@ -121,15 +122,18 @@ export const GlassCard = ({ phase = 'idle', onClose, children }) => {
     >
       {/* Discreet Close Button (Clean White/Grey Pill matching User Screenshot) */}
       {onClose && (
-        <button
+        <motion.button
           type="button"
           onClick={onClose}
-          className="absolute -top-2.5 -right-2.5 sm:-top-3 sm:-right-3 z-30 w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-white/95 hover:bg-white border border-gray-200/80 text-gray-500 hover:text-gray-900 flex items-center justify-center transition-all shadow-[0_4px_12px_rgba(15,35,80,0.12)] hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
+          whileHover={{ scale: 1.15, rotate: 90 }}
+          whileTap={{ scale: 0.9 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+          className="absolute -top-2.5 -right-2.5 sm:-top-3 sm:-right-3 z-30 w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-white/95 hover:bg-white border border-gray-200/80 text-gray-500 hover:text-gray-900 flex items-center justify-center shadow-[0_4px_12px_rgba(15,35,80,0.12)] cursor-pointer backdrop-blur-md"
           title="Close dialog"
           aria-label="Close"
         >
           <X className="w-4 h-4" />
-        </button>
+        </motion.button>
       )}
 
       {/* 3D Tilted Card Container */}

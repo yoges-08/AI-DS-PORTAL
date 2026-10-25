@@ -50,16 +50,16 @@ export const LoginOverlay = () => {
             <GlassScene />
           </motion.div>
 
-          {/* Centered White Frosted Glass Card with Chamfered Corners and 3D Tilt */}
+          {/* Centered White Frosted Glass Card with Chamfered Corners and Spring Physics */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.94, y: 16 }}
+            initial={{ opacity: 0, scale: 0.92, y: 22 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 16 }}
             transition={{ 
               type: 'spring', 
-              damping: 26, 
-              stiffness: 320, 
-              mass: 0.85 
+              damping: 25, 
+              stiffness: 340, 
+              mass: 0.8 
             }}
             className="relative z-10 w-full max-w-[460px] my-auto py-4 sm:py-6"
             role="dialog"

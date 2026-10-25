@@ -1,9 +1,7 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { 
-  Cpu, 
-  Award, 
   BookOpen, 
-  Users, 
   Sparkles, 
   CheckCircle2, 
   ExternalLink 
@@ -42,7 +40,13 @@ export const AboutDepartment = () => {
       <div className="absolute top-1/2 left-0 -translate-y-1/2 w-80 h-80 bg-blue-100/50 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* Section Header */}
-      <div className="max-w-3xl mx-auto text-center mb-16">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-50px' }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className="max-w-3xl mx-auto text-center mb-16"
+      >
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/60 text-blue-700 text-xs font-semibold uppercase tracking-wider mb-3">
           <BookOpen className="w-3.5 h-3.5" />
           <span>Academic Excellence &bull; Department of AI &amp; DS</span>
@@ -53,14 +57,36 @@ export const AboutDepartment = () => {
         <p className="mt-4 text-base text-gray-600 leading-relaxed">
           The Department of Artificial Intelligence and Data Science at Anjalai Ammal Mahalingam Engineering College (AAMEC) equips students with rigorous mathematical foundations, practical engineering acumen, and real-world problem-solving skills.
         </p>
-      </div>
+      </motion.div>
 
-      {/* Stats Counter Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-12 sm:mb-16">
+      {/* Stats Counter Bar with Staggered Springs */}
+      <motion.div 
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-40px' }}
+        variants={{
+          hidden: { opacity: 0 },
+          visible: {
+            opacity: 1,
+            transition: { staggerChildren: 0.1 }
+          }
+        }}
+        className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-12 sm:mb-16"
+      >
         {departmentStats.map((stat, i) => (
-          <div 
-            key={i} 
-            className="p-3.5 sm:p-5 rounded-2xl bg-white border border-gray-200/80 shadow-[0_4px_20px_rgba(11,27,58,0.03)] text-center transition-transform hover:-translate-y-1"
+          <motion.div 
+            key={i}
+            variants={{
+              hidden: { opacity: 0, y: 20, scale: 0.95 },
+              visible: { 
+                opacity: 1, 
+                y: 0, 
+                scale: 1,
+                transition: { type: 'spring', stiffness: 300, damping: 20 }
+              }
+            }}
+            whileHover={{ y: -5, scale: 1.02 }}
+            className="p-3.5 sm:p-5 rounded-2xl bg-white border border-gray-200/80 shadow-[0_4px_20px_rgba(11,27,58,0.03)] text-center transition-shadow hover:shadow-lg"
           >
             <div className="text-lg min-[380px]:text-xl sm:text-3xl font-black text-blue-600 tracking-tight truncate">
               {stat.value}
@@ -68,100 +94,60 @@ export const AboutDepartment = () => {
             <div className="text-xs sm:text-sm font-bold text-[#0B1B3A] mt-1 truncate">
               {stat.label}
             </div>
-            <div className="text-[10.5px] sm:text-[11px] text-gray-500 mt-0.5 leading-snug">
+            <div className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
               {stat.desc}
             </div>
-          </div>
+          </motion.div>
+        ))}
+      </motion.div>
+
+      {/* Highlights Grid */}
+      <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
+        {highlights.map((item, index) => (
+          <motion.div 
+            key={index}
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-30px' }}
+            transition={{ delay: index * 0.1, duration: 0.5, ease: 'easeOut' }}
+            whileHover={{ y: -4, scale: 1.01 }}
+            className="p-6 sm:p-8 rounded-3xl bg-white border border-gray-200/70 shadow-[0_4px_20px_rgba(11,27,58,0.02)] space-y-3 transition-shadow hover:shadow-md"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-[#0B1B3A]">
+                {item.title}
+              </h3>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed pl-11">
+              {item.desc}
+            </p>
+          </motion.div>
         ))}
       </div>
 
-      {/* Main Grid: Vision/Mission & Pillars */}
-      <div className="grid lg:grid-cols-12 gap-6 sm:gap-8 items-stretch">
-        
-        {/* Left Column: Vision & Mission Glass Card */}
-        <div className="lg:col-span-5 p-5 sm:p-8 rounded-3xl bg-gradient-to-br from-blue-900 to-indigo-950 text-white shadow-xl flex flex-col justify-between relative overflow-hidden">
-          {/* Subtle watermark background */}
-          <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-          
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-blue-200 text-xs font-semibold mb-6">
-              <Sparkles className="w-3.5 h-3.5 text-blue-300" />
-              <span>Vision &amp; Department Mission</span>
-            </div>
-
-            <h3 className="text-2xl font-bold tracking-tight text-white mb-3">
-              Department Vision
-            </h3>
-            <p className="text-sm text-blue-100/90 leading-relaxed mb-6">
-              "To emerge as a premier centre of excellence in Artificial Intelligence and Data Science education and research, fostering ethically conscious, socially responsible, and technically superior innovators capable of addressing global challenges."
-            </p>
-
-            <h3 className="text-lg font-bold tracking-tight text-white mb-3 pt-4 border-t border-white/10">
-              Department Mission
-            </h3>
-            <ul className="space-y-3 text-xs sm:text-sm text-blue-100/80">
-              <li className="flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span>Deliver high-caliber academic curriculum bridging theoretical rigor and scalable software execution.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span>Nurture collaboration with global industry partners, research institutions, and leading open-source ecosystems.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span>Instill professional integrity, research ethics, and commitment to human-centric technological advancement.</span>
-              </li>
-            </ul>
-          </div>
-
-          <div className="pt-8 mt-8 border-t border-white/10 flex items-center justify-between text-xs text-blue-200/90">
-            <div>
-              <div className="font-semibold text-white">Anjalai Ammal Mahalingam Engg. College</div>
-              <div className="text-[11px] text-blue-300">Kovilvenni - 614 403, Tiruvarur District</div>
-            </div>
-            <img src="/college-logo.webp" alt="College Crest" className="w-10 h-10 object-contain drop-shadow" />
-          </div>
-        </div>
-
-        {/* Right Column: Key Department Pillars */}
-        <div className="lg:col-span-7 grid sm:grid-cols-2 gap-4">
-          {highlights.map((item, idx) => (
-            <div 
-              key={idx}
-              className="p-6 rounded-2xl bg-white border border-gray-200/80 shadow-[0_4px_20px_rgba(11,27,58,0.03)] hover:border-blue-300 transition-all duration-200 flex flex-col justify-between"
-            >
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm mb-4">
-                  0{idx + 1}
-                </div>
-                <h4 className="text-base font-bold text-[#0B1B3A] mb-2">
-                  {item.title}
-                </h4>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  {item.desc}
-                </p>
-              </div>
-            </div>
-          ))}
-
-          {/* Infrastructure Callout */}
-          <div className="sm:col-span-2 p-5 rounded-2xl bg-blue-50/80 border border-blue-200/70 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
-                <Cpu className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-sm font-bold text-[#0B1B3A]">Autonomous Digital Student Record System</div>
-                <div className="text-xs text-gray-600">Built in-house for real-time document verification, scholarship validation, and Anna University audit trails.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
+      {/* Institutional Link Footer */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+        className="mt-12 text-center"
+      >
+        <motion.a 
+          href="https://aamec.edu.in" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          whileHover={{ scale: 1.03, y: -2 }}
+          whileTap={{ scale: 0.98 }}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border border-gray-200 text-sm font-semibold text-[#0B1B3A] hover:bg-gray-50 shadow-sm transition-colors"
+        >
+          <span>Visit Official College Website (AAMEC)</span>
+          <ExternalLink className="w-4 h-4 text-gray-400" />
+        </motion.a>
+      </motion.div>
     </section>
   );
 };
-
-export default AboutDepartment;
