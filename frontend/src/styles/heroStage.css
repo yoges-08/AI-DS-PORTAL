@@ -1,0 +1,181 @@
+/**
+ * Immersive 3D-style hero (sunset gradient, voxel hills, giant layered type, cursor-following robot)
+ * Enhanced with 3D perspective depth, glowing particles, and GSAP ScrollTrigger layers.
+ */
+
+.hero-stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(60% 50% at 82% 12%, rgba(255, 196, 120, 0.55) 0%, rgba(255, 196, 120, 0) 70%),
+    linear-gradient(170deg, #0b1b4d 0%, #2c2a7a 34%, #7d3d86 62%, #cf6a58 86%, #f0a15e 100%);
+}
+
+/* Voxel hills ------------------------------------------------------- */
+.hero-hills {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 62%;
+  z-index: 0;
+  pointer-events: none;
+}
+.hero-hills svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.hero-hills__far { 
+  transform: translate(calc(var(--px, 0) * -12px), 0); 
+  transition: transform 0.25s ease-out;
+  will-change: transform;
+}
+.hero-hills__near { 
+  transform: translate(calc(var(--px, 0) * 22px), 0); 
+  transition: transform 0.25s ease-out;
+  will-change: transform;
+}
+
+/* Giant layered 3D type ------------------------------------------------ */
+.hero-giant {
+  font-family: 'Oxanium', 'Orbitron', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 900;
+  line-height: 0.8;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  user-select: none;
+  pointer-events: none;
+  position: absolute;
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+.hero-giant--back {
+  top: 4%;
+  left: -12%;
+  font-size: clamp(6.5rem, 24vw, 18rem);
+  color: transparent;
+  background: linear-gradient(180deg, #7fe0cf 0%, #2a9d9a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  opacity: 0.92;
+  z-index: 1;
+  filter: drop-shadow(0 15px 30px rgba(10, 20, 50, 0.4));
+}
+.hero-giant--front {
+  bottom: -4%;
+  right: -2%;
+  font-size: clamp(6.5rem, 24vw, 18rem);
+  color: transparent;
+  background: linear-gradient(180deg, #e6f2b8 0%, #9bc48a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  opacity: 0.95;
+  z-index: 4;
+  filter: drop-shadow(0 20px 35px rgba(20, 10, 40, 0.45));
+}
+
+/* 3D Robot Mascot --------------------------------------------------- */
+.hero-robot {
+  --nx: 0;
+  --ny: 0;
+  position: relative;
+  width: min(100%, 430px);
+  aspect-ratio: 400 / 520;
+  margin-inline: auto;
+}
+.hero-robot__float {
+  width: 100%;
+  height: 100%;
+  animation: heroRobotFloat 5.5s ease-in-out infinite;
+}
+.hero-robot__scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  perspective: 900px;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 28px 32px rgba(20, 8, 50, 0.45));
+}
+.hero-robot__body,
+.hero-robot__head {
+  position: absolute;
+  left: 0;
+  right: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.hero-robot__body {
+  top: 36%;
+  height: 64%;
+  transform: rotateY(calc(var(--nx) * 11deg)) rotateX(calc(var(--ny) * -4deg));
+  transition: transform 0.15s ease-out;
+}
+.hero-robot__head {
+  top: 0;
+  height: 56%;
+  z-index: 2;
+  transform: translateZ(35px) rotateY(calc(var(--nx) * 28deg)) rotateX(calc(var(--ny) * -18deg));
+  transition: transform 0.15s ease-out;
+}
+.hero-robot svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+.hero-robot__face {
+  transform: translate(calc(var(--nx) * 16px), calc(var(--ny) * 10px));
+  transition: transform 0.15s ease-out;
+}
+.hero-robot__eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: heroRobotBlink 5.2s infinite;
+}
+
+@keyframes heroRobotFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+@keyframes heroRobotBlink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
+
+/* Glass Academic Dossier Card on Hero -------------------------------- */
+.hero-dossier {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 24px;
+  box-shadow: 0 20px 45px rgba(10, 8, 40, 0.35);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+
+.hero-dossier:hover {
+  box-shadow: 0 25px 60px rgba(10, 8, 40, 0.45);
+}
+
+/* Responsive queries ------------------------------------------------ */
+@media (max-width: 767px) {
+  .hero-robot { width: min(80%, 310px); }
+  .hero-robot__float { animation-duration: 7s; }
+  .hero-hills { height: 48%; }
+  .hero-giant--back { top: 0; left: -3%; font-size: clamp(5.5rem, 22vw, 9rem); }
+  .hero-giant--front { bottom: -2%; right: -4%; font-size: clamp(5.5rem, 22vw, 9rem); }
+}
+
+@media (hover: none) {
+  .hero-hills__far,
+  .hero-hills__near { transition: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-robot__float,
+  .hero-robot__eyes { animation: none !important; }
+  .hero-robot__body,
+  .hero-robot__head,
+  .hero-robot__face { transform: none !important; }
+}
