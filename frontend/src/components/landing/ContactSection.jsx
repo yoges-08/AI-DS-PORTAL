@@ -1,5 +1,6 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef, useEffect } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { 
   Mail, 
   MapPin, 
@@ -9,14 +10,39 @@ import {
   ExternalLink 
 } from 'lucide-react';
 
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger);
+}
+
 export const ContactSection = () => {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        containerRef.current,
+        { y: 40, opacity: 0 },
+        {
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: 'top 85%',
+            toggleActions: 'play none none reverse'
+          },
+          y: 0,
+          opacity: 1,
+          duration: 0.8,
+          ease: 'power3.out'
+        }
+      );
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, []);
+
   return (
     <section id="contact" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-20">
-      <motion.div 
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-50px' }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
+      <div 
+        ref={containerRef}
         className="rounded-3xl bg-white border border-gray-200/80 shadow-[0_10px_40px_rgba(11,27,58,0.04)] p-8 sm:p-12 relative overflow-hidden"
       >
         
@@ -85,11 +111,7 @@ export const ContactSection = () => {
 
           {/* Right Column: Support & Assistance Card */}
           <div className="lg:col-span-6 space-y-4">
-            <motion.div 
-              whileHover={{ y: -4, scale: 1.01 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 20 }}
-              className="p-6 sm:p-8 rounded-2xl bg-[#F7F9FC] border border-gray-200/80 space-y-4"
-            >
+            <div className="p-6 sm:p-8 rounded-2xl bg-[#F7F9FC] border border-gray-200/80 space-y-4 transition-all hover:shadow-md">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
                   <HelpCircle className="w-5 h-5" />
@@ -114,27 +136,25 @@ export const ContactSection = () => {
                   <span>Authorized Administrative Portal &bull; ISO &amp; NBA Compliant</span>
                 </div>
               </div>
-            </motion.div>
+            </div>
 
             {/* Quick Link Card */}
-            <motion.a 
+            <a 
               href="https://aamec.edu.in" 
               target="_blank" 
               rel="noopener noreferrer"
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 transition-colors group"
+              className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 transition-all duration-200 group transform active:scale-98"
             >
               <div className="text-xs font-semibold text-gray-700 group-hover:text-blue-700">
                 Explore Anna University Affiliation &amp; Regulation 2021
               </div>
               <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors shrink-0" />
-            </motion.a>
+            </a>
           </div>
 
         </div>
 
-      </motion.div>
+      </div>
     </section>
   );
 };
