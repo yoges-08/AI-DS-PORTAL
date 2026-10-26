@@ -11,6 +11,7 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [mismatchDob, setMismatchDob] = useState(null);
 
   // Lock body scroll while modal is active (prevents background scroll and blur misalignment)
   useEffect(() => {
@@ -27,12 +28,14 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setError('');
+    setMismatchDob(null);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, forceOverwrite = false) => {
+    if (e && e.preventDefault) e.preventDefault();
     setError('');
     setSuccessMsg('');
+    setMismatchDob(null);
 
     if (!formData.registerNo || !formData.dob) {
       setError('Please provide both Register Number and Date of Birth.');
@@ -41,7 +44,7 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       setLoading(true);
-      const res = await api.addStudent(formData);
+      const res = await api.addStudent({ ...formData, overwrite: forceOverwrite });
       if (res.success) {
         setSuccessMsg(res.message);
         setTimeout(() => {
@@ -51,6 +54,9 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
       }
     } catch (err) {
       setError(err.message || 'Failed to pre-register student.');
+      if (err.code === 'DOB_MISMATCH') {
+        setMismatchDob(err.data?.existingDob || true);
+      }
     } finally {
       setLoading(false);
     }
@@ -86,10 +92,32 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
 
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
-          {error && (
+          {error && !mismatchDob && (
             <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-center space-x-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               <span className="font-medium">{error}</span>
+            </div>
+          )}
+
+          {mismatchDob && (
+            <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl space-y-2">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                <span className="font-semibold text-xs">{error}</span>
+              </div>
+              <p className="text-[11px] text-amber-800">
+                Do you want to overwrite and update this candidate&apos;s Date of Birth to {formData.dob}?
+              </p>
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleSubmit(null, true)}
+                  disabled={loading}
+                  className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-xs shadow-xs transition-all cursor-pointer"
+                >
+                  Confirm &amp; Update DOB
+                </button>
+              </div>
             </div>
           )}
 

@@ -287,15 +287,44 @@ const addStudent = async (req, res) => {
 
     // Check whitelist table
     const [existingWhitelist] = await pool.query(
-      'SELECT id, is_claimed FROM student_whitelist WHERE LOWER(register_no) = LOWER(?)',
+      'SELECT id, dob, is_claimed FROM student_whitelist WHERE LOWER(register_no) = LOWER(?)',
       [regNo]
     );
 
     if (existingWhitelist.length > 0) {
-      // Re-enable candidate: update DOB and reset claimed state
+      const entry = existingWhitelist[0];
+
+      if (entry.is_claimed) {
+        return res.status(409).json({
+          success: false,
+          code: 'ALREADY_REGISTERED',
+          message: `Student with Register Number ${regNo} has already created an account.`
+        });
+      }
+
+      // If already on the whitelist with the identical Date of Birth, block duplicate addition
+      if (entry.dob === normalizedDob) {
+        return res.status(409).json({
+          success: false,
+          code: 'ALREADY_WHITELISTED',
+          message: `Register Number ${regNo} is already imported in the whitelist.`
+        });
+      }
+
+      // If on the whitelist with a different DOB, require explicit overwrite approval
+      if (!req.body.overwrite) {
+        return res.status(409).json({
+          success: false,
+          code: 'DOB_MISMATCH',
+          existingDob: entry.dob,
+          message: `Register Number ${regNo} is already imported in the whitelist with Date of Birth (${entry.dob}).`
+        });
+      }
+
+      // Re-enable candidate / update DOB on explicit overwrite
       await pool.query(
         'UPDATE student_whitelist SET dob = ?, is_claimed = 0, claimed_student_id = NULL, updated_at = NOW() WHERE id = ?',
-        [normalizedDob, existingWhitelist[0].id]
+        [normalizedDob, entry.id]
       );
 
       // Clear any lockout records from previous verification failures
@@ -307,7 +336,7 @@ const addStudent = async (req, res) => {
         adminUsername: req.user.username,
         action: 'UPDATE_WHITELIST_STUDENT',
         studentRegNo: regNo,
-        details: `Reset whitelist eligibility and updated DOB (${normalizedDob}) for candidate ${regNo}`,
+        details: `Updated whitelist DOB to (${normalizedDob}) for candidate ${regNo}`,
         ipAddress: req.ip
       });
 

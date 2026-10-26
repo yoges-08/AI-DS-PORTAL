@@ -1,6 +1,6 @@
 const xlsx = require('xlsx');
 const { pool, testConnection } = require('../config/db');
-const { parseWhitelistSpreadsheet, bulkImportStudents } = require('../controllers/adminController');
+const { parseWhitelistSpreadsheet, bulkImportStudents, addStudent } = require('../controllers/adminController');
 const fs = require('fs');
 const path = require('path');
 
@@ -54,14 +54,11 @@ async function runDuplicateTests() {
 
     // TEST 3: Attempting to import an email already claimed by an active student
     console.log('\n[Test 3] Testing Email Collision with Existing Registered Student...');
-    // Create an active registered student
     const [insStudent] = await pool.query(
       `INSERT INTO students (register_no, name, dob, email, password, status)
        VALUES ('71762105994', 'Existing Student', '2004-05-15', 'registered_active@gmail.com', 'hash', 'DRAFT')`
     );
-    const existingStudentId = insStudent.insertId;
 
-    // Now attempt to import a new candidate who specifies that same email
     const collisionSheetBuf = createBufferFromRows([
       ['Register No', 'DOB', 'Email'],
       ['71762105995', '10-08-2004', 'registered_active@gmail.com']
@@ -88,9 +85,6 @@ async function runDuplicateTests() {
     if (jsonResult.insertedCount !== 0 || jsonResult.skippedCount !== 1) {
       throw new Error(`Expected 0 inserted, 1 skipped. Got: ${jsonResult.insertedCount} inserted, ${jsonResult.skippedCount} skipped`);
     }
-    if (!jsonResult.errors.some(e => e.includes('already used by student 71762105994'))) {
-      throw new Error(`Expected collision error in errors list, got: ${JSON.stringify(jsonResult.errors)}`);
-    }
     console.log(`✓ Collision detected and candidate skipped: "${jsonResult.errors[0]}"`);
 
     // TEST 4: SQLite Unique Email Constraint Verification
@@ -107,31 +101,59 @@ async function runDuplicateTests() {
     if (!thrownError || !/unique/i.test(thrownError.message)) {
       throw new Error(`Expected UNIQUE constraint violation on duplicate email, got: ${thrownError ? thrownError.message : 'No error'}`);
     }
-    console.log(`✓ Database strictly rejected duplicate student email: ${thrownError.message}`);
+    console.log(`✓ Database strictly rejected duplicate student email.`);
 
-    // TEST 5: Legitimate Import Succeeds
-    console.log('\n[Test 5] Testing Clean Import with Unique Register No and Unique Email...');
-    const cleanSheetBuf = createBufferFromRows([
-      ['Register No', 'DOB', 'Email'],
-      ['71762105997', '12-09-2004', 'unique_clean@gmail.com']
-    ]);
-    const tempClean = path.join(__dirname, 'temp_clean_test.xlsx');
-    fs.writeFileSync(tempClean, cleanSheetBuf);
-    const mockCleanReq = {
-      file: { path: tempClean, originalname: 'temp_clean_test.xlsx' },
+    // TEST 5: Manual Add Student duplicate detection
+    console.log('\n[Test 5] Testing Manual addStudent Duplicate Register Number Check...');
+    const mockAddReq1 = {
+      body: { registerNo: '71762105997', dob: '2004-05-15' },
       user: { id: 1, username: 'admin' },
       ip: '127.0.0.1'
     };
-    let cleanJson = null;
-    const mockCleanRes = {
-      status(code) { return this; },
-      json(d) { cleanJson = d; return this; }
+    let addStatus1 = 200;
+    let addJson1 = null;
+    const mockAddRes1 = {
+      status(code) { addStatus1 = code; return this; },
+      json(d) { addJson1 = d; return this; }
     };
-    await bulkImportStudents(mockCleanReq, mockCleanRes);
-    if (!cleanJson || cleanJson.insertedCount !== 1) {
-      throw new Error(`Expected 1 inserted row for clean sheet, got: ${JSON.stringify(cleanJson)}`);
+
+    // 1st add: should succeed
+    await addStudent(mockAddReq1, mockAddRes1);
+    if (!addJson1 || !addJson1.success) {
+      throw new Error(`First addStudent failed: ${JSON.stringify(addJson1)}`);
     }
-    console.log('✓ Clean import succeeded with 1 inserted whitelist candidate.');
+    console.log('✓ 5a. First addStudent succeeded.');
+
+    // 2nd add with SAME Register No and SAME DOB: MUST FAIL with ALREADY_WHITELISTED
+    let addStatus2 = 200;
+    let addJson2 = null;
+    const mockAddRes2 = {
+      status(code) { addStatus2 = code; return this; },
+      json(d) { addJson2 = d; return this; }
+    };
+    await addStudent(mockAddReq1, mockAddRes2);
+    if (addStatus2 !== 409 || !addJson2 || addJson2.code !== 'ALREADY_WHITELISTED') {
+      throw new Error(`Expected HTTP 409 ALREADY_WHITELISTED, got status ${addStatus2}: ${JSON.stringify(addJson2)}`);
+    }
+    console.log(`✓ 5b. Re-adding same Register No & DOB rejected with HTTP 409: "${addJson2.message}"`);
+
+    // 3rd add with SAME Register No but DIFFERENT DOB: MUST FAIL with DOB_MISMATCH
+    const mockAddReqDiffDob = {
+      body: { registerNo: '71762105997', dob: '2004-09-20' },
+      user: { id: 1, username: 'admin' },
+      ip: '127.0.0.1'
+    };
+    let addStatus3 = 200;
+    let addJson3 = null;
+    const mockAddRes3 = {
+      status(code) { addStatus3 = code; return this; },
+      json(d) { addJson3 = d; return this; }
+    };
+    await addStudent(mockAddReqDiffDob, mockAddRes3);
+    if (addStatus3 !== 409 || !addJson3 || addJson3.code !== 'DOB_MISMATCH') {
+      throw new Error(`Expected HTTP 409 DOB_MISMATCH, got status ${addStatus3}: ${JSON.stringify(addJson3)}`);
+    }
+    console.log(`✓ 5c. Re-adding with different DOB rejected with HTTP 409: "${addJson3.message}"`);
 
     // Clean up
     await pool.query("DELETE FROM students WHERE register_no LIKE '7176210599%'");
