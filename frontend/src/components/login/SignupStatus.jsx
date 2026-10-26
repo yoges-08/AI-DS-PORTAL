@@ -48,7 +48,7 @@ export const SignupStatus = ({ status, message, onSwitchToLogin }) => {
           <div>
             <strong className="block text-rose-300">Verification Status</strong>
             <span className="text-[11px] text-rose-300/80">
-              {message || 'Verify your Register Number and DOB with your department administrator.'}
+              {message || 'Verify your Register Number and DOB (DD/MM/YYYY) with your department administrator.'}
               {message && message.toLowerCase().includes('already registered') && onSwitchToLogin && (
                 <button
                   type="button"

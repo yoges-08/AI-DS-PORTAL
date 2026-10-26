@@ -71,11 +71,11 @@ export const NotFoundPage = ({ onGoHome }) => {
             <p className="text-[11px] font-semibold text-gray-700 mb-2">Need assistance?</p>
             <div className="space-y-1.5 text-[11px] text-gray-600">
               <a 
-                href="mailto:aamecaidsskill@gmail.com" 
+                href="mailto:aiandds.support@gmail.com" 
                 className="flex items-center hover:text-gov-navy transition-colors"
               >
                 <Mail className="w-3.5 h-3.5 text-gray-400 mr-2 shrink-0" />
-                <span>aamecaidsskill@gmail.com</span>
+                <span>aiandds.support@gmail.com</span>
               </a>
               <a 
                 href="tel:+919944823120" 

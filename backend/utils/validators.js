@@ -198,7 +198,17 @@ const validateStudentAge = (dobString, minAge = 15, maxAge = 40) => {
   return age >= minAge && age <= maxAge;
 };
 
+const formatDisplayDob = (dob) => {
+  if (!dob) return '';
+  const parts = String(dob).split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return String(dob);
+};
+
 module.exports = {
+  formatDisplayDob,
   cleanRegisterNo,
   isScientificNotation,
   validateMobile,

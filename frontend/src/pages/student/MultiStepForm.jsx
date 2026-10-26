@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { ProgressBar } from '../../components/ProgressBar';
 import { DocumentUploadField } from '../../components/DocumentUploadField';
 import { StatusBadge } from '../../components/StatusBadge';
+import { formatDisplayDob } from '../../utils/dateUtils';
 import { 
   Save, 
   ChevronRight, 
@@ -945,17 +946,19 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
 
               {/* Date of Birth (Read Only) */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Date of Birth (Read-Only)
+                <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center justify-between">
+                  <span>Date of Birth (DD/MM/YYYY) <span className="text-gray-400 font-normal">(Read-Only)</span></span>
+                  <span className="text-[10px] text-gray-400 font-medium">Date/Month/Year</span>
                 </label>
                 <input
-                  type="date"
+                  type="text"
                   name="dob"
-                  value={formData.dob}
+                  value={formatDisplayDob(formData.dob)}
                   readOnly
-                  className="w-full px-3 py-1.5 border border-gray-200 bg-gray-100 rounded text-sm font-medium text-gray-700 cursor-not-allowed"
+                  placeholder="DD/MM/YYYY"
+                  className="w-full px-3 py-1.5 border border-gray-200 bg-gray-100 rounded text-sm font-medium font-mono text-gray-700 cursor-not-allowed"
                 />
-                <span className="text-[11px] text-gray-500">For DOB corrections, contact department admin.</span>
+                <span className="text-[11px] text-gray-500">Format: DD/MM/YYYY (Date/Month/Year). For DOB corrections, contact department admin.</span>
               </div>
 
               {/* Year of Study */}
@@ -2456,7 +2459,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
                   <div><span className="text-gray-500">Name:</span> <strong className="text-gray-800">{formData.name || '-'}</strong></div>
                   <div><span className="text-gray-500">Reg No:</span> <strong className="text-gray-800">{formData.registerNo}</strong></div>
                   <div><span className="text-gray-500">Year & Sec:</span> <strong className="text-gray-800">{formData.year ? `Year ${formData.year}` : 'Not set'}{formData.section ? ` - Sec ${formData.section}` : ''}</strong></div>
-                  <div><span className="text-gray-500">DOB:</span> <strong className="text-gray-800">{formData.dob}</strong></div>
+                  <div><span className="text-gray-500">DOB (DD/MM/YYYY):</span> <strong className="text-gray-800">{formatDisplayDob(formData.dob)}</strong></div>
                   <div><span className="text-gray-500">Gender:</span> <strong className="text-gray-800">{formData.gender}</strong></div>
                   <div><span className="text-gray-500">Community:</span> <strong className="text-gray-800">{formData.community} ({formData.caste || '-'})</strong></div>
                   <div><span className="text-gray-500">Mobile:</span> <strong className="text-gray-800">{formData.mobile || '-'}</strong></div>

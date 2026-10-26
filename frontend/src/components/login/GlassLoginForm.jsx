@@ -7,6 +7,7 @@ import { GlassInput } from './GlassInput';
 import { GlassButton } from './GlassButton';
 import { RoleSwitch } from './RoleSwitch';
 import { SignupStatus } from './SignupStatus';
+import { formatDobInput, formatDisplayDob } from '../../utils/dateUtils';
 import { LoginWelcomeAnimation } from '../LoginWelcomeAnimation';
 import '../../styles/glassLogin.css';
 
@@ -42,6 +43,7 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
   // Student Self-Signup form state
   const [signupRegNo, setSignupRegNo] = useState('');
   const [signupDob, setSignupDob] = useState('');
+  const signupDobPickerRef = useRef(null);
   const [signupName, setSignupName] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
@@ -129,7 +131,7 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
       return;
     }
 
-    if (reg.length < 5) {
+    if (reg.length < 5 || dob.length < 10) {
       setVerificationStatus(null);
       return;
     }
@@ -283,7 +285,7 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
     if (setErrorMessage) setErrorMessage('');
 
     if (verificationStatus !== 'MATCH') {
-      const msg = 'Please verify your Register Number and DOB against the department whitelist first.';
+      const msg = 'Please verify your Register Number and DOB (DD/MM/YYYY) against the department whitelist first.';
       setError(msg);
       if (setErrorMessage) setErrorMessage(msg);
       return;
@@ -717,20 +719,58 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
                   required
                 />
 
-                <GlassInput
-                  id="signupDob"
-                  label="Date of Birth"
-                  type="date"
-                  icon={Calendar}
-                  value={signupDob}
-                  onChange={(e) => {
-                    setSignupDob(e.target.value);
-                    if (error) setError('');
-                  }}
-                  onFocus={() => setActiveField && setActiveField('signupDob')}
-                  onBlur={() => setActiveField && setActiveField('idle')}
-                  required
-                />
+                <div className="relative">
+                  <GlassInput
+                    id="signupDob"
+                    label="Date of Birth (DD/MM/YYYY)"
+                    type="text"
+                    icon={Calendar}
+                    value={signupDob}
+                    onChange={(e) => {
+                      const next = formatDobInput(e.target.value, signupDob);
+                      setSignupDob(next);
+                      if (error) setError('');
+                    }}
+                    onFocus={() => setActiveField && setActiveField('signupDob')}
+                    onBlur={() => setActiveField && setActiveField('idle')}
+                    placeholder="DD/MM/YYYY"
+                    hint="Format: DD/MM/YYYY (Date/Month/Year)"
+                    maxLength={10}
+                    rightElement={
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (signupDobPickerRef.current) {
+                            try {
+                              signupDobPickerRef.current.showPicker();
+                            } catch {
+                              signupDobPickerRef.current.focus();
+                            }
+                          }
+                        }}
+                        className="p-1 rounded text-slate-400 hover:text-white transition-colors cursor-pointer"
+                        title="Pick date from calendar"
+                        tabIndex={-1}
+                      >
+                        <Calendar className="w-4 h-4 text-sky-400/80 hover:text-sky-300" />
+                      </button>
+                    }
+                    required
+                  />
+                  <input
+                    ref={signupDobPickerRef}
+                    type="date"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    className="absolute opacity-0 pointer-events-none w-0 h-0 bottom-0 right-0"
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setSignupDob(formatDisplayDob(e.target.value));
+                        if (error) setError('');
+                      }
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Live Whitelist Verification Status */}

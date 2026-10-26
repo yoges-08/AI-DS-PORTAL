@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api, getFileUrl } from '../../services/api';
 import { Printer, ArrowLeft, CheckCircle2, ShieldCheck, Award, GraduationCap, Building2 } from 'lucide-react';
 import { StatusBadge } from '../../components/StatusBadge';
+import { formatDisplayDob } from '../../utils/dateUtils';
 
 export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
   const [student, setStudent] = useState(null);
@@ -115,8 +116,8 @@ export const ProfileSummaryPrint = ({ studentId = null, onBack }) => {
               <tr className="border-b border-gray-300">
                 <td className="bg-gray-50 font-bold p-2 w-1/4 border-r border-gray-300">Register Number</td>
                 <td className="p-2 font-mono font-bold text-sm w-1/4 border-r border-gray-300 text-primary">{student.register_no}</td>
-                <td className="bg-gray-50 font-bold p-2 w-1/4 border-r border-gray-300">Date of Birth</td>
-                <td className="p-2 w-1/4 font-medium">{student.dob}</td>
+                <td className="bg-gray-50 font-bold p-2 w-1/4 border-r border-gray-300">Date of Birth (DD/MM/YYYY)</td>
+                <td className="p-2 w-1/4 font-medium">{formatDisplayDob(student.dob)}</td>
               </tr>
               <tr className="border-b border-gray-300">
                 <td className="bg-gray-50 font-bold p-2 border-r border-gray-300">Full Name</td>

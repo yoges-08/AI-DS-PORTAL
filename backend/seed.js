@@ -212,7 +212,7 @@ const seedDatabase = async () => {
       [adminUsername]
     );
 
-    const defaultEmail = process.env.DEFAULT_ADMIN_EMAIL || 'aamecaidsskill@gmail.com';
+    const defaultEmail = process.env.DEFAULT_ADMIN_EMAIL || 'aiandds.support@gmail.com';
 
     if (adminExists.length === 0) {
       await connection.query(

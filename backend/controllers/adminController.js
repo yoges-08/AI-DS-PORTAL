@@ -22,6 +22,7 @@ const {
   maskBankAcc,
   dobToPasswordString,
   normalizeDob,
+  formatDisplayDob,
   validateStudentAge
 } = require('../utils/validators');
 const { logAdminAction } = require('../utils/auditLogger');
@@ -317,7 +318,7 @@ const addStudent = async (req, res) => {
           success: false,
           code: 'DOB_MISMATCH',
           existingDob: entry.dob,
-          message: `Register Number ${regNo} is already imported in the whitelist with Date of Birth (${entry.dob}).`
+          message: `Register Number ${regNo} is already imported in the whitelist with Date of Birth (${formatDisplayDob(entry.dob)}) [DD/MM/YYYY].`
         });
       }
 
@@ -342,7 +343,7 @@ const addStudent = async (req, res) => {
 
       return res.json({
         success: true,
-        message: `Student ${regNo} whitelist record updated with Date of Birth (${normalizedDob}). Candidate can now create their account.`
+        message: `Student ${regNo} whitelist record updated with Date of Birth (${formatDisplayDob(normalizedDob)}) [DD/MM/YYYY]. Candidate can now create their account.`
       });
     }
 

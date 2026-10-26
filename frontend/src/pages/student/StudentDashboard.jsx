@@ -37,7 +37,7 @@ export const StudentDashboard = () => {
     },
     {
       q: 'Whom should I contact if I need help or a password reset?',
-      a: 'Contact the AI & DS Department Office via phone (+91 99448 23120) or email (aamecaidsskill@gmail.com). The department administrator can issue a temporary password or unlock your profile if necessary.'
+      a: 'Contact the AI & DS Department Office via phone (+91 99448 23120) or email (aiandds.support@gmail.com). The department administrator can issue a temporary password or unlock your profile if necessary.'
     }
   ];
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Upload, FileSpreadsheet, Download, AlertCircle, CheckCircle, FileText, Check, AlertTriangle, Eye, ArrowRight } from 'lucide-react';
 import { api } from '../services/api';
+import { formatDisplayDob } from '../utils/dateUtils';
 
 export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
   const [file, setFile] = useState(null);
@@ -116,20 +117,20 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
                 <thead className="bg-surface-container font-semibold text-primary">
                   <tr>
                     <th className="px-3 py-1.5 border-b border-outline-variant/30">Register Number</th>
-                    <th className="px-3 py-1.5 border-b border-outline-variant/30">DOB</th>
+                    <th className="px-3 py-1.5 border-b border-outline-variant/30">DOB (DD/MM/YYYY)</th>
                     <th className="px-3 py-1.5 border-b border-outline-variant/30">Requirement</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/20 text-on-surface-variant font-mono">
                   <tr>
                     <td className="px-3 py-1 text-primary font-semibold">71762305041</td>
-                    <td className="px-3 py-1">2005-02-14</td>
-                    <td className="px-3 py-1 font-sans text-[10.5px]">Text format; alphanumeric</td>
+                    <td className="px-3 py-1">14/02/2005</td>
+                    <td className="px-3 py-1 font-sans text-[10.5px]">DD/MM/YYYY (Date/Month/Year)</td>
                   </tr>
                   <tr>
                     <td className="px-3 py-1 text-primary font-semibold">71762305042</td>
-                    <td className="px-3 py-1">14-07-2005</td>
-                    <td className="px-3 py-1 font-sans text-[10.5px]">DD-MM-YYYY or Date cell</td>
+                    <td className="px-3 py-1">28/07/2005</td>
+                    <td className="px-3 py-1 font-sans text-[10.5px]">DD/MM/YYYY (Date/Month/Year)</td>
                   </tr>
                 </tbody>
               </table>
@@ -202,7 +203,7 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
                       <tr>
                         <th className="px-2.5 py-1">Row</th>
                         <th className="px-2.5 py-1">Register No</th>
-                        <th className="px-2.5 py-1">DOB (Parsed)</th>
+                        <th className="px-2.5 py-1">DOB (DD/MM/YYYY)</th>
                         {previewData.preview.some(r => r.email) && <th className="px-2.5 py-1">Pre-bound Email</th>}
                         <th className="px-2.5 py-1">Prospective Action</th>
                       </tr>
@@ -212,7 +213,7 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
                         <tr key={idx} className="hover:bg-blue-50/50">
                           <td className="px-2.5 py-1 text-outline font-sans">{row.rowNum}</td>
                           <td className="px-2.5 py-1 font-semibold text-primary">{row.registerNo}</td>
-                          <td className="px-2.5 py-1 text-on-surface">{row.dob}</td>
+                          <td className="px-2.5 py-1 text-on-surface">{formatDisplayDob(row.dob)}</td>
                           {previewData.preview.some(r => r.email) && (
                             <td className="px-2.5 py-1 text-on-surface font-sans text-[10.5px] truncate max-w-[130px]">{row.email || '-'}</td>
                           )}
@@ -311,7 +312,7 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
                   <Upload className="w-5 h-5 text-primary" />
                 </div>
                 <span className="font-semibold text-primary text-xs">Drop whitelist file here or browse</span>
-                <span className="text-[10.5px] text-outline mt-0.5">Accepts .xlsx, .xls, or .csv (Register Number, DOB)</span>
+                <span className="text-[10.5px] text-outline mt-0.5">Accepts .xlsx, .xls, or .csv (Register Number, DOB as DD/MM/YYYY)</span>
                 {file && (
                   <div className="mt-2.5 inline-flex items-center gap-1.5 font-mono text-xs text-primary bg-secondary-fixed/50 px-3 py-1 rounded-xl border border-secondary/30">
                     <Check className="w-3.5 h-3.5 text-emerald-600" />

@@ -3,7 +3,7 @@ import { Eye, EyeOff } from 'lucide-react';
 
 /**
  * GlassInput Component
- * Consistent glass styling with label above, left icon, and optional eye toggle for passwords.
+ * Consistent glass styling with label above, left icon, and optional eye toggle for passwords or right custom action.
  */
 export const GlassInput = ({
   id,
@@ -20,7 +20,10 @@ export const GlassInput = ({
   className = '',
   disabled = false,
   error = '',
-  hint = ''
+  hint = '',
+  maxLength,
+  rightElement,
+  inputRef
 }) => {
   const isPassword = type === 'password';
   const [showPassword, setShowPassword] = useState(false);
@@ -35,8 +38,9 @@ export const GlassInput = ({
         </label>
       )}
 
-      <div className="glass-input-wrapper">
+      <div className="glass-input-wrapper relative">
         <input
+          ref={inputRef}
           id={id}
           type={effectiveType}
           value={value}
@@ -47,12 +51,13 @@ export const GlassInput = ({
           required={required}
           autoComplete={autoComplete}
           disabled={disabled}
-          className="glass-input"
+          maxLength={maxLength}
+          className={`glass-input ${rightElement ? 'pr-11' : ''}`}
         />
 
         {Icon && <Icon className="glass-input-icon" />}
 
-        {isPassword && (
+        {isPassword ? (
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
@@ -62,7 +67,11 @@ export const GlassInput = ({
           >
             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
-        )}
+        ) : rightElement ? (
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center z-10">
+            {rightElement}
+          </div>
+        ) : null}
       </div>
 
       {error ? (

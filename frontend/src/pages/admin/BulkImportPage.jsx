@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileSpreadsheet, Upload, Download, CheckCircle, AlertCircle, FileText, Check, AlertTriangle, Eye, ArrowRight } from 'lucide-react';
 import { api } from '../../services/api';
+import { formatDisplayDob } from '../../utils/dateUtils';
 
 export const BulkImportPage = ({ onNavigateTab }) => {
   const [file, setFile] = useState(null);
@@ -125,7 +126,7 @@ export const BulkImportPage = ({ onNavigateTab }) => {
                       <tr>
                         <th className="px-2.5 py-1">Row</th>
                         <th className="px-2.5 py-1">Register No</th>
-                        <th className="px-2.5 py-1">DOB</th>
+                        <th className="px-2.5 py-1">DOB (DD/MM/YYYY)</th>
                         <th className="px-2.5 py-1">Status</th>
                       </tr>
                     </thead>
@@ -134,7 +135,7 @@ export const BulkImportPage = ({ onNavigateTab }) => {
                         <tr key={idx} className="hover:bg-blue-50/50">
                           <td className="px-2.5 py-1 text-outline font-sans">{row.rowNum}</td>
                           <td className="px-2.5 py-1 font-semibold text-primary">{row.registerNo}</td>
-                          <td className="px-2.5 py-1 text-on-surface">{row.dob}</td>
+                          <td className="px-2.5 py-1 text-on-surface">{formatDisplayDob(row.dob)}</td>
                           <td className="px-2.5 py-1 font-sans">
                             {row.status === 'NEW' && (
                               <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800 font-bold">New</span>
@@ -273,7 +274,7 @@ export const BulkImportPage = ({ onNavigateTab }) => {
                 <span className="font-mono font-bold text-primary shrink-0">2.</span>
                 <div>
                   <strong className="text-on-surface">DOB:</strong>
-                  <span className="text-outline block text-[11px]">DD-MM-YYYY, YYYY-MM-DD, or Excel date cell format.</span>
+                  <span className="text-outline block text-[11px]">Format: DD/MM/YYYY (Date/Month/Year), e.g. 15/08/2005 or Excel date cell.</span>
                 </div>
               </div>
             </div>

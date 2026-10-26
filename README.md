@@ -199,7 +199,7 @@ AI&DS PORTAL/
    ```
    *Initialize the administrator account securely:*
    ```bash
-   node scripts/create-admin.js admin "Dr.G.NANTHAKUMAR" aamecaidsskill@gmail.com "YourSecurePassword123!"
+   node scripts/create-admin.js admin "Dr.G.NANTHAKUMAR" aiandds.support@gmail.com "YourSecurePassword123!"
    ```
 
 5. **Start Backend Server**:

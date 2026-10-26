@@ -19,6 +19,7 @@ import {
   Filter
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { formatDisplayDob } from '../../utils/dateUtils';
 
 export const WhitelistPage = ({ onNavigateTab }) => {
   const [whitelist, setWhitelist] = useState([]);
@@ -81,21 +82,7 @@ export const WhitelistPage = ({ onNavigateTab }) => {
     }
   };
 
-  const formatDisplayDob = (dobStr) => {
-    if (!dobStr) return '—';
-    try {
-      const parts = dobStr.split('-');
-      if (parts.length === 3) {
-        const date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-        if (!isNaN(date.getTime())) {
-          return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-        }
-      }
-      return dobStr;
-    } catch {
-      return dobStr;
-    }
-  };
+  // formatDisplayDob imported from dateUtils
 
   const formatDateTime = (dateStr) => {
     if (!dateStr) return '—';
@@ -329,7 +316,7 @@ export const WhitelistPage = ({ onNavigateTab }) => {
               <thead className="bg-surface-container-low/70 border-b border-outline-variant/30 text-outline uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="py-3.5 px-4 font-bold">Register Number</th>
-                  <th className="py-3.5 px-4 font-bold">Date of Birth (DOB)</th>
+                  <th className="py-3.5 px-4 font-bold">Date of Birth (DD/MM/YYYY)</th>
                   <th className="py-3.5 px-4 font-bold">Pre-Bound Email</th>
                   <th className="py-3.5 px-4 font-bold">Claim / Registration Status</th>
                   <th className="py-3.5 px-4 font-bold">Imported On</th>
@@ -357,7 +344,7 @@ export const WhitelistPage = ({ onNavigateTab }) => {
                           <span>{formatDisplayDob(entry.dob)}</span>
                         </div>
                         <span className="text-[10px] font-mono text-outline block pl-5">
-                          Format: {entry.dob}
+                          Format: DD/MM/YYYY (Date/Month/Year)
                         </span>
                       </div>
                     </td>
@@ -464,7 +451,7 @@ export const WhitelistPage = ({ onNavigateTab }) => {
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <span className="text-[10px] text-outline block">Date of Birth (DOB)</span>
+                    <span className="text-[10px] text-outline block">Date of Birth (DD/MM/YYYY)</span>
                     <span className="font-bold text-on-surface flex items-center gap-1 mt-0.5">
                       <Calendar className="w-3 h-3 text-secondary" />
                       {formatDisplayDob(entry.dob)}
@@ -575,7 +562,7 @@ export const WhitelistPage = ({ onNavigateTab }) => {
               </div>
               <div className="flex justify-between">
                 <span className="text-outline">Date of Birth:</span>
-                <span className="font-bold text-on-surface">{deleteModalEntry.dob} ({formatDisplayDob(deleteModalEntry.dob)})</span>
+                <span className="font-bold text-on-surface">{formatDisplayDob(deleteModalEntry.dob)} (DD/MM/YYYY)</span>
               </div>
               {deleteModalEntry.email && (
                 <div className="flex justify-between">

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { formatDobInput, formatDisplayDob } from '../utils/dateUtils';
 import { createPortal } from 'react-dom';
 import { X, UserPlus, AlertCircle, CheckCircle, Calendar, Hash } from 'lucide-react';
 import { api } from '../services/api';
@@ -12,6 +13,7 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [mismatchDob, setMismatchDob] = useState(null);
+  const addDobPickerRef = useRef(null);
 
   // Lock body scroll while modal is active (prevents background scroll and blur misalignment)
   useEffect(() => {
@@ -145,18 +147,62 @@ export const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
           </div>
 
           <div>
-            <label className="block font-semibold text-on-surface mb-1.5 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-secondary" />
-              Date of Birth (DOB) <span className="text-error">*</span>
+            <label className="block font-semibold text-on-surface mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-secondary" />
+                Date of Birth (DD/MM/YYYY) <span className="text-error">*</span>
+              </span>
+              <span className="text-[10.5px] text-outline font-normal">Date/Month/Year</span>
             </label>
-            <input
-              type="date"
-              name="dob"
-              value={formData.dob}
-              onChange={handleChange}
-              className="w-full px-3.5 py-2 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm text-on-surface focus:outline-none transition-all"
-              required
-            />
+            <div className="relative">
+              <input
+                type="text"
+                name="dob"
+                value={formData.dob}
+                onChange={(e) => {
+                  const val = formatDobInput(e.target.value, formData.dob);
+                  setFormData((prev) => ({ ...prev, dob: val }));
+                  setError('');
+                  setMismatchDob(null);
+                }}
+                placeholder="DD/MM/YYYY (e.g. 15/08/2005)"
+                maxLength={10}
+                className="w-full px-3.5 py-2 pr-10 bg-surface-container-low/50 hover:bg-surface-container-low focus:bg-white border border-outline-variant/60 focus:border-secondary focus:ring-2 focus:ring-secondary/20 rounded-xl text-sm font-mono text-on-surface focus:outline-none transition-all"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (addDobPickerRef.current) {
+                    try {
+                      addDobPickerRef.current.showPicker();
+                    } catch {
+                      addDobPickerRef.current.focus();
+                    }
+                  }
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-outline hover:text-primary transition-colors cursor-pointer"
+                title="Pick date from calendar"
+                tabIndex={-1}
+              >
+                <Calendar className="w-4 h-4 text-secondary" />
+              </button>
+              <input
+                ref={addDobPickerRef}
+                type="date"
+                tabIndex={-1}
+                aria-hidden="true"
+                className="absolute opacity-0 pointer-events-none w-0 h-0 bottom-0 right-0"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setFormData((prev) => ({ ...prev, dob: formatDisplayDob(e.target.value) }));
+                    setError('');
+                    setMismatchDob(null);
+                  }
+                }}
+              />
+            </div>
+            <span className="text-[10.5px] text-outline block mt-1">Format: DD/MM/YYYY (e.g. 15/08/2005)</span>
           </div>
 
           <div className="p-3 bg-secondary-fixed/30 border border-secondary/20 rounded-xl text-[11.5px] text-primary flex items-start gap-2">

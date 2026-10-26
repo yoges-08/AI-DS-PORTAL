@@ -30,12 +30,12 @@ export const Footer = () => {
           </a>
           <span className="text-gray-300">&bull;</span>
           <a
-            href="mailto:aamecaidsskill@gmail.com"
+            href="mailto:aiandds.support@gmail.com"
             className="inline-flex items-center text-gov-navy hover:underline font-semibold"
             title="Email Department Coordinator"
           >
             <Mail className="w-3 h-3 mr-1 text-gov-navy shrink-0" />
-            aamecaidsskill@gmail.com
+            aiandds.support@gmail.com
           </a>
         </div>
       </div>

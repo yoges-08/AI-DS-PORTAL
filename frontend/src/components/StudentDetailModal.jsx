@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { api, getFileUrl } from '../services/api';
 import { StatusBadge } from './StatusBadge';
+import { formatDisplayDob } from '../utils/dateUtils';
 
 export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEditStudent }) => {
   const [student, setStudent] = useState(null);
@@ -351,8 +352,8 @@ export const StudentDetailModal = ({ studentId, isOpen, onClose, onRefresh, onEd
                     <strong className="text-sm text-on-surface">{student.name}</strong>
                   </div>
                   <div>
-                    <span className="text-outline block text-[11px] font-medium uppercase tracking-wider">Date of Birth</span>
-                    <strong className="text-sm text-on-surface">{student.dob}</strong>
+                    <span className="text-outline block text-[11px] font-medium uppercase tracking-wider">Date of Birth (DD/MM/YYYY)</span>
+                    <strong className="text-sm text-on-surface">{formatDisplayDob(student.dob)}</strong>
                   </div>
                   <div>
                     <span className="text-outline block text-[11px] font-medium uppercase tracking-wider">Year & Section</span>
