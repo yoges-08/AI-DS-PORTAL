@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cpu, ShieldCheck } from 'lucide-react';
+import { COLLEGE_LOGO_BASE64 } from '../assets/logoBase64';
 
 /**
  * ModernLoadingScreen Component (White / Light Theme)
  * Clean, futuristic, high-class light theme loading animation for the AI & DS Portal.
  * Eliminates distortion with fixed aspect-ratio geometry, concentric glowing cyan-indigo
  * tech rings, animated scanning progress track, and cycling system status messages.
+ * Uses synchronous inlined Base64 logo to guarantee 0-millisecond instantaneous display.
  */
 export const ModernLoadingScreen = ({ message = 'Connecting to Student Information System...' }) => {
   const [logoError, setLogoError] = useState(false);
@@ -45,12 +47,12 @@ export const ModernLoadingScreen = ({ message = 'Connecting to Student Informati
       <div className="absolute w-[440px] h-[440px] rounded-full bg-sky-200/40 blur-[120px] -top-24 -left-24 pointer-events-none animate-pulse" />
       <div className="absolute w-[460px] h-[460px] rounded-full bg-indigo-200/30 blur-[130px] -bottom-24 -right-24 pointer-events-none animate-pulse" />
 
-      {/* Main Frosted White Glass Card Container */}
+      {/* Main Frosted White Glass Card Container (Instant 100% Opacity) */}
       <motion.div 
-        initial={{ opacity: 0, scale: 0.94, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: 'easeOut' }}
-        className="relative z-10 flex flex-col items-center px-8 py-10 rounded-3xl bg-white/90 backdrop-blur-2xl border border-slate-200/90 shadow-[0_20px_50px_-10px_rgba(15,23,42,0.08),0_0_30px_rgba(2,132,199,0.06)] max-w-sm sm:max-w-md w-full mx-4"
+        initial={{ opacity: 1, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="relative z-10 flex flex-col items-center px-8 py-10 rounded-3xl bg-white/95 backdrop-blur-2xl border border-slate-200/90 shadow-[0_20px_50px_-10px_rgba(15,23,42,0.08),0_0_30px_rgba(2,132,199,0.06)] max-w-sm sm:max-w-md w-full mx-4"
       >
         {/* College Tag Capsule */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50/90 border border-sky-200/80 text-[10.5px] font-semibold text-sky-800 tracking-wider uppercase mb-7 shadow-xs">
@@ -140,10 +142,13 @@ export const ModernLoadingScreen = ({ message = 'Connecting to Student Informati
 
             {!logoError ? (
               <motion.img
-                src="/college-logo.webp"
+                src={COLLEGE_LOGO_BASE64}
                 alt="AAMEC"
+                loading="eager"
+                decoding="sync"
+                fetchpriority="high"
                 onError={() => setLogoError(true)}
-                className="relative z-10 w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]"
+                className="relative z-10 w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.08)]"
                 animate={{ scale: [0.96, 1.04, 0.96] }}
                 transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
               />
