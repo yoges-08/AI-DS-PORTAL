@@ -76,19 +76,23 @@ async function runTests() {
     console.log(`[Setup] Created test student (ID: ${testStudentId}, RegNo: ${testRegNo})\n`);
 
     // ----------------------------------------------------
-    // Test 2: Issue 6-digit OTP code & test cooldown
+    // Test 2: Drop table & test auto-recreation (Self-healing on Render)
     // ----------------------------------------------------
-    console.log('[Test 2] Testing issueResetCode & 60s cooldown...');
+    console.log('[Test 2] Testing runtime self-healing when password_resets table is missing...');
+    await pool.query('DROP TABLE IF EXISTS password_resets');
+    
+    // Now call issueResetCode when table doesn't exist
     const issue1 = await issueResetCode(testStudentId, testEmail);
-    assert.strictEqual(Boolean(issue1.code), true, 'Should return 6-digit code');
+    assert.strictEqual(Boolean(issue1.code), true, 'Should self-heal and return 6-digit code even if table was missing');
     assert.strictEqual(issue1.code.length, 6, 'Code must be 6 digits');
     assert.strictEqual(issue1.validMinutes, 10, 'Code should be valid for 10 minutes');
+    console.log(`  ✓ Auto-created missing password_resets table and successfully issued code: ${issue1.code}`);
 
     // Attempting immediately again should be throttled by 60s cooldown
     const issue2 = await issueResetCode(testStudentId, testEmail);
     assert.strictEqual(issue2.error, 'COOLDOWN', 'Subsequent code request within 60s should trigger cooldown');
     assert.strictEqual(issue2.waitSeconds > 0, true, 'Should specify waitSeconds');
-    console.log(`  ✓ Code issued: ${issue1.code}, cooldown properly enforced (${issue2.waitSeconds}s remaining)\n`);
+    console.log(`  ✓ Cooldown properly enforced (${issue2.waitSeconds}s remaining)\n`);
     passedCount++;
 
     // ----------------------------------------------------

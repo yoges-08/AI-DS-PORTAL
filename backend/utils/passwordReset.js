@@ -1,6 +1,74 @@
 const crypto = require('crypto');
 const { pool } = require('../config/db');
 
+let tableChecked = false;
+
+/**
+ * Ensure password_resets table exists in SQLite or MySQL/TiDB
+ */
+async function ensurePasswordResetsTable() {
+  if (tableChecked) return;
+  try {
+    const { getDbMode } = require('../config/db');
+    const isSqlite = typeof getDbMode === 'function' && getDbMode() === 'sqlite';
+
+    if (isSqlite) {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS password_resets (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          student_id INTEGER UNIQUE NOT NULL,
+          email TEXT NOT NULL,
+          code_hash TEXT NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          expires_at INTEGER NOT NULL,
+          last_sent_at INTEGER NOT NULL,
+          resend_count INTEGER NOT NULL DEFAULT 0,
+          resend_window_start INTEGER NOT NULL,
+          reset_token_hash TEXT,
+          token_expires_at INTEGER,
+          FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+        );
+      `);
+    } else {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS \`password_resets\` (
+          \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+          \`student_id\` INT NOT NULL,
+          \`email\` VARCHAR(100) NOT NULL,
+          \`code_hash\` VARCHAR(100) NOT NULL,
+          \`attempts\` INT NOT NULL DEFAULT 0,
+          \`expires_at\` BIGINT NOT NULL,
+          \`last_sent_at\` BIGINT NOT NULL,
+          \`resend_count\` INT NOT NULL DEFAULT 0,
+          \`resend_window_start\` BIGINT NOT NULL,
+          \`reset_token_hash\` VARCHAR(100) NULL,
+          \`token_expires_at\` BIGINT NULL,
+          UNIQUE KEY \`uq_pr_student\` (\`student_id\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+    }
+    tableChecked = true;
+  } catch (err) {
+    console.warn('[passwordReset] ensurePasswordResetsTable notice:', err.message);
+  }
+}
+
+/**
+ * Helper to execute a query with auto-healing if table is missing
+ */
+async function safeQuery(sql, params = []) {
+  try {
+    return await pool.query(sql, params);
+  } catch (err) {
+    if (err.code === 'ER_NO_SUCH_TABLE' || err.errno === 1146 || String(err.message).toLowerCase().includes('no such table')) {
+      tableChecked = false;
+      await ensurePasswordResetsTable();
+      return await pool.query(sql, params);
+    }
+    throw err;
+  }
+}
+
 /**
  * Generate and store a secure 6-digit password reset code for a student
  * Enforces a 60-second cooldown and max 5 attempts/resends per hour.
@@ -10,8 +78,10 @@ async function issueResetCode(studentId, email) {
     return { error: 'INVALID_PARAMS', message: 'Student ID and email are required.' };
   }
 
+  await ensurePasswordResetsTable();
+
   const now = Date.now();
-  const [rows] = await pool.query(
+  const [rows] = await safeQuery(
     'SELECT * FROM password_resets WHERE student_id = ?',
     [studentId]
   );
@@ -59,14 +129,14 @@ async function issueResetCode(studentId, email) {
   const expiresAt = now + 10 * 60 * 1000; // 10 minutes
 
   if (existing) {
-    await pool.query(
+    await safeQuery(
       `UPDATE password_resets
        SET email = ?, code_hash = ?, attempts = 0, expires_at = ?, last_sent_at = ?, resend_count = ?, resend_window_start = ?, reset_token_hash = NULL, token_expires_at = NULL
        WHERE student_id = ?`,
       [email.trim().toLowerCase(), codeHash, expiresAt, now, resendCount, windowStart, studentId]
     );
   } else {
-    await pool.query(
+    await safeQuery(
       `INSERT INTO password_resets
        (student_id, email, code_hash, attempts, expires_at, last_sent_at, resend_count, resend_window_start)
        VALUES (?, ?, ?, 0, ?, ?, ?, ?)`,
@@ -97,53 +167,48 @@ async function checkResetCode(studentId, inputCode) {
     };
   }
 
+  await ensurePasswordResetsTable();
+
   const now = Date.now();
-  // Atomic check-and-increment to prevent concurrent race condition bypasses
-  const [updateRes] = await pool.query(
+
+  // Atomically increment attempt count
+  await safeQuery(
     'UPDATE password_resets SET attempts = attempts + 1 WHERE student_id = ? AND attempts < 5 AND expires_at > ?',
     [studentId, now]
   );
 
-  if (updateRes.affectedRows === 0) {
-    const [checkRows] = await pool.query(
-      'SELECT attempts, expires_at FROM password_resets WHERE student_id = ?',
-      [studentId]
-    );
-    if (!checkRows || checkRows.length === 0) {
-      return {
-        valid: false,
-        error: 'NO_PENDING_CODE',
-        message: 'No pending reset code found. Please request a new code.'
-      };
-    }
-    if (now > Number(checkRows[0].expires_at)) {
-      return {
-        valid: false,
-        error: 'EXPIRED',
-        message: 'Reset code has expired. Please request a new code.'
-      };
-    }
-    return {
-      valid: false,
-      error: 'MAX_ATTEMPTS_EXCEEDED',
-      message: 'Maximum verification attempts exceeded. Please request a new reset code.'
-    };
-  }
-
-  // Fetch updated record to verify HMAC
-  const [rows] = await pool.query(
-    'SELECT code_hash, attempts FROM password_resets WHERE student_id = ?',
+  // Fetch updated record with code_hash
+  const [rows] = await safeQuery(
+    'SELECT code_hash, attempts, expires_at FROM password_resets WHERE student_id = ?',
     [studentId]
   );
-  if (!rows || rows.length === 0) {
+
+  if (!rows || rows.length === 0 || !rows[0].code_hash) {
     return {
       valid: false,
-      error: 'NO_PENDING_CODE',
-      message: 'No pending reset code found. Please request a new code.'
+      error: 'NO_ACTIVE_CODE',
+      message: 'No active password reset request found. Please request a new code.'
     };
   }
 
   const record = rows[0];
+
+  if (now > Number(record.expires_at)) {
+    return {
+      valid: false,
+      error: 'CODE_EXPIRED',
+      message: 'Verification code has expired (10-minute limit). Please request a new code.'
+    };
+  }
+
+  if (Number(record.attempts) > 5) {
+    return {
+      valid: false,
+      error: 'TOO_MANY_ATTEMPTS',
+      message: 'Maximum verification attempts exceeded. Please request a new code.'
+    };
+  }
+
   const { JWT_SECRET } = require('../config/secrets');
   const secret = JWT_SECRET;
   const computedHash = crypto
@@ -176,7 +241,7 @@ async function checkResetCode(studentId, inputCode) {
 
   const tokenExpiresAt = now + 10 * 60 * 1000;
 
-  await pool.query(
+  await safeQuery(
     `UPDATE password_resets 
      SET reset_token_hash = ?, token_expires_at = ?, code_hash = ''
      WHERE student_id = ?`,
@@ -197,8 +262,10 @@ async function verifyResetToken(studentId, resetToken) {
     return { valid: false, message: 'Invalid reset authorization.' };
   }
 
+  await ensurePasswordResetsTable();
+
   const now = Date.now();
-  const [rows] = await pool.query(
+  const [rows] = await safeQuery(
     'SELECT reset_token_hash, token_expires_at FROM password_resets WHERE student_id = ?',
     [studentId]
   );
@@ -228,7 +295,7 @@ async function verifyResetToken(studentId, resetToken) {
   }
 
   // Clean up reset authorization so it can never be reused
-  await pool.query('DELETE FROM password_resets WHERE student_id = ?', [studentId]);
+  await safeQuery('DELETE FROM password_resets WHERE student_id = ?', [studentId]);
 
   return { valid: true };
 }
@@ -236,5 +303,6 @@ async function verifyResetToken(studentId, resetToken) {
 module.exports = {
   issueResetCode,
   checkResetCode,
-  verifyResetToken
+  verifyResetToken,
+  ensurePasswordResetsTable
 };

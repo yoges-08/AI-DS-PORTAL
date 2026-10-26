@@ -601,6 +601,46 @@ const testConnection = async () => {
     }
     try {
       await conn.query(`
+        CREATE TABLE IF NOT EXISTS \`password_resets\` (
+          \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+          \`student_id\` INT NOT NULL,
+          \`email\` VARCHAR(100) NOT NULL,
+          \`code_hash\` VARCHAR(100) NOT NULL,
+          \`attempts\` INT NOT NULL DEFAULT 0,
+          \`expires_at\` BIGINT NOT NULL,
+          \`last_sent_at\` BIGINT NOT NULL,
+          \`resend_count\` INT NOT NULL DEFAULT 0,
+          \`resend_window_start\` BIGINT NOT NULL,
+          \`reset_token_hash\` VARCHAR(100) NULL,
+          \`token_expires_at\` BIGINT NULL,
+          UNIQUE KEY \`uq_pr_student\` (\`student_id\`),
+          CONSTRAINT \`fk_pr_student\` FOREIGN KEY (\`student_id\`) REFERENCES \`students\` (\`id\`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+    } catch (migErr) {
+      try {
+        await conn.query(`
+          CREATE TABLE IF NOT EXISTS \`password_resets\` (
+            \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+            \`student_id\` INT NOT NULL,
+            \`email\` VARCHAR(100) NOT NULL,
+            \`code_hash\` VARCHAR(100) NOT NULL,
+            \`attempts\` INT NOT NULL DEFAULT 0,
+            \`expires_at\` BIGINT NOT NULL,
+            \`last_sent_at\` BIGINT NOT NULL,
+            \`resend_count\` INT NOT NULL DEFAULT 0,
+            \`resend_window_start\` BIGINT NOT NULL,
+            \`reset_token_hash\` VARCHAR(100) NULL,
+            \`token_expires_at\` BIGINT NULL,
+            UNIQUE KEY \`uq_pr_student\` (\`student_id\`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+      } catch (e) {
+        console.warn('[DB] Notice creating password_resets:', e.message);
+      }
+    }
+    try {
+      await conn.query(`
         CREATE TABLE IF NOT EXISTS \`email_logs\` (
           \`id\` INT AUTO_INCREMENT PRIMARY KEY,
           \`student_id\` INT NULL,
