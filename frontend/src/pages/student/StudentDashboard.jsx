@@ -13,14 +13,17 @@ import {
   CheckCircle2, 
   Clock, 
   AlertTriangle,
-  GraduationCap
+  GraduationCap,
+  KeyRound
 } from 'lucide-react';
+import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 import { StatusBadge } from '../../components/StatusBadge';
 
 export const StudentDashboard = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('form'); // 'form' or 'summary'
   const [openFaq, setOpenFaq] = useState(null);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const faqs = [
     {
@@ -71,8 +74,20 @@ export const StudentDashboard = () => {
           </div>
         </div>
 
-        {/* Sliding Segmented Tab Switcher */}
-        <div className="p-1 bg-surface-variant/70 rounded-xl w-full sm:w-auto grid grid-cols-2 sm:flex self-stretch sm:self-center shrink-0 border border-outline-variant/30 select-none gap-1 sm:gap-0">
+        {/* Header Action Controls */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 self-stretch sm:self-center shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsChangePasswordOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-[42px] text-xs font-semibold rounded-xl bg-white hover:bg-primary/5 hover:text-primary text-on-surface border border-outline-variant/40 shadow-xs transition-all active:scale-95 cursor-pointer"
+            title="Change student portal password"
+          >
+            <KeyRound className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span>Change Password</span>
+          </button>
+
+          {/* Sliding Segmented Tab Switcher */}
+          <div className="p-1 bg-surface-variant/70 rounded-xl w-full sm:w-auto grid grid-cols-2 sm:flex self-stretch sm:self-center shrink-0 border border-outline-variant/30 select-none gap-1 sm:gap-0">
           <button
             onClick={() => setActiveTab('form')}
             className={`inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 min-h-[42px] text-xs font-semibold rounded-lg transition-all duration-200 ${
@@ -96,6 +111,7 @@ export const StudentDashboard = () => {
             <Printer className="w-3.5 h-3.5 shrink-0" />
             <span className="truncate">Print A4 Dossier</span>
           </button>
+        </div>
         </div>
       </div>
 
@@ -162,6 +178,11 @@ export const StudentDashboard = () => {
           })}
         </div>
       </div>
+
+      <ChangePasswordModal 
+        isOpen={isChangePasswordOpen} 
+        onClose={() => setIsChangePasswordOpen(false)} 
+      />
 
     </div>
   );

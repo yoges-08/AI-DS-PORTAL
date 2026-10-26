@@ -92,6 +92,37 @@ export const api = {
     return await handleResponse(res);
   },
 
+  // Self-service Password Reset Flow
+  async requestPasswordReset(registerNo, dob) {
+    const res = await apiFetch(`${BASE_URL}/auth/forgot-password/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ registerNo, dob })
+    });
+    return await handleResponse(res);
+  },
+
+  async verifyPasswordResetCode(pendingResetToken, code) {
+    const res = await apiFetch(`${BASE_URL}/auth/forgot-password/verify-code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ pendingResetToken, code })
+    });
+    return await handleResponse(res);
+  },
+
+  async resetPasswordWithToken(resetAuthToken, newPassword, confirmPassword) {
+    const res = await apiFetch(`${BASE_URL}/auth/forgot-password/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ resetAuthToken, newPassword, confirmPassword })
+    });
+    return await handleResponse(res);
+  },
+
   async verifyEligibility(registerNo, dob, signal) {
     const res = await apiFetch(`${BASE_URL}/auth/student/verify-eligibility`, {
       method: 'POST',

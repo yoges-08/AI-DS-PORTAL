@@ -12,7 +12,8 @@ const { invalidateTokenCache } = require('../middleware/authMiddleware');
 const { JWT_SECRET, isProduction } = require('../config/secrets');
 const { logAdminAction } = require('../utils/auditLogger');
 const { sendNow, sendInBackground, maskEmail, mailEnabled } = require('../utils/mailer');
-const { verificationCode, accountCreated } = require('../utils/emailTemplates');
+const { verificationCode, accountCreated, passwordResetCode, passwordChangedNotice } = require('../utils/emailTemplates');
+const { issueResetCode, checkResetCode, verifyResetToken } = require('../utils/passwordReset');
 const { issueCode, checkCode } = require('../utils/emailVerification');
 const { isLocked, recordFailure, clearFailures } = require('../utils/lockout');
 const { checkPassword } = require('../utils/passwordPolicy');
@@ -826,13 +827,19 @@ const changePassword = async (req, res) => {
       invalidateTokenCache('ADMIN', id);
       return res.json({ success: true, message: 'Password updated successfully. Existing sessions have been revoked.' });
     } else if (role === 'STUDENT') {
-      const [students] = await pool.query('SELECT password, register_no, dob FROM students WHERE id = ?', [id]);
+      const [students] = await pool.query('SELECT password, register_no, dob, name, email FROM students WHERE id = ?', [id]);
       if (students.length === 0) {
         return res.status(404).json({ success: false, message: 'Student account not found.' });
       }
       const isMatch = await verifyPassword(currentPassword, students[0].password);
       if (!isMatch) {
         return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
+      }
+
+      // Prevent reusing same password
+      const isSame = await verifyPassword(newPassword, students[0].password);
+      if (isSame) {
+        return res.status(400).json({ success: false, message: 'New password cannot be the same as your current password.' });
       }
 
       // Check against student register number and dob
@@ -851,6 +858,20 @@ const changePassword = async (req, res) => {
         [hashed, id]
       );
       invalidateTokenCache('STUDENT', id);
+
+      // Send security alert email if student has email
+      if (students[0].email) {
+        const tpl = passwordChangedNotice({ name: students[0].name, registerNo: students[0].register_no });
+        sendNow({
+          toEmail: students[0].email,
+          toName: students[0].name,
+          subject: tpl.subject,
+          htmlContent: tpl.html,
+          studentId: students[0].id,
+          template: 'passwordChangedNotice'
+        }).catch(err => console.error('[ChangePassword Email Error]:', err));
+      }
+
       return res.json({ success: true, message: 'Password updated successfully. Existing sessions have been revoked.' });
     }
 
@@ -1145,6 +1166,308 @@ const changePendingEmail = async (req, res) => {
   }
 };
 
+
+/**
+ * -------------------------------------------------------------
+ * Student Self-Service Forgot Password & Reset Controller
+ * High-security 3-step verification flow:
+ * Step 1: Request Reset Code (Validates Reg No & DOB, dispatches 6-digit OTP to verified email)
+ * Step 2: Verify Reset Code (Validates 6-digit OTP, returns signed reset authorization token)
+ * Step 3: Set New Password (Validates password policy, revokes prior sessions, clears lockouts)
+ * -------------------------------------------------------------
+ */
+
+/**
+ * Step 1: Request Password Reset Code
+ * Route: POST /api/auth/forgot-password/request
+ * Body: { registerNo, dob }
+ */
+const requestPasswordReset = async (req, res) => {
+  try {
+    const { registerNo, dob } = req.body;
+    const cleanReg = cleanRegisterNo(registerNo);
+    const normalizedDob = normalizeDob(dob);
+
+    if (!cleanReg || !normalizedDob || !validateRegisterNo(cleanReg)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid Register Number and Date of Birth (DD/MM/YYYY) are required.'
+      });
+    }
+
+    // Rate limiting: 5 attempts per 15 minutes per register number
+    const lockKey = `forgot:reg:${cleanReg}`;
+    const lockout = await isLocked(lockKey, 5, 15 * 60 * 1000);
+    if (lockout && lockout.locked) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many password reset attempts for this Register Number. Please try again after 15 minutes.'
+      });
+    }
+
+    // Query student database
+    const [students] = await pool.query(
+      'SELECT id, name, register_no, dob, email, is_locked, email_verified FROM students WHERE LOWER(register_no) = LOWER(?)',
+      [cleanReg]
+    );
+
+    if (students.length === 0 || normalizeDob(students[0].dob) !== normalizedDob) {
+      await recordFailure(lockKey);
+      return res.status(404).json({
+        success: false,
+        message: 'No registered student account found matching this Register Number and Date of Birth.'
+      });
+    }
+
+    const student = students[0];
+
+    // Check administrative lock status
+    if (student.is_locked === 1) {
+      return res.status(403).json({
+        success: false,
+        message: 'This account has been placed on administrative hold. Please contact the department office (+91 99448 23120).'
+      });
+    }
+
+    // Require verified institutional email
+    if (!student.email || student.email_verified === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No verified email address is associated with this account. Please contact the department administrator to verify your email.'
+      });
+    }
+
+    // Clear failed attempts counter upon successful credential match
+    await clearFailures(lockKey);
+
+    // Issue cryptographic 6-digit reset code
+    const issueRes = await issueResetCode(student.id, student.email);
+    if (issueRes.error) {
+      return res.status(429).json({
+        success: false,
+        code: issueRes.error,
+        message: issueRes.message,
+        waitSeconds: issueRes.waitSeconds
+      });
+    }
+
+    // Dispatch executive dual-logo reset email
+    const tpl = passwordResetCode({ name: student.name, code: issueRes.code, validMinutes: 10 });
+    const emailRes = await sendNow({
+      toEmail: student.email,
+      toName: student.name,
+      subject: tpl.subject,
+      htmlContent: tpl.html,
+      studentId: student.id,
+      template: 'passwordResetCode'
+    });
+
+    // Generate signed pending reset session token (15-minute validity)
+    const pendingResetToken = jwt.sign(
+      { studentId: student.id, registerNo: student.register_no, purpose: 'PASSWORD_RESET_PENDING' },
+      JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    return res.json({
+      success: true,
+      message: `A 6-digit security code has been sent to your registered email address (${maskEmail(student.email)}).`,
+      emailMasked: maskEmail(student.email),
+      pendingResetToken,
+      emailSent: Boolean(emailRes.success)
+    });
+  } catch (error) {
+    console.error('[requestPasswordReset Error]:', error);
+    return res.status(500).json({ success: false, message: 'Failed to initiate password reset. Please try again.' });
+  }
+};
+
+/**
+ * Step 2: Verify Password Reset Code
+ * Route: POST /api/auth/forgot-password/verify-code
+ * Body: { pendingResetToken, code }
+ */
+const verifyPasswordResetCode = async (req, res) => {
+  try {
+    const { pendingResetToken, code } = req.body;
+    if (!pendingResetToken || !code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Pending reset session and 6-digit code are required.'
+      });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(pendingResetToken, JWT_SECRET);
+    } catch {
+      return res.status(401).json({
+        success: false,
+        message: 'Password reset session has expired or is invalid. Please request a new code.'
+      });
+    }
+
+    if (decoded.purpose !== 'PASSWORD_RESET_PENDING' || !decoded.studentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Invalid reset authorization credentials.'
+      });
+    }
+
+    // Validate 6-digit code against HMAC hash
+    const checkRes = await checkResetCode(decoded.studentId, code);
+    if (!checkRes.valid) {
+      return res.status(400).json({
+        success: false,
+        code: checkRes.error,
+        message: checkRes.message,
+        remainingAttempts: checkRes.remainingAttempts
+      });
+    }
+
+    // Generate authorized reset token (10-minute validity)
+    const resetAuthToken = jwt.sign(
+      {
+        studentId: decoded.studentId,
+        registerNo: decoded.registerNo,
+        resetToken: checkRes.resetToken,
+        purpose: 'PASSWORD_RESET_AUTHORIZED'
+      },
+      JWT_SECRET,
+      { expiresIn: '10m' }
+    );
+
+    return res.json({
+      success: true,
+      message: 'Code verified successfully! You may now create your new password.',
+      resetAuthToken
+    });
+  } catch (error) {
+    console.error('[verifyPasswordResetCode Error]:', error);
+    return res.status(500).json({ success: false, message: 'Failed to verify reset code. Please try again.' });
+  }
+};
+
+/**
+ * Step 3: Set New Password
+ * Route: POST /api/auth/forgot-password/reset
+ * Body: { resetAuthToken, newPassword, confirmPassword }
+ */
+const resetPasswordWithToken = async (req, res) => {
+  try {
+    const { resetAuthToken, newPassword, confirmPassword } = req.body;
+
+    if (!resetAuthToken || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reset authorization token and new password are required.'
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password and confirmation password do not match.'
+      });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(resetAuthToken, JWT_SECRET);
+    } catch {
+      return res.status(401).json({
+        success: false,
+        message: 'Password reset authorization has expired. Please start again.'
+      });
+    }
+
+    if (decoded.purpose !== 'PASSWORD_RESET_AUTHORIZED' || !decoded.studentId || !decoded.resetToken) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized password reset request.'
+      });
+    }
+
+    // Verify and consume one-time reset token from database
+    const tokenValid = await verifyResetToken(decoded.studentId, decoded.resetToken);
+    if (!tokenValid.valid) {
+      return res.status(401).json({
+        success: false,
+        message: tokenValid.message || 'Password reset authorization has already been used or has expired.'
+      });
+    }
+
+    // Fetch student particulars for password policy checks
+    const [students] = await pool.query(
+      'SELECT id, name, register_no, dob, email, password FROM students WHERE id = ?',
+      [decoded.studentId]
+    );
+
+    if (students.length === 0) {
+      return res.status(404).json({ success: false, message: 'Student account not found.' });
+    }
+
+    const student = students[0];
+
+    // Enforce strict institutional password policy
+    const pwPolicyErr = checkPassword(newPassword, {
+      registerNo: student.register_no,
+      dob: student.dob,
+      minLength: 8
+    });
+    if (pwPolicyErr) {
+      return res.status(400).json({ success: false, message: pwPolicyErr });
+    }
+
+    // Prevent re-using the identical existing password
+    const isSamePassword = await bcrypt.compare(String(newPassword), student.password);
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password cannot be the same as your previous password.'
+      });
+    }
+
+    // Hash with bcrypt 12 rounds
+    const hashedPassword = await bcrypt.hash(String(newPassword), 12);
+
+    // Update password, increment token_version (invalidating any old sessions on other devices), clear must_change_password
+    await pool.query(
+      `UPDATE students 
+       SET password = ?, 
+           token_version = COALESCE(token_version, 1) + 1, 
+           must_change_password = 0, 
+           updated_at = NOW() 
+       WHERE id = ?`,
+      [hashedPassword, student.id]
+    );
+
+    // Clear login and verification lockout counters
+    await clearFailures(`verify:${student.register_no}`);
+    await clearFailures(`login:student:${student.register_no}`);
+    invalidateTokenCache('STUDENT', student.id);
+
+    // Dispatch security notice email
+    const tpl = passwordChangedNotice({ name: student.name, registerNo: student.register_no });
+    sendNow({
+      toEmail: student.email,
+      toName: student.name,
+      subject: tpl.subject,
+      htmlContent: tpl.html,
+      studentId: student.id,
+      template: 'passwordChangedNotice'
+    }).catch(err => console.error('[PasswordChangeNotice Email Error]:', err));
+
+    return res.json({
+      success: true,
+      message: 'Password reset successfully! You can now log in securely with your new password.'
+    });
+  } catch (error) {
+    console.error('[resetPasswordWithToken Error]:', error);
+    return res.status(500).json({ success: false, message: 'Failed to reset password. Please try again.' });
+  }
+};
+
 module.exports = {
   verifyEmail,
   resendVerificationCode,
@@ -1155,5 +1478,8 @@ module.exports = {
   getCurrentUser,
   changePassword,
   verifyStudentEligibility,
-  registerStudent
+  registerStudent,
+  requestPasswordReset,
+  verifyPasswordResetCode,
+  resetPasswordWithToken
 };

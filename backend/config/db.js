@@ -209,6 +209,21 @@ const initSqliteFallback = async () => {
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
       );
 
+            CREATE TABLE IF NOT EXISTS password_resets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER UNIQUE NOT NULL,
+        email TEXT NOT NULL,
+        code_hash TEXT NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        expires_at INTEGER NOT NULL,
+        last_sent_at INTEGER NOT NULL,
+        resend_count INTEGER NOT NULL DEFAULT 0,
+        resend_window_start INTEGER NOT NULL,
+        reset_token_hash TEXT,
+        token_expires_at INTEGER,
+        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+      );
+
       CREATE TABLE IF NOT EXISTS email_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         student_id INTEGER,

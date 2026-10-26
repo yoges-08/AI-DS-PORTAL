@@ -10,7 +10,10 @@ const {
   registerStudent,
   verifyEmail,
   resendVerificationCode,
-  changePendingEmail
+  changePendingEmail,
+  requestPasswordReset,
+  verifyPasswordResetCode,
+  resetPasswordWithToken
 } = require('../controllers/authController');
 const { 
   loginLimiter,
@@ -31,5 +34,10 @@ router.post('/admin/login', loginLimiter, loginAdmin);
 router.post('/logout', logout);
 router.get('/me', authenticateToken, getCurrentUser);
 router.post('/change-password', authenticateToken, changePassword);
+
+// Self-service Password Reset endpoints
+router.post('/forgot-password/request', emailCodeLimiter, requestPasswordReset);
+router.post('/forgot-password/verify-code', emailCodeLimiter, verifyPasswordResetCode);
+router.post('/forgot-password/reset', emailCodeLimiter, resetPasswordWithToken);
 
 module.exports = router;

@@ -739,6 +739,114 @@ function unlocked({ name, registerNo }) {
   };
 }
 
+
+/**
+ * E8: Password Reset Verification Code
+ */
+function passwordResetCode({ name, code, validMinutes = 10 }) {
+  const safeName = esc(name);
+  const safeCode = esc(code);
+  const safeMinutes = esc(validMinutes);
+
+  const content = `
+    <h2 class="headline" style="color: #0369a1;">Password Reset Verification Code</h2>
+    <div class="salutation">Dear ${safeName},</div>
+    
+    <p class="paragraph">
+      We received a request to reset the password for your <strong>AI &amp; DS Student Information Portal</strong> account. 
+      Please use the 6-digit authorization code below to verify your identity and set a new password:
+    </p>
+
+    <!-- OTP Display Box -->
+    <div class="card-block" style="background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd; text-align: center;">
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #0369a1; margin-bottom: 10px;">
+        Password Reset Authorization Code
+      </div>
+      <div style="font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 34px; font-weight: 900; letter-spacing: 12px; color: #0284c7; padding: 12px 0 12px 12px; text-shadow: 0 1px 2px rgba(2,132,199,0.15);">
+        ${safeCode}
+      </div>
+      <div style="font-size: 12px; font-weight: 600; color: #0369a1; margin-top: 6px;">
+        &#9201; Valid for ${safeMinutes} minutes only
+      </div>
+    </div>
+
+    <!-- Security Advisory Card -->
+    <div style="background: #f8fafc; border-left: 3px solid #0284c7; border-radius: 6px; padding: 14px 16px; margin: 20px 0;">
+      <div style="font-size: 12px; font-weight: 700; color: #0f172a; margin-bottom: 3px;">Security &amp; Account Protection</div>
+      <div style="font-size: 12px; color: #64748b; line-height: 1.5;">
+        If you did not request this password reset, please ignore this email or notify the department office immediately at <a href="mailto:${SUPPORT_EMAIL}" style="color: #0284c7; text-decoration: none; font-weight: 600;">${SUPPORT_EMAIL}</a>. Your current password remains secure.
+      </div>
+    </div>
+  `;
+
+  return {
+    subject: `${code} is your Password Reset Code - AI & DS Portal`,
+    html: layout({
+      title: 'Password Reset - AI & DS Portal',
+      preheader: `Your password reset code is ${code}. Valid for ${validMinutes} minutes.`,
+      badge: 'SECURITY AUTHENTICATION',
+      badgeColor: '#0284c7',
+      content
+    })
+  };
+}
+
+/**
+ * E9: Password Changed Security Alert
+ */
+function passwordChangedNotice({ name, registerNo }) {
+  const safeName = esc(name);
+  const safeReg = esc(registerNo);
+  const portalUrl = getPortalUrl();
+  const timestamp = esc(new Date().toLocaleDateString('en-GB', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  }));
+
+  const content = `
+    <h2 class="headline" style="color: #047857;">Password Changed Successfully</h2>
+    <div class="salutation">Dear ${safeName},</div>
+    
+    <p class="paragraph">
+      This is a security confirmation that the password for your <strong>AI &amp; DS Student Information Portal</strong> account (Register Number: <strong>${safeReg}</strong>) was successfully updated on ${timestamp}.
+    </p>
+
+    <!-- Success Confirmation Card -->
+    <div class="card-block" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 18px 22px; text-align: center;">
+      <div style="font-size: 16px; font-weight: 800; color: #065f46; margin-bottom: 4px;">
+        Account Security Updated
+      </div>
+      <div style="font-size: 13px; color: #047857;">
+        All existing active sessions have been invalidated across all devices for your protection.
+      </div>
+    </div>
+
+    <!-- Security Warning Card -->
+    <div style="background: #fef2f2; border-left: 3px solid #ef4444; border-radius: 6px; padding: 14px 16px; margin: 20px 0;">
+      <div style="font-size: 12px; font-weight: 700; color: #991b1b; margin-bottom: 3px;">Did not make this change?</div>
+      <div style="font-size: 12px; color: #7f1d1d; line-height: 1.5;">
+        If you did not authorize this password change, your account may have been accessed without permission. Please contact the AI &amp; DS Department Office immediately at <a href="mailto:${SUPPORT_EMAIL}" style="color: #b91c1c; text-decoration: underline; font-weight: 700;">${SUPPORT_EMAIL}</a> or <a href="tel:+919944823120" style="color: #b91c1c; text-decoration: underline; font-weight: 700;">${SUPPORT_PHONE}</a>.
+      </div>
+    </div>
+
+    <div style="text-align: center; margin: 28px 0 10px 0;">
+      <a href="${portalUrl}" class="btn-action" target="_blank">
+        Sign In with New Password &rarr;
+      </a>
+    </div>
+  `;
+
+  return {
+    subject: 'Security Alert: Password Changed - AI & DS Portal',
+    html: layout({
+      title: 'Password Changed - AI & DS Portal',
+      preheader: `Security notice: Password updated for student account (${registerNo}).`,
+      badge: 'SECURITY NOTIFICATION',
+      badgeColor: '#059669',
+      content
+    })
+  };
+}
+
 module.exports = {
   esc,
   layout,
@@ -748,5 +856,7 @@ module.exports = {
   verified,
   rejected,
   locked,
-  unlocked
+  unlocked,
+  passwordResetCode,
+  passwordChangedNotice
 };

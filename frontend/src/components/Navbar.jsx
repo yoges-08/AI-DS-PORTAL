@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Menu, X, Shield, GraduationCap } from 'lucide-react';
+import { LogOut, Menu, X, Shield, GraduationCap, KeyRound } from 'lucide-react';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 export const Navbar = ({ onToggleMobileMenu, isMobileMenuOpen, onLogoClick }) => {
   const { user, logout } = useAuth();
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const getInitials = (name) => {
     if (!name) return 'U';
@@ -92,6 +94,18 @@ export const Navbar = ({ onToggleMobileMenu, isMobileMenuOpen, onLogoClick }) =>
                 </div>
               </div>
 
+              {/* Change Password Button */}
+              <button
+                type="button"
+                onClick={() => setIsChangePasswordOpen(true)}
+                title="Change account password"
+                aria-label="Change Password"
+                className="inline-flex items-center justify-center space-x-1.5 px-3 py-2 min-h-[40px] min-w-[40px] text-xs font-semibold rounded-xl bg-white hover:bg-primary/5 hover:text-primary border border-outline-variant/40 text-on-surface transition-all active:scale-95 shadow-sm shrink-0"
+              >
+                <KeyRound className="w-4 h-4 text-primary shrink-0" />
+                <span className="hidden lg:inline">Password</span>
+              </button>
+
               {/* Logout Button */}
               <button
                 onClick={logout}
@@ -107,6 +121,10 @@ export const Navbar = ({ onToggleMobileMenu, isMobileMenuOpen, onLogoClick }) =>
 
         </div>
       </div>
+      <ChangePasswordModal 
+        isOpen={isChangePasswordOpen} 
+        onClose={() => setIsChangePasswordOpen(false)} 
+      />
     </header>
   );
 };
