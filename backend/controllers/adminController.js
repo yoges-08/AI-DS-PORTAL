@@ -13,6 +13,7 @@ const {
   cleanRegisterNo,
   isScientificNotation,
   validateRegisterNo,
+  validateEmail,
   validateMobile,
   validateAadhaar,
   validateIfsc,
@@ -452,6 +453,7 @@ const parseWhitelistSpreadsheet = (fileBuf, originalname) => {
   const validRows = [];
   const errors = [];
   const seenInBatch = new Set();
+  const seenEmailsInBatch = new Map();
 
   for (let i = 0; i < dataRows.length; i++) {
     const row = dataRows[i];
@@ -486,6 +488,22 @@ const parseWhitelistSpreadsheet = (fileBuf, originalname) => {
       continue;
     }
     seenInBatch.add(cleanRegNo.toLowerCase());
+
+    if (rawEmail) {
+      if (!validateEmail(rawEmail)) {
+        errors.push({ row: rowNum, error: `Row ${rowNum}: Invalid email format (${rawEmail}) for ${cleanRegNo}.` });
+        continue;
+      }
+      if (seenEmailsInBatch.has(rawEmail)) {
+        const prevReg = seenEmailsInBatch.get(rawEmail);
+        errors.push({
+          row: rowNum,
+          error: `Row ${rowNum}: Duplicate Email address (${rawEmail}) in file (already assigned to Register Number ${prevReg}).`
+        });
+        continue;
+      }
+      seenEmailsInBatch.set(rawEmail, cleanRegNo);
+    }
 
     const dob = normalizeDob(rawDob, batchDateFormat);
     if (!dob) {
@@ -549,10 +567,13 @@ const bulkImportStudents = async (req, res) => {
     let skippedCount = 0;
     const errors = [...parsed.errors.map(e => e.error)];
 
-    // B8 fix: Bulk fetch existing whitelist and student records in batches (prevents slow row-by-row queries)
+    // B8 fix: Bulk fetch existing whitelist, student records, and email bindings in batches
     const regNos = parsed.validRows.map(r => r.registerNo);
+    const emails = parsed.validRows.map(r => r.email).filter(Boolean);
     const existingWlMap = new Map();
     const existingStudentMap = new Map();
+    const existingStudentByEmailMap = new Map();
+    const existingWlByEmailMap = new Map();
     const BATCH_SIZE = 500;
 
     for (let i = 0; i < regNos.length; i += BATCH_SIZE) {
@@ -572,7 +593,44 @@ const bulkImportStudents = async (req, res) => {
       stRows.forEach(r => existingStudentMap.set(r.register_no, r));
     }
 
+    if (emails.length > 0) {
+      for (let i = 0; i < emails.length; i += BATCH_SIZE) {
+        const chunk = emails.slice(i, i + BATCH_SIZE);
+        const ph = chunk.map(() => '?').join(',');
+
+        const [stEmailRows] = await conn.query(
+          `SELECT id, register_no, email FROM students WHERE LOWER(email) IN (${ph})`,
+          chunk
+        );
+        stEmailRows.forEach(r => existingStudentByEmailMap.set(r.email.toLowerCase(), r));
+
+        const [wlEmailRows] = await conn.query(
+          `SELECT id, register_no, email, is_claimed FROM student_whitelist WHERE LOWER(email) IN (${ph})`,
+          chunk
+        );
+        wlEmailRows.forEach(r => existingWlByEmailMap.set(r.email.toLowerCase(), r));
+      }
+    }
+
     for (const item of parsed.validRows) {
+      // Prevent binding an email that already belongs to another registered student or whitelist candidate
+      if (item.email) {
+        const emailLower = item.email.toLowerCase();
+        const studentByEmail = existingStudentByEmailMap.get(emailLower);
+        if (studentByEmail && studentByEmail.register_no.toLowerCase() !== item.registerNo.toLowerCase()) {
+          errors.push(`Row ${item.rowNum}: Email (${item.email}) is already used by student ${studentByEmail.register_no}. Skipped.`);
+          skippedCount++;
+          continue;
+        }
+
+        const wlByEmail = existingWlByEmailMap.get(emailLower);
+        if (wlByEmail && wlByEmail.register_no.toLowerCase() !== item.registerNo.toLowerCase()) {
+          errors.push(`Row ${item.rowNum}: Email (${item.email}) is already assigned to whitelist candidate ${wlByEmail.register_no}. Skipped.`);
+          skippedCount++;
+          continue;
+        }
+      }
+
       const wl = existingWlMap.get(item.registerNo);
 
       if (wl) {
@@ -675,9 +733,12 @@ const previewBulkImport = async (req, res) => {
     // Determine prospective status for preview sample (first 25 rows)
     const sampleRows = parsed.validRows.slice(0, 25);
     const regList = sampleRows.map(r => r.registerNo);
+    const emailList = sampleRows.map(r => r.email).filter(Boolean);
 
     let existingWlMap = new Map();
     let existingStudentSet = new Set();
+    let existingStudentEmailMap = new Map();
+    let existingWlEmailMap = new Map();
 
     if (regList.length > 0) {
       const placeholders = regList.map(() => '?').join(',');
@@ -694,25 +755,51 @@ const previewBulkImport = async (req, res) => {
       stRows.forEach(s => existingStudentSet.add(s.register_no.toLowerCase()));
     }
 
+    if (emailList.length > 0) {
+      const emailPh = emailList.map(() => '?').join(',');
+      const [stEmailRows] = await pool.query(
+        `SELECT register_no, email FROM students WHERE LOWER(email) IN (${emailPh})`,
+        emailList
+      );
+      stEmailRows.forEach(s => existingStudentEmailMap.set(s.email.toLowerCase(), s.register_no));
+
+      const [wlEmailRows] = await pool.query(
+        `SELECT register_no, email FROM student_whitelist WHERE LOWER(email) IN (${emailPh})`,
+        emailList
+      );
+      wlEmailRows.forEach(w => existingWlEmailMap.set(w.email.toLowerCase(), w.register_no));
+    }
+
     const preview = sampleRows.map(r => {
       const key = r.registerNo.toLowerCase();
       let status = 'NEW';
-      if (existingStudentSet.has(key)) {
-        status = 'ALREADY_REGISTERED';
-      } else if (existingWlMap.has(key)) {
-        const wl = existingWlMap.get(key);
-        if (wl.is_claimed) {
+      if (r.email) {
+        const eKey = r.email.toLowerCase();
+        const takenByStudent = existingStudentEmailMap.get(eKey);
+        const takenByWl = existingWlEmailMap.get(eKey);
+        if ((takenByStudent && takenByStudent.toLowerCase() !== key) || (takenByWl && takenByWl.toLowerCase() !== key)) {
+          status = 'EMAIL_IN_USE';
+        }
+      }
+      if (status !== 'EMAIL_IN_USE') {
+        if (existingStudentSet.has(key)) {
           status = 'ALREADY_REGISTERED';
-        } else if (wl.dob !== r.dob) {
-          status = 'UPDATE_DOB';
-        } else {
-          status = 'EXISTS';
+        } else if (existingWlMap.has(key)) {
+          const wl = existingWlMap.get(key);
+          if (wl.is_claimed) {
+            status = 'ALREADY_REGISTERED';
+          } else if (wl.dob !== r.dob) {
+            status = 'UPDATE_DOB';
+          } else {
+            status = 'EXISTS';
+          }
         }
       }
       return {
         rowNum: r.rowNum,
         registerNo: r.registerNo,
         dob: r.dob,
+        email: r.email || null,
         status
       };
     });
@@ -1666,7 +1753,8 @@ module.exports = {
   bulkLockStudents,
   bulkDeleteStudents,
   getWhitelistEntries,
-  deleteWhitelistEntry
+  deleteWhitelistEntry,
+  parseWhitelistSpreadsheet
 };
 
 

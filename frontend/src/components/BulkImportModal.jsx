@@ -203,6 +203,7 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
                         <th className="px-2.5 py-1">Row</th>
                         <th className="px-2.5 py-1">Register No</th>
                         <th className="px-2.5 py-1">DOB (Parsed)</th>
+                        {previewData.preview.some(r => r.email) && <th className="px-2.5 py-1">Pre-bound Email</th>}
                         <th className="px-2.5 py-1">Prospective Action</th>
                       </tr>
                     </thead>
@@ -212,6 +213,9 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
                           <td className="px-2.5 py-1 text-outline font-sans">{row.rowNum}</td>
                           <td className="px-2.5 py-1 font-semibold text-primary">{row.registerNo}</td>
                           <td className="px-2.5 py-1 text-on-surface">{row.dob}</td>
+                          {previewData.preview.some(r => r.email) && (
+                            <td className="px-2.5 py-1 text-on-surface font-sans text-[10.5px] truncate max-w-[130px]">{row.email || '-'}</td>
+                          )}
                           <td className="px-2.5 py-1 font-sans">
                             {row.status === 'NEW' && (
                               <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800 font-bold">New Pre-registration</span>
@@ -224,6 +228,9 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
                             )}
                             {row.status === 'EXISTS' && (
                               <span className="px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-700 font-medium">Unchanged</span>
+                            )}
+                            {row.status === 'EMAIL_IN_USE' && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-100 text-rose-800 font-bold">Email Conflict</span>
                             )}
                           </td>
                         </tr>

@@ -322,6 +322,7 @@ const initSqliteFallback = async () => {
         sqliteDb.exec('ALTER TABLE student_documents ADD COLUMN file_data BLOB;');
       }
       try { sqliteDb.exec('CREATE UNIQUE INDEX IF NOT EXISTS uq_student_doc ON student_documents(student_id, doc_type);'); } catch (e) {}
+      try { sqliteDb.exec('CREATE UNIQUE INDEX IF NOT EXISTS uq_students_email ON students(email);'); } catch (e) {}
       if (!studentCols.some(c => c.name === 'token_version')) {
         sqliteDb.exec('ALTER TABLE students ADD COLUMN token_version INTEGER DEFAULT 1;');
       }
@@ -561,6 +562,9 @@ const testConnection = async () => {
     await addColumnIfMissing(conn, 'students', 'must_change_password', 'TINYINT(1) NOT NULL DEFAULT 0');
 
     await addColumnIfMissing(conn, 'students', 'email_verified', 'TINYINT(1) NOT NULL DEFAULT 1');
+    try {
+      await conn.query('ALTER TABLE `students` ADD UNIQUE INDEX `uq_students_email` (`email`);');
+    } catch (migErr) {}
     try {
       await conn.query(`
         CREATE TABLE IF NOT EXISTS \`email_verifications\` (
