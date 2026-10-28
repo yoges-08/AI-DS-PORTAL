@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { 
@@ -27,7 +28,27 @@ export const ChangePasswordModal = ({ isOpen, onClose, onSuccess }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  // Lock body scroll while modal is active & support Escape key dismissal
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
   const minLen = user?.role === 'ADMIN' ? 12 : 8;
   const hasMinLength = newPassword.length >= minLen;
@@ -87,16 +108,24 @@ export const ChangePasswordModal = ({ isOpen, onClose, onSuccess }) => {
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-900/60 backdrop-blur-sm animate-fadeIn"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          handleClose();
+        }
+      }}
+    >
       <div 
-        className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
+        className="relative w-full max-w-md my-auto bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[calc(100vh-2rem)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="change-password-title"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+        <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#1E4FD8] flex items-center justify-center">
               <KeyRound className="w-5 h-5" />
@@ -120,8 +149,8 @@ export const ChangePasswordModal = ({ isOpen, onClose, onSuccess }) => {
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-6">
+        {/* Body with smooth scrolling on constrained displays */}
+        <div className="p-6 overflow-y-auto">
           {success ? (
             <div className="text-center py-4 space-y-4">
               <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border-4 border-emerald-100">
@@ -281,7 +310,8 @@ export const ChangePasswordModal = ({ isOpen, onClose, onSuccess }) => {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
