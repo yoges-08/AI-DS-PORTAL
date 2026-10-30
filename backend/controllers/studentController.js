@@ -409,9 +409,6 @@ const updateStudentDetails = async (req, res) => {
     setClauses.push('status = ?');
     values.push(updatedStatus);
 
-    setClauses.push("rejection_reason = CASE WHEN ? = 'DRAFT' THEN NULL ELSE rejection_reason END");
-    values.push(updatedStatus);
-
     values.push(studentId);
 
     const updateQuery = `UPDATE students SET ${setClauses.join(', ')} WHERE id = ?`;

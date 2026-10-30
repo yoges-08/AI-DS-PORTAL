@@ -238,33 +238,37 @@ app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/export', exportRoutes);
 
-// Health check endpoint with live database and storage verification
+// In-memory cache for database health check (15-second TTL)
+let cachedHealth = { connected: false, mode: getDbMode(), lastChecked: 0 };
+
 app.get('/api/health', async (req, res) => {
-  let dbStatus = { connected: false, mode: getDbMode() };
-  try {
-    const [result] = await pool.query('SELECT 1 AS ping');
-    if (result && result.length > 0) {
-      dbStatus = {
-        connected: true,
+  const now = Date.now();
+  if (now - cachedHealth.lastChecked > 15000) {
+    try {
+      const [result] = await pool.query('SELECT 1 AS ping');
+      cachedHealth = {
+        connected: Boolean(result && result.length > 0),
         mode: getDbMode(),
-        database: process.env.DB_NAME || 'aids_portal'
+        database: process.env.DB_NAME || 'aids_portal',
+        lastChecked: now
+      };
+    } catch (dbErr) {
+      cachedHealth = {
+        connected: false,
+        mode: getDbMode(),
+        error: process.env.NODE_ENV === 'production' ? 'Database service unavailable' : dbErr.message,
+        lastChecked: now
       };
     }
-  } catch (dbErr) {
-    dbStatus = {
-      connected: false,
-      mode: getDbMode(),
-      error: process.env.NODE_ENV === 'production' ? 'Database service unavailable' : dbErr.message
-    };
   }
 
-  const statusCode = dbStatus.connected ? 200 : 503;
-  // Low 9 fix: Quiet healthy pings; only log degraded / disconnected state
-  if (!dbStatus.connected) {
-    console.warn(`[Health Warning] Degraded status at ${new Date().toISOString()}: DB ${dbStatus.mode} disconnected.`);
+  const statusCode = cachedHealth.connected ? 200 : 503;
+  if (!cachedHealth.connected) {
+    console.warn(`[Health Warning] Degraded status: DB ${cachedHealth.mode} disconnected.`);
   }
+
   res.status(statusCode).json({
-    status: dbStatus.connected ? 'HEALTHY' : 'DEGRADED',
+    status: cachedHealth.connected ? 'HEALTHY' : 'DEGRADED',
     timestamp: new Date().toISOString()
   });
 });
