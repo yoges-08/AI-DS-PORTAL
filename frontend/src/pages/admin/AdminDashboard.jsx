@@ -4,6 +4,9 @@ import {
   Users, 
   CheckCircle, 
   CheckCheck,
+  CheckCircle2,
+  AlertCircle,
+  X,
   Clock, 
   Award, 
   GraduationCap, 
@@ -27,6 +30,7 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { StudentDetailModal } from '../../components/StudentDetailModal';
 import { AddStudentModal } from '../../components/AddStudentModal';
 import { BulkImportModal } from '../../components/BulkImportModal';
+import { triggerSandDisintegration } from '../../utils/sandDisintegration';
 
 export const AdminDashboard = ({ onOpenMultiStepEdit, onNavigateTab }) => {
   const [stats, setStats] = useState({
@@ -45,6 +49,15 @@ export const AdminDashboard = ({ onOpenMultiStepEdit, onNavigateTab }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [actionMessage, setActionMessage] = useState(null);
+
+  // Auto-dismiss action notifications after 5 seconds
+  useEffect(() => {
+    if (actionMessage) {
+      const timer = setTimeout(() => setActionMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [actionMessage]);
 
   // Filters & Search
   const [search, setSearch] = useState('');
@@ -188,23 +201,42 @@ export const AdminDashboard = ({ onOpenMultiStepEdit, onNavigateTab }) => {
     setStatus('');
   };
 
-  const handleDeleteStudent = async (student) => {
+  const handleDeleteStudent = async (student, targetElement) => {
     const confirmMsg = `Are you sure you want to PERMANENTLY delete student ${student.name} (${student.register_no})?\n\nThis will remove their profile and all uploaded certificates from Cloudflare R2. This action cannot be undone.`;
     if (!window.confirm(confirmMsg)) return;
 
-    try {
-      const res = await api.deleteStudent(student.id);
-      alert(res.message || 'Student deleted successfully.');
-      if (search) {
-        setSearch('');
-      } else if (students.length === 1 && currentPage > 1) {
-        setCurrentPage((prev) => Math.max(1, prev - 1));
-      } else {
-        setRefreshTrigger((prev) => prev + 1);
+    // Resolve target row or mobile card
+    const element = targetElement || 
+      document.getElementById(`student-row-${student.id}`) || 
+      document.getElementById(`student-card-${student.id}`);
+
+    // Trigger golden sand upward draft disintegration at 0.35x cinematic speed
+    triggerSandDisintegration(element, async () => {
+      // Optimistically remove student from UI state after sand dissolves
+      setStudents(prev => prev.filter(s => s.id !== student.id));
+
+      try {
+        const res = await api.deleteStudent(student.id);
+        setActionMessage({ 
+          type: 'success', 
+          text: res.message || `Student ${student.name} (${student.register_no}) permanently deleted.` 
+        });
+
+        // Silently refresh statistics & pagination
+        fetchStats();
+        if (students.length <= 1 && currentPage > 1) {
+          setCurrentPage(prev => Math.max(1, prev - 1));
+        } else {
+          setRefreshTrigger(prev => prev + 1);
+        }
+      } catch (err) {
+        setActionMessage({ 
+          type: 'error', 
+          text: err.message || 'Failed to delete student from database.' 
+        });
+        setRefreshTrigger(prev => prev + 1);
       }
-    } catch (err) {
-      alert(err.message || 'Failed to delete student.');
-    }
+    });
   };
 
   return (
@@ -277,6 +309,32 @@ export const AdminDashboard = ({ onOpenMultiStepEdit, onNavigateTab }) => {
           </button>
         </div>
       </div>
+
+      {/* Dynamic Action Notification Banner */}
+      {actionMessage && (
+        <div
+          className={`p-4 rounded-2xl flex items-start justify-between gap-3 text-xs border animate-fadeIn transition-all shadow-xs ${
+            actionMessage.type === 'error'
+              ? 'bg-rose-50 border-rose-200 text-rose-900'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {actionMessage.type === 'error' ? (
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            )}
+            <span className="font-semibold">{actionMessage.text}</span>
+          </div>
+          <button
+            onClick={() => setActionMessage(null)}
+            className="text-slate-400 hover:text-slate-600 p-0.5 rounded-md transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Top Bento Metric Cards (Apple macOS Style) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5 sm:gap-3.5">
@@ -516,6 +574,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit, onNavigateTab }) => {
             students.map((student, idx) => (
               <div
                 key={student.id}
+                id={`student-card-${student.id}`}
                 onClick={() => handleRowClick(student.id)}
                 className="p-4 hover:bg-white/50 transition-colors space-y-2.5 cursor-pointer"
               >
@@ -577,7 +636,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit, onNavigateTab }) => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDeleteStudent(student);
+                      handleDeleteStudent(student, e.currentTarget.closest('[id^="student-card-"]'));
                     }}
                     className="inline-flex items-center px-2.5 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition-colors"
                   >
@@ -662,6 +721,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit, onNavigateTab }) => {
                 students.map((student, idx) => (
                   <tr
                     key={student.id}
+                    id={`student-row-${student.id}`}
                     onClick={() => handleRowClick(student.id)}
                     className="hover:bg-white/60 cursor-pointer transition-colors"
                   >
@@ -720,7 +780,7 @@ export const AdminDashboard = ({ onOpenMultiStepEdit, onNavigateTab }) => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteStudent(student);
+                          handleDeleteStudent(student, e.currentTarget.closest('tr'));
                         }}
                         className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg inline-flex items-center justify-center transition-colors"
                         title="Permanently Delete Student"

@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Student Deletion: Sand & Air Disintegration Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes disintegrateMask {
+      0% {
+        clip-path: inset(0 0 0 0);
+        opacity: 1;
+        filter: blur(0px);
+      }
+      35% {
+        clip-path: inset(0 40% 0 0);
+        opacity: 0.85;
+        filter: blur(1px);
+      }
+      70% {
+        clip-path: inset(0 80% 0 0);
+        opacity: 0.4;
+        filter: blur(2.5px);
+      }
+      100% {
+        clip-path: inset(0 100% 0 0);
+        opacity: 0;
+        filter: blur(4px);
+      }
+    }
+
+    .disintegrating-row {
+      animation: disintegrateMask 0.75s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+      pointer-events: none;
+    }
+
+    .collapsing-row {
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      max-height: 0px !important;
+      padding-top: 0px !important;
+      padding-bottom: 0px !important;
+      margin: 0px !important;
+      opacity: 0 !important;
+      transform: scaleY(0);
+      transform-origin: top;
+      overflow: hidden !important;
+    }
+
+    /* Custom Glass Panel */
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      box-shadow: 0 10px 30px -5px rgba(11, 27, 58, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+    }
+  </style>
+</head>
+<body class="bg-slate-100/90 text-slate-800 antialiased p-4 md:p-8 min-h-screen relative font-sans">
+
+  <!-- Particle Overlay Canvas -->
+  <canvas id="particleCanvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+  <div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Header Section -->
+    <div class="glass-panel rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+            ✨ Interactive Prototype
+          </span>
+          <span class="text-xs text-slate-500 font-medium">Department SIS &bull; AI & DS Admin Panel</span>
+        </div>
+        <h1 class="text-xl md:text-2xl font-extrabold text-[#0B1B3A]">
+          Sand &amp; Air Disintegration Animation Module
+        </h1>
+        <p class="text-xs md:text-sm text-slate-600 mt-1 max-w-2xl">
+          Preview how a student account vanishes into fine swirling sand grains and disperses into the air when an administrator deletes a record.
+        </p>
+      </div>
+
+      <!-- Controls & Quick Actions -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <button id="resetBtn" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-[#1E4FD8] bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition-all active:scale-95 shadow-sm">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          Reset Students Roster
+        </button>
+      </div>
+    </div>
+
+    <!-- Animation Studio Controls Bar -->
+    <div class="glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 text-xs font-medium text-slate-700">
+      
+      <!-- Theme Selection -->
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Sand Style:</span>
+        <div class="flex bg-slate-200/80 p-1 rounded-xl">
+          <button data-theme="sand" class="theme-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-amber-700 shadow-sm transition-all">
+            🏜️ Golden Sand
+          </button>
+          <button data-theme="air" class="theme-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all">
+            💨 Air &amp; Cloud Vapor
+          </button>
+          <button data-theme="ember" class="theme-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all">
+            ✨ Stardust Ash
+          </button>
+        </div>
+      </div>
+
+      <!-- Wind Breeze Direction -->
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Wind Direction:</span>
+        <div class="flex bg-slate-200/80 p-1 rounded-xl">
+          <button data-wind="right" class="wind-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-[#1E4FD8] shadow-sm transition-all">
+            Breeze Right &rarr;
+          </button>
+          <button data-wind="up" class="wind-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all">
+            Upward Draft &uarr;
+          </button>
+          <button data-wind="left" class="wind-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all">
+            &larr; Breeze Left
+          </button>
+        </div>
+      </div>
+
+      <!-- Speed Control -->
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Play Speed:</span>
+        <button id="sloMoToggle" class="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>1.0x Normal</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Realistic Admin Dashboard Table (Simulating Portal Interface) -->
+    <div class="glass-panel rounded-2xl overflow-hidden shadow-xl border border-slate-200/80">
+      
+      <!-- Table Header Bar -->
+      <div class="p-4 px-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-xl bg-blue-50 text-[#1E4FD8] flex items-center justify-center font-bold text-xs">
+            SIS
+          </div>
+          <div>
+            <h3 class="font-bold text-sm text-[#0B1B3A]">Registered Department Students</h3>
+            <p class="text-[11px] text-slate-500">Click the red "Delete" trash button on any student row below to watch it dissolve into air</p>
+          </div>
+        </div>
+        <div id="studentCount" class="text-xs font-bold px-3 py-1 bg-white border border-slate-200 rounded-full text-slate-700 shadow-2xs">
+          5 Students Loaded
+        </div>
+      </div>
+
+      <!-- Desktop Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse" id="studentsTable">
+          <thead class="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+            <tr>
+              <th class="py-3.5 px-6">Student Name &amp; ID</th>
+              <th class="py-3.5 px-4">Register No</th>
+              <th class="py-3.5 px-4">Year &amp; Sec</th>
+              <th class="py-3.5 px-4">Institutional Email</th>
+              <th class="py-3.5 px-4">Status</th>
+              <th class="py-3.5 px-6 text-right">Delete Action</th>
+            </tr>
+          </thead>
+          <tbody id="studentTbody" class="divide-y divide-slate-100 text-slate-700">
+            <!-- Dynamic Rows will be injected by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="hidden py-16 text-center space-y-3">
+        <div class="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto border-4 border-amber-100 text-2xl">
+          🏜️
+        </div>
+        <h4 class="text-base font-bold text-slate-800">All student accounts dissolved!</h4>
+        <p class="text-xs text-slate-500 max-w-sm mx-auto">
+          Every account has turned into sand and vanished into the breeze. Click the button below to repopulate the roster.
+        </p>
+        <button id="resetBtnEmpty" class="px-4 py-2 bg-[#1E4FD8] text-white text-xs font-bold rounded-xl shadow-sm hover:bg-blue-700 transition-all">
+          Restore Student Accounts
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Explanatory Technical Architecture Card -->
+    <div class="glass-panel rounded-2xl p-6 space-y-4">
+      <h3 class="text-sm font-bold text-[#0B1B3A] flex items-center gap-2">
+        <svg class="w-4 h-4 text-[#1E4FD8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+        How This Sand &amp; Air Disintegration Works in Production
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600">
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200/70 space-y-1.5">
+          <span class="font-bold text-slate-800 flex items-center gap-1.5">
+            <span class="w-5 h-5 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-[10px]">1</span>
+            Bounding Rect Capture
+          </span>
+          <p>When the admin clicks Delete, we capture the exact pixel bounds `getBoundingClientRect()` of the table row and sample its natural palette (text, badges, card surface).</p>
+        </div>
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200/70 space-y-1.5">
+          <span class="font-bold text-slate-800 flex items-center gap-1.5">
+            <span class="w-5 h-5 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-[10px]">2</span>
+            60 FPS Particle Physics
+          </span>
+          <p>1,400 micro sand grains ignite across the card. Each grain experiences atmospheric air drag, curl-noise breeze turbulence, and exponential opacity decay.</p>
+        </div>
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200/70 space-y-1.5">
+          <span class="font-bold text-slate-800 flex items-center gap-1.5">
+            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px]">3</span>
+            Zero-Jank Layout Glide
+          </span>
+          <p>While the sand cloud drifts into the sky, the remaining table rows beneath gently slide upwards into place without abrupt layout flashing.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Initial Sample Student Accounts
+    const initialStudents = [
+      { id: 1, name: "Abishek R", regNo: "310621243001", year: 4, section: "A", email: "abishek.21ad@aamec.edu.in", status: "VERIFIED" },
+      { id: 2, name: "Dharani S", regNo: "310621243015", year: 4, section: "A", email: "dharani.21ad@aamec.edu.in", status: "VERIFIED" },
+      { id: 3, name: "Kaviya M", regNo: "310621243028", year: 3, section: "B", email: "kaviya.22ad@aamec.edu.in", status: "SUBMITTED" },
+      { id: 4, name: "Praveen Kumar V", regNo: "310621243042", year: 3, section: "B", email: "praveen.22ad@aamec.edu.in", status: "VERIFIED" },
+      { id: 5, name: "Sneha G", regNo: "310621243055", year: 2, section: "A", email: "sneha.23ad@aamec.edu.in", status: "DRAFT" }
+    ];
+
+    let students = [...initialStudents];
+    let currentTheme = 'sand';
+    let windDir = 'right';
+    let isSloMo = false;
+
+    // Canvas & Particle Simulation Engine
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let animationId = null;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Color palettes for different styles
+    const themePalettes = {
+      sand: [
+        '#F59E0B', '#D97706', '#B45309', '#FCD34D', '#FDE68A', '#FEF3C7', '#78350F'
+      ],
+      air: [
+        '#60A5FA', '#3B82F6', '#2563EB', '#93C5FD', '#BFDBFE', '#E0F2FE', '#38BDF8'
+      ],
+      ember: [
+        '#EF4444', '#F97316', '#F59E0B', '#FDE047', '#475569', '#334155', '#94A3B8'
+      ]
+    };
+
+    class SandParticle {
+      constructor(x, y, palette, wind) {
+        this.x = x;
+        this.y = y;
+        this.baseX = x;
+        this.baseY = y;
+        
+        // Random particle dimensions (fine sand / dust grain)
+        this.size = Math.random() * 2.8 + 1.1;
+        this.color = palette[Math.floor(Math.random() * palette.length)];
+        this.alpha = 1;
+        this.maxLife = Math.random() * 55 + 45;
+        this.life = this.maxLife;
+
+        // Velocity tuned to wind direction
+        const speedScale = isSloMo ? 0.35 : 1.0;
+        
+        if (wind === 'right') {
+          this.vx = (Math.random() * 5.5 + 2.5) * speedScale;
+          this.vy = (Math.random() * -3.5 - 0.5) * speedScale;
+        } else if (wind === 'left') {
+          this.vx = (Math.random() * -5.5 - 2.5) * speedScale;
+          this.vy = (Math.random() * -3.5 - 0.5) * speedScale;
+        } else {
+          // Upward whirlwind draft
+          this.vx = ((Math.random() - 0.5) * 4) * speedScale;
+          this.vy = (Math.random() * -6.5 - 2.5) * speedScale;
+        }
+
+        // Swirl and turbulence parameters
+        this.swirlFactor = Math.random() * 0.15 + 0.05;
+        this.swirlSpeed = Math.random() * 0.08 + 0.02;
+        this.phase = Math.random() * Math.PI * 2;
+        this.gravity = (Math.random() * 0.04 - 0.01) * speedScale;
+        this.drag = 0.985;
+      }
+
+      update() {
+        this.life--;
+        this.alpha = Math.max(0, this.life / this.maxLife);
+
+        // Apply turbulence and atmospheric drift
+        this.phase += this.swirlSpeed;
+        this.vx += Math.sin(this.phase) * this.swirlFactor;
+        this.vy += this.gravity;
+
+        this.vx *= this.drag;
+        this.vy *= this.drag;
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // Shrink grain as it disperses
+        this.size = Math.max(0.4, this.size * 0.992);
+      }
+
+      draw(context) {
+        context.save();
+        context.globalAlpha = this.alpha;
+        context.fillStyle = this.color;
+        
+        // Render sand grain with soft air glow
+        context.beginPath();
+        context.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        context.fill();
+
+        // Shimmer glint on select particles
+        if (this.size > 2 && Math.random() > 0.85) {
+          context.fillStyle = '#FFFFFF';
+          context.fillRect(this.x - 0.5, this.y - 0.5, 1, 1);
+        }
+
+        context.restore();
+      }
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.update();
+        p.draw(ctx);
+
+        if (p.life <= 0 || p.alpha <= 0) {
+          particles.splice(i, 1);
+        }
+      }
+
+      if (particles.length > 0) {
+        animationId = requestAnimationFrame(animateParticles);
+      } else {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+    }
+
+    // Trigger the Sand Disintegration on a Specific Row
+    function disintegrateRow(rowElement, onComplete) {
+      const rect = rowElement.getBoundingClientRect();
+      const palette = themePalettes[currentTheme];
+      const particleCount = 1400; // Dense sand cloud
+
+      // Apply CSS dissolution mask
+      rowElement.classList.add('disintegrating-row');
+
+      // Generate sand particles across row area
+      for (let i = 0; i < particleCount; i++) {
+        // Stagger spawn along the row width for sweeping wave effect
+        const px = rect.left + Math.random() * rect.width;
+        const py = rect.top + Math.random() * rect.height;
+        
+        // Add random timing offset for natural grain scattering
+        setTimeout(() => {
+          particles.push(new SandParticle(px, py, palette, windDir));
+          if (!animationId) {
+            animationId = requestAnimationFrame(animateParticles);
+          }
+        }, (px - rect.left) / rect.width * (isSloMo ? 550 : 250));
+      }
+
+      // After wave finishes, collapse row height smoothly
+      setTimeout(() => {
+        rowElement.classList.remove('disintegrating-row');
+        rowElement.classList.add('collapsing-row');
+        
+        // Finish deletion from DOM/state after collapse finishes
+        setTimeout(() => {
+          if (onComplete) onComplete();
+        }, 500);
+      }, isSloMo ? 1400 : 700);
+    }
+
+    // Render Student Table
+    function renderTable() {
+      const tbody = document.getElementById('studentTbody');
+      const emptyState = document.getElementById('emptyState');
+      const tableElem = document.getElementById('studentsTable');
+      const countElem = document.getElementById('studentCount');
+
+      countElem.textContent = `${students.length} Student${students.length === 1 ? '' : 's'} Loaded`;
+
+      if (students.length === 0) {
+        tbody.innerHTML = '';
+        tableElem.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      tableElem.classList.remove('hidden');
+      emptyState.classList.add('hidden');
+
+      tbody.innerHTML = students.map((st) => {
+        const badgeColor = st.status === 'VERIFIED' 
+          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : (st.status === 'SUBMITTED' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-600 border-slate-200');
+
+        return `
+          <tr id="student-row-${st.id}" class="hover:bg-slate-50/80 transition-colors group">
+            <td class="py-3.5 px-6">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-blue-100 text-[#1E4FD8] font-bold flex items-center justify-center text-xs shrink-0 border border-blue-200">
+                  ${st.name.substring(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div class="font-bold text-[#0B1B3A] text-xs">${st.name}</div>
+                  <div class="text-[11px] text-slate-400">AID-${st.id}</div>
+                </div>
+              </div>
+            </td>
+            <td class="py-3.5 px-4 font-mono font-semibold text-slate-700 text-xs">${st.regNo}</td>
+            <td class="py-3.5 px-4 font-semibold text-slate-600 text-xs">Year ${st.year} &bull; Sec ${st.section}</td>
+            <td class="py-3.5 px-4 text-slate-500 font-mono text-[11px]">${st.email}</td>
+            <td class="py-3.5 px-4">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${badgeColor}">
+                ${st.status}
+              </span>
+            </td>
+            <td class="py-3.5 px-6 text-right">
+              <button 
+                onclick="handleDeleteClick(${st.id})"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all active:scale-95 shadow-2xs"
+                title="Delete student and disintegrate into sand"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                <span>Delete</span>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Handle Delete Trigger
+    window.handleDeleteClick = function(id) {
+      const rowElem = document.getElementById(`student-row-${id}`);
+      if (!rowElem) return;
+
+      disintegrateRow(rowElem, () => {
+        students = students.filter(s => s.id !== id);
+        renderTable();
+      });
+    };
+
+    // Reset Table
+    function resetTable() {
+      students = [...initialStudents];
+      particles = [];
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      renderTable();
+    }
+    document.getElementById('resetBtn').addEventListener('click', resetTable);
+    document.getElementById('resetBtnEmpty').addEventListener('click', resetTable);
+
+    // Theme Switcher
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.theme-btn').forEach(b => {
+          b.className = 'theme-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all';
+        });
+        btn.className = 'theme-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-amber-700 shadow-sm transition-all';
+        currentTheme = btn.dataset.theme;
+      });
+    });
+
+    // Wind Switcher
+    document.querySelectorAll('.wind-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.wind-btn').forEach(b => {
+          b.className = 'wind-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all';
+        });
+        btn.className = 'wind-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-[#1E4FD8] shadow-sm transition-all';
+        windDir = btn.dataset.wind;
+      });
+    });
+
+    // Slo-Mo Toggle
+    const sloMoBtn = document.getElementById('sloMoToggle');
+    sloMoBtn.addEventListener('click', () => {
+      isSloMo = !isSloMo;
+      if (isSloMo) {
+        sloMoBtn.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span><span>0.35x Slow-Motion</span>';
+        sloMoBtn.classList.add('border-amber-300', 'bg-amber-50/50', 'text-amber-900');
+      } else {
+        sloMoBtn.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>1.0x Normal</span>';
+        sloMoBtn.classList.remove('border-amber-300', 'bg-amber-50/50', 'text-amber-900');
+      }
+    });
+
+    // Initial Render
+    renderTable();
+  </script>
+</body>
+</html>

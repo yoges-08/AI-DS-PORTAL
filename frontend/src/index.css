@@ -208,3 +208,49 @@
 .btn-shiny:hover::after {
   transform: rotate(30deg) translateY(100%);
 }
+
+
+/* Golden Sand Disintegration Animation (Admin Student Deletion) */
+@keyframes sandDisintegrateWave {
+  0% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+    filter: blur(0px);
+  }
+  30% {
+    clip-path: inset(0 35% 0 0);
+    opacity: 0.88;
+    filter: blur(1px);
+  }
+  65% {
+    clip-path: inset(0 75% 0 0);
+    opacity: 0.45;
+    filter: blur(2px);
+  }
+  100% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+
+.sand-disintegrating {
+  animation: sandDisintegrateWave 1.25s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+.sand-collapsing {
+  transition: all 0.55s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  max-height: 0px !important;
+  height: 0px !important;
+  padding-top: 0px !important;
+  padding-bottom: 0px !important;
+  margin-top: 0px !important;
+  margin-bottom: 0px !important;
+  opacity: 0 !important;
+  transform: scaleY(0) !important;
+  transform-origin: top !important;
+  overflow: hidden !important;
+  border: none !important;
+}
