@@ -381,6 +381,24 @@ const initSqliteFallback = async () => {
       console.log('[DB Fallback] Notice: No admin account found. Create one securely using: node scripts/create-admin.js <username> "<Full Name>" <email> <password>');
     }
 
+    // Local SQLite Admin Password Override via Environment Variable
+    if (process.env.ADMIN_RESET_PASSWORD && process.env.ADMIN_RESET_PASSWORD.trim().length >= 8) {
+      try {
+        const bcrypt = require('bcryptjs');
+        const targetUsername = (process.env.ADMIN_RESET_USERNAME || process.env.DEFAULT_ADMIN_USERNAME || 'admin').toLowerCase().trim();
+        const newPassword = process.env.ADMIN_RESET_PASSWORD.trim();
+        const hash = await bcrypt.hash(newPassword, 12);
+        
+        const updateStmt = sqliteDb.prepare('UPDATE admins SET password = ?, token_version = COALESCE(token_version, 1) + 1, updated_at = CURRENT_TIMESTAMP WHERE LOWER(username) = ?');
+        const res = updateStmt.run(hash, targetUsername);
+        if (res.changes > 0) {
+          console.log(`[Admin Recovery] Password for admin "${targetUsername}" successfully reset from ADMIN_RESET_PASSWORD environment variable.`);
+        }
+      } catch (recoveryErr) {
+        console.error('[Admin Recovery Error]:', recoveryErr.message);
+      }
+    }
+
     dbMode = 'sqlite';
     console.log('[DB] Local SQLite fallback active (backend/aids_portal.sqlite). Ready to accept requests!');
     return true;
@@ -659,7 +677,27 @@ const testConnection = async () => {
     }
 
 
-    // M8 fix: Preserves admin profile changes across boots
+    // Admin Password Override via Environment Variable (Render / Cloud deployment recovery)
+    if (process.env.ADMIN_RESET_PASSWORD && process.env.ADMIN_RESET_PASSWORD.trim().length >= 8) {
+      try {
+        const bcrypt = require('bcryptjs');
+        const targetUsername = (process.env.ADMIN_RESET_USERNAME || process.env.DEFAULT_ADMIN_USERNAME || 'admin').toLowerCase().trim();
+        const newPassword = process.env.ADMIN_RESET_PASSWORD.trim();
+        const hash = await bcrypt.hash(newPassword, 12);
+        
+        const [updateRes] = await conn.query(
+          'UPDATE admins SET password = ?, token_version = COALESCE(token_version, 1) + 1, updated_at = NOW() WHERE LOWER(username) = ?',
+          [hash, targetUsername]
+        );
+        if (updateRes.affectedRows > 0) {
+          console.log(`[Admin Recovery] Password for admin "${targetUsername}" successfully reset from ADMIN_RESET_PASSWORD environment variable.`);
+        } else {
+          console.warn(`[Admin Recovery Warning] ADMIN_RESET_PASSWORD was provided, but no admin with username "${targetUsername}" was found.`);
+        }
+      } catch (recoveryErr) {
+        console.error('[Admin Recovery Error]:', recoveryErr.message);
+      }
+    }
 
     
     try {
