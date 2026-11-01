@@ -950,7 +950,7 @@ const verifyEmail = async (req, res) => {
         tokenVersion: student.token_version || 1
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '24h' }
     );
 
     res.cookie('token', token, COOKIE_OPTIONS);

@@ -1,9 +1,14 @@
+const path = require('path');
+const fs = require('fs');
 const { pool, getDbMode } = require('../config/db');
 
 /**
  * Hourly cleanup job:
  * - Purges unverified student accounts older than 48 hours and frees up their whitelist claim
  * - Purges email_logs audit entries older than 90 days
+ * - Purges expired auth_lockouts older than 24 hours
+ * - Purges expired password_resets older than 2 hours
+ * - Sweeps orphaned Multer import files in uploads/temp older than 2 hours
  */
 async function runPeriodicCleanup() {
   try {
@@ -54,6 +59,39 @@ async function runPeriodicCleanup() {
       : `DELETE FROM email_logs WHERE created_at < NOW() - INTERVAL 90 DAY`;
 
     await pool.query(logCleanupSql);
+
+    // 3. Purge expired auth lockouts older than 24 hours
+    const oneDayAgoMs = Date.now() - (24 * 60 * 60 * 1000);
+    await pool.query(
+      'DELETE FROM auth_lockouts WHERE (locked_until_ms > 0 AND locked_until_ms < ?) OR (locked_until_ms = 0 AND first_attempt_ms < ?)',
+      [Date.now(), oneDayAgoMs]
+    );
+
+    // 4. Purge expired password reset sessions older than 2 hours
+    const twoHoursAgoMs = Date.now() - (2 * 60 * 60 * 1000);
+    await pool.query(
+      'DELETE FROM password_resets WHERE expires_at < ?',
+      [twoHoursAgoMs]
+    );
+
+    // 5. Sweep orphaned Multer import files in uploads/temp older than 2 hours
+    const tempDir = path.join(__dirname, '..', 'uploads', 'temp');
+    if (fs.existsSync(tempDir)) {
+      const files = fs.readdirSync(tempDir);
+      const now = Date.now();
+      for (const file of files) {
+        if (file === '.gitkeep') continue;
+        const filePath = path.join(tempDir, file);
+        try {
+          const stat = fs.statSync(filePath);
+          if (now - stat.mtimeMs > (2 * 60 * 60 * 1000)) { // 2 hours
+            fs.unlinkSync(filePath);
+          }
+        } catch (e) {
+          // ignore error if file was already deleted
+        }
+      }
+    }
   } catch (err) {
     console.error('[Cleanup Job Error]:', err.message);
   }
