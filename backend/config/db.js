@@ -387,12 +387,16 @@ const initSqliteFallback = async () => {
         const bcrypt = require('bcryptjs');
         const targetUsername = (process.env.ADMIN_RESET_USERNAME || process.env.DEFAULT_ADMIN_USERNAME || 'admin').toLowerCase().trim();
         const newPassword = process.env.ADMIN_RESET_PASSWORD.trim();
-        const hash = await bcrypt.hash(newPassword, 12);
-        
-        const updateStmt = sqliteDb.prepare('UPDATE admins SET password = ?, token_version = COALESCE(token_version, 1) + 1, updated_at = CURRENT_TIMESTAMP WHERE LOWER(username) = ?');
-        const res = updateStmt.run(hash, targetUsername);
-        if (res.changes > 0) {
-          console.log(`[Admin Recovery] Password for admin "${targetUsername}" successfully reset from ADMIN_RESET_PASSWORD environment variable.`);
+
+        const existing = sqliteDb.prepare('SELECT id, password FROM admins WHERE LOWER(username) = ?').all(targetUsername);
+        if (existing.length > 0) {
+          const isAlreadySet = await bcrypt.compare(newPassword, existing[0].password);
+          if (!isAlreadySet) {
+            const hash = await bcrypt.hash(newPassword, 12);
+            const updateStmt = sqliteDb.prepare('UPDATE admins SET password = ?, token_version = COALESCE(token_version, 1) + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+            updateStmt.run(hash, existing[0].id);
+            console.log(`[Admin Recovery] Password for admin "${targetUsername}" successfully reset from ADMIN_RESET_PASSWORD environment variable.`);
+          }
         }
       } catch (recoveryErr) {
         console.error('[Admin Recovery Error]:', recoveryErr.message);
@@ -677,22 +681,27 @@ const testConnection = async () => {
     }
 
 
-    // Admin Password Override via Environment Variable (Render / Cloud deployment recovery)
+    // Emergency Admin Password Recovery via Environment Variable (Render / Cloud recovery)
+    // Only runs when ADMIN_RESET_PASSWORD is explicitly defined and doesn't already match the current password
     if (process.env.ADMIN_RESET_PASSWORD && process.env.ADMIN_RESET_PASSWORD.trim().length >= 8) {
       try {
         const bcrypt = require('bcryptjs');
         const targetUsername = (process.env.ADMIN_RESET_USERNAME || process.env.DEFAULT_ADMIN_USERNAME || 'admin').toLowerCase().trim();
         const newPassword = process.env.ADMIN_RESET_PASSWORD.trim();
-        const hash = await bcrypt.hash(newPassword, 12);
-        
-        const [updateRes] = await conn.query(
-          'UPDATE admins SET password = ?, token_version = COALESCE(token_version, 1) + 1, updated_at = NOW() WHERE LOWER(username) = ?',
-          [hash, targetUsername]
-        );
-        if (updateRes.affectedRows > 0) {
-          console.log(`[Admin Recovery] Password for admin "${targetUsername}" successfully reset from ADMIN_RESET_PASSWORD environment variable.`);
+
+        const [existing] = await conn.query('SELECT id, password FROM admins WHERE LOWER(username) = ?', [targetUsername]);
+        if (existing.length === 0) {
+          console.warn(`[Admin Recovery Warning] ADMIN_RESET_PASSWORD was provided, but no admin with username "${targetUsername}" exists.`);
         } else {
-          console.warn(`[Admin Recovery Warning] ADMIN_RESET_PASSWORD was provided, but no admin with username "${targetUsername}" was found.`);
+          const isAlreadySet = await bcrypt.compare(newPassword, existing[0].password);
+          if (!isAlreadySet) {
+            const hash = await bcrypt.hash(newPassword, 12);
+            await conn.query(
+              'UPDATE admins SET password = ?, token_version = COALESCE(token_version, 1) + 1, updated_at = NOW() WHERE id = ?',
+              [hash, existing[0].id]
+            );
+            console.log(`[Admin Recovery] Password for admin "${targetUsername}" successfully reset from ADMIN_RESET_PASSWORD environment variable.`);
+          }
         }
       } catch (recoveryErr) {
         console.error('[Admin Recovery Error]:', recoveryErr.message);
