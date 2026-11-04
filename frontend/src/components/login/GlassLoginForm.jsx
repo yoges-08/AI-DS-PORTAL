@@ -482,7 +482,7 @@ export const GlassLoginForm = ({ onClose, initialView = 'signin' }) => {
         setView('verify-email');
         setCodeDigits(['', '', '', '', '', '']);
         setResendCooldown(0);
-        setError('Please enter the 6-digit verification code sent to your email.');
+        setError('Your account is pending email verification. Enter your 6-digit code, or click "Resend Code" if it has expired.');
         return;
       }
       const msg = err.message || 'Student sign in failed. Please check your credentials.';

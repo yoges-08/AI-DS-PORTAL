@@ -344,10 +344,10 @@ const registerStudent = async (req, res) => {
     );
     const newStudentId = insertResult.insertId;
 
-    // 6. Mark whitelist entry as claimed
+    // 6. Mark whitelist entry as claimed and sync registered email
     await conn.query(
-      'UPDATE student_whitelist SET is_claimed = 1, claimed_student_id = ? WHERE id = ?',
-      [newStudentId, whitelistEntry.id]
+      'UPDATE student_whitelist SET is_claimed = 1, claimed_student_id = ?, email = ? WHERE id = ?',
+      [newStudentId, cleanEmail, whitelistEntry.id]
     );
 
     await conn.commit();
@@ -416,6 +416,7 @@ const registerStudent = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Account created successfully. Welcome to the Student Portal!',
+      token,
       user: {
         id: newStudentId,
         role: 'STUDENT',
@@ -978,6 +979,7 @@ const verifyEmail = async (req, res) => {
     return res.json({
       success: true,
       message: 'Email verified successfully! Welcome to the Student Portal.',
+      token,
       user: {
         id: student.id,
         role: 'STUDENT',
@@ -1140,8 +1142,9 @@ const changePendingEmail = async (req, res) => {
       });
     }
 
-    // Update email on student record only after code generation succeeds
+    // Update email on student record and sync to claimed whitelist record only after code generation succeeds
     await pool.query('UPDATE students SET email = ? WHERE id = ?', [cleanEmail, studentId]);
+    await pool.query('UPDATE student_whitelist SET email = ? WHERE claimed_student_id = ?', [cleanEmail, studentId]);
 
     // Send email E1 synchronously
     const tpl = verificationCode({ name: student.name, code: issueRes.code, validMinutes: 10 });
