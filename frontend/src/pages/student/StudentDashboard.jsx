@@ -45,7 +45,7 @@ export const StudentDashboard = () => {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-7">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-7 relative z-10">
       
       {/* Top Welcome Card (Cupertino Glass Banner) */}
       <div className="glass-card-l2 rounded-2xl p-5 sm:p-7 shadow-sm border border-white/80 flex flex-col md:flex-row md:items-center justify-between gap-5 no-print">

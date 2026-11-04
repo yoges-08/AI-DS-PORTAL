@@ -817,7 +817,7 @@ export const MultiStepForm = ({ studentId = null, onBack, onComplete }) => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto pb-16">
+    <div className="max-w-4xl mx-auto pb-16 relative z-10">
       
       {/* Top Banner & Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-6 border-b border-outline-variant/30 gap-3">

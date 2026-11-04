@@ -17,6 +17,7 @@ import { AuditLogsPage } from './pages/admin/AuditLogsPage';
 import { MultiStepForm } from './pages/student/MultiStepForm';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ModernLoadingScreen } from './components/ModernLoadingScreen';
+import { StudentNeuralBackground } from './components/StudentNeuralBackground';
 
 export const App = () => {
   const { user, loading } = useAuth();
@@ -66,9 +67,10 @@ export const App = () => {
   // STUDENT VIEW
   if (user.role === 'STUDENT') {
     return (
-      <div className="min-h-screen flex flex-col bg-gov-bg">
+      <div className="min-h-screen flex flex-col bg-gov-bg relative overflow-x-hidden">
+        <StudentNeuralBackground />
         <Navbar onLogoClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
-        <main className="flex-1">
+        <main className="flex-1 relative z-10">
           <StudentDashboard />
         </main>
         <Footer />
