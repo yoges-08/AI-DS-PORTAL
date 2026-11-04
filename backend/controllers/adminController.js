@@ -896,6 +896,10 @@ const toggleLockStudent = async (req, res) => {
       [newLockState, lockedAt, lockedBy, lock ? 1 : 0, studentId]
     );
     invalidateTokenCache('STUDENT', studentId);
+    if (!lock) {
+      await clearFailures(`verify:${student[0].register_no}`);
+      await clearFailures(`login:student:${student[0].register_no}`);
+    }
 
     const action = lock ? 'LOCK' : 'UNLOCK';
     await logAdminAction({
@@ -951,6 +955,8 @@ const resetStudentPassword = async (req, res) => {
       [hashedPassword, studentId]
     );
     invalidateTokenCache('STUDENT', studentId);
+    await clearFailures(`verify:${student.register_no}`);
+    await clearFailures(`login:student:${student.register_no}`);
 
     // Do NOT write the plain temporary password to audit log
     await logAdminAction({

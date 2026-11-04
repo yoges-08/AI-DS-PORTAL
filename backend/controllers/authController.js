@@ -1299,7 +1299,7 @@ const verifyPasswordResetCode = async (req, res) => {
 
     let decoded;
     try {
-      decoded = jwt.verify(pendingResetToken, JWT_SECRET);
+      decoded = jwt.verify(pendingResetToken, JWT_SECRET, { algorithms: ['HS256'] });
     } catch {
       return res.status(401).json({
         success: false,
@@ -1373,7 +1373,7 @@ const resetPasswordWithToken = async (req, res) => {
 
     let decoded;
     try {
-      decoded = jwt.verify(resetAuthToken, JWT_SECRET);
+      decoded = jwt.verify(resetAuthToken, JWT_SECRET, { algorithms: ['HS256'] });
     } catch {
       return res.status(401).json({
         success: false,

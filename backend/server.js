@@ -89,21 +89,50 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cookieParser(COOKIE_SECRET));
 
 // S6 fix: CSRF Origin verification for state-changing HTTP requests
+// S6 fix: CSRF Origin verification for state-changing HTTP requests (SEC-L2 hardened)
 const csrfOriginCheck = (req, res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-  const origin = req.headers.origin;
-  if (!origin) return next(); // non-browser clients (e.g. mobile, curl, server-to-server)
-  let originHost;
-  try {
-    originHost = new URL(origin).origin;
-  } catch {
-    return res.status(403).json({ success: false, message: 'Invalid origin header.' });
-  }
-  const isAllowed = allowedOrigins.includes(originHost) || 
-    (process.env.NODE_ENV !== 'production' && localOriginRegex.test(originHost));
-  if (!isAllowed) {
+
+  // 1. Check Sec-Fetch-Site metadata: if browser confirms cross-site request, block immediately
+  const secFetchSite = req.headers['sec-fetch-site'];
+  if (secFetchSite === 'cross-site') {
     return res.status(403).json({ success: false, message: 'Cross-site request blocked.' });
   }
+
+  // 2. Check Origin header
+  const origin = req.headers.origin;
+  if (origin) {
+    let originHost;
+    try {
+      originHost = new URL(origin).origin;
+    } catch {
+      return res.status(403).json({ success: false, message: 'Invalid origin header.' });
+    }
+    const isAllowed = allowedOrigins.includes(originHost) || 
+      (process.env.NODE_ENV !== 'production' && localOriginRegex.test(originHost));
+    if (!isAllowed) {
+      return res.status(403).json({ success: false, message: 'Cross-site request blocked.' });
+    }
+    return next();
+  }
+
+  // 3. Fallback: Check Referer header if Origin is omitted
+  const referer = req.headers.referer;
+  if (referer) {
+    let refererOrigin;
+    try {
+      refererOrigin = new URL(referer).origin;
+    } catch {
+      return res.status(403).json({ success: false, message: 'Invalid referer header.' });
+    }
+    const isAllowed = allowedOrigins.includes(refererOrigin) ||
+      (process.env.NODE_ENV !== 'production' && localOriginRegex.test(refererOrigin));
+    if (!isAllowed) {
+      return res.status(403).json({ success: false, message: 'Cross-site request blocked.' });
+    }
+  }
+
+  // Non-browser clients (e.g. mobile, curl, server-to-server) without Origin or Referer
   next();
 };
 app.use('/api', csrfOriginCheck);

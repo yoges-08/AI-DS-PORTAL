@@ -52,12 +52,16 @@ async function recordFailure(key) {
 }
 
 /**
- * Clears failures and unlock for a key upon successful authentication
+ * Clears failures and unlock for a key (and all IP-suffixed keys) upon successful authentication
+ * Supports exact key match and wildcard prefix matches (e.g. "login:student:71762105001" clears "login:student:71762105001:<ip>")
  * @param {string} key
  */
 async function clearFailures(key) {
   try {
-    await pool.query('DELETE FROM auth_lockouts WHERE key_name = ?', [key]);
+    await pool.query(
+      'DELETE FROM auth_lockouts WHERE key_name = ? OR key_name LIKE ?',
+      [key, `${key}:%`]
+    );
   } catch (err) {
     console.warn('[Lockout Clear Warning]:', err.message);
   }
